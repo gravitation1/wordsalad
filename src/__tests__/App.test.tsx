@@ -650,12 +650,16 @@ describe('App', () => {
     expect(submit()).toHaveTextContent('?');
   });
 
-  it('floats an accepted word out of the word area', () => {
+  it('animates the submitted word out of the word area', () => {
     render(<App dictionary={DICTIONARY} />);
 
-    // A rejected word vanishes without ceremony.
+    // A rejected word sinks away, tinted as a rejection.
     submitWord('toss');
-    expect(screen.queryByTestId('word-exit')).not.toBeInTheDocument();
+    expect(screen.getByTestId('word-exit')).toHaveAttribute(
+      'data-word-exit',
+      'rejected',
+    );
+    expect(screen.getByTestId('word-exit')).toHaveTextContent('TOSS');
 
     // A scoring word departs marked as scored.
     submitWord('test');

@@ -2,14 +2,15 @@ import { useLayoutEffect, useRef, useState } from 'react';
 
 import { useMessages } from '../i18n';
 import type {
-  AcceptedWord,
   HintReveal,
   LetterRejection,
   SpentHint,
+  WordExit,
+  WordExitOutcome,
 } from '../useWordSaladGame';
 
 interface WordInputProps {
-  acceptedWord: AcceptedWord | null;
+  wordExit: WordExit | null;
   canHint: boolean;
   hintCost: number;
   hintReveal: HintReveal | null;
@@ -30,8 +31,16 @@ const HINT_BADGE_CLASS =
 // once. Position i is delayed proportionally so it reads as a reveal.
 const REVEAL_STAGGER_MS = 45;
 
-// An accepted word's letters peel off left to right as the word floats away.
+// The exiting word's letters peel off left to right as it animates away.
 const EXIT_STAGGER_MS = 35;
+
+// Accepted words rise; rejected words sink, tinted like the Submit badge's
+// rejection verdicts (hinted words match their gray +0 badge).
+const EXIT_TONE: Record<WordExitOutcome, string> = {
+  scored: 'word-exit-up text-accent',
+  hinted: 'word-exit-up text-gray-400 dark:text-gray-500',
+  rejected: 'word-exit-down text-orange-600 dark:text-orange-400',
+};
 
 function letterClass(
   letter: string,
@@ -61,7 +70,7 @@ function isHintReveal(
 }
 
 export function WordInput({
-  acceptedWord,
+  wordExit,
   canHint,
   hintCost,
   hintReveal,
@@ -156,7 +165,7 @@ export function WordInput({
         <button
           // The button eases in; after a submission it waits out the exiting
           // word so the two never hard-cut in the same frame.
-          className={`${acceptedWord === null ? 'hint-enter' : 'hint-enter-delayed'} flex h-10 touch-manipulation items-center gap-2 rounded-full bg-gray-100 px-4 text-sm font-medium text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200`}
+          className={`${wordExit === null ? 'hint-enter' : 'hint-enter-delayed'} flex h-10 touch-manipulation items-center gap-2 rounded-full bg-gray-100 px-4 text-sm font-medium text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200`}
           onClick={handleHint}
           title={t.hintCostLabel(hintCost)}
           type="button"
@@ -189,24 +198,21 @@ export function WordInput({
           |
         </span>
       )}
-      {/* The accepted word floats up from where it sat, its letters peeling
-          off left to right, while the hint button returns underneath. */}
-      {acceptedWord === null ? null : (
+      {/* The submitted word animates away from where it sat — rising when
+          accepted, sinking when rejected — its letters peeling off left to
+          right, while the hint button returns underneath. */}
+      {wordExit === null ? null : (
         <span
           aria-hidden="true"
           className="pointer-events-none fixed"
           data-testid="word-exit"
-          data-word-exit={acceptedWord.scored ? 'scored' : 'hinted'}
-          key={acceptedWord.id}
+          data-word-exit={wordExit.outcome}
+          key={wordExit.id}
           ref={placeExitGhost}
         >
-          {acceptedWord.letters.map((letter, index) => (
+          {wordExit.letters.map((letter, index) => (
             <span
-              className={`word-exit inline-block ${
-                acceptedWord.scored
-                  ? 'text-accent'
-                  : 'text-gray-400 dark:text-gray-500'
-              }`}
+              className={`inline-block ${EXIT_TONE[wordExit.outcome]}`}
               key={`${letter}${index}`}
               style={{ animationDelay: `${index * EXIT_STAGGER_MS}ms` }}
             >

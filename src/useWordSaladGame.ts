@@ -66,12 +66,16 @@ export interface SpentHint {
   cost: number;
 }
 
-// A submitted word the engine accepted (scored, or hinted and worth 0). The
-// word area animates it out instead of dropping it in place.
-export interface AcceptedWord {
+// How a submitted word left the board: scored, hinted (accepted but worth
+// 0), or rejected outright.
+export type WordExitOutcome = 'scored' | 'hinted' | 'rejected';
+
+// A submitted word on its way out. The word area animates it away — rising
+// when accepted, sinking when rejected — instead of dropping it in place.
+export interface WordExit {
   id: number;
   letters: readonly string[];
-  scored: boolean;
+  outcome: WordExitOutcome;
 }
 
 export interface PlayingGame {
@@ -87,7 +91,7 @@ export interface PlayingGame {
   lastAppended: LetterActivation | null;
   hintReveal: HintReveal | null;
   spentHint: SpentHint | null;
-  acceptedWord: AcceptedWord | null;
+  wordExit: WordExit | null;
   feedback: GameFeedback | null;
   foundWords: readonly FoundWord[];
   lastFoundWord: string | null;
@@ -264,7 +268,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   );
   const [hintReveal, setHintReveal] = useState<HintReveal | null>(null);
   const [spentHint, setSpentHint] = useState<SpentHint | null>(null);
-  const [acceptedWord, setAcceptedWord] = useState<AcceptedWord | null>(null);
+  const [wordExit, setWordExit] = useState<WordExit | null>(null);
   const [tossId, setTossId] = useState(0);
   const [deleteId, setDeleteId] = useState(0);
 
@@ -307,7 +311,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       // latent press that would re-ripple as later letters are typed. It also
       // ends the previous word's exit so the ghost never overlaps new letters.
       setHintReveal(null);
-      setAcceptedWord(null);
+      setWordExit(null);
       setLastAppended((previous) => ({
         id: (previous?.id ?? 0) + 1,
         letter,
@@ -370,7 +374,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     // clear any stale press so only the hint drives the tiles, and any
     // exiting word so the ghost never overlaps the revealed letters.
     setLastAppended(null);
-    setAcceptedWord(null);
+    setWordExit(null);
     setHintReveal((previous) => ({ id: (previous?.id ?? 0) + 1, letters }));
 
     // Float the spent cost away from the (vanishing) hint button.
@@ -401,7 +405,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setLastAppended(null);
     setHintReveal(null);
     setSpentHint(null);
-    setAcceptedWord(null);
+    setWordExit(null);
     // Reset the press counters so the control buttons don't replay a ripple
     // when the board remounts for the fresh game.
     setTossId(0);
@@ -435,7 +439,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setLastAppended(null);
     setHintReveal(null);
     setSpentHint(null);
-    setAcceptedWord(null);
+    setWordExit(null);
     setTossId(0);
     setDeleteId(0);
     setHintedWords(new Set());
@@ -467,17 +471,23 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
 
     setInputLetters([]);
 
+    // The word animates out of the word area instead of vanishing: rising
+    // when accepted, sinking when rejected.
+    setWordExit((previous) => ({
+      id: (previous?.id ?? 0) + 1,
+      letters: Array.from(word),
+      outcome:
+        preview.verdict !== 'valid'
+          ? 'rejected'
+          : isHinted
+            ? 'hinted'
+            : 'scored',
+    }));
+
     if (preview.verdict !== 'valid') {
       setFeedback({ kind: 'word-rejected', word, reason: preview });
       return;
     }
-
-    // The accepted word animates out of the word area instead of vanishing.
-    setAcceptedWord((previous) => ({
-      id: (previous?.id ?? 0) + 1,
-      letters: Array.from(word),
-      scored: !isHinted,
-    }));
 
     const awarded = wordSalad.tryWord(word);
     setFeedback({ kind: 'scored', word, points: isHinted ? 0 : awarded });
@@ -596,7 +606,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     lastAppended,
     hintReveal,
     spentHint,
-    acceptedWord,
+    wordExit,
     feedback,
     foundWords,
     lastFoundWord,

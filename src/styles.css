@@ -99,8 +99,9 @@ body {
   }
 }
 
-/* An accepted word floats up out of the word area, letter by letter. */
-@keyframes word-exit {
+/* A submitted word leaves the word area letter by letter: accepted words
+   float up and away, rejected words sink and drop. */
+@keyframes word-exit-up {
   from {
     opacity: 1;
     transform: translateY(0);
@@ -111,12 +112,30 @@ body {
   }
 }
 
-.word-exit {
-  animation: word-exit 300ms ease-out both;
+@keyframes word-exit-down {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+.word-exit-up {
+  animation: word-exit-up 300ms ease-out both;
+}
+
+/* ease-in: a rejected word accelerates downward, falling rather than
+   drifting. */
+.word-exit-down {
+  animation: word-exit-down 300ms ease-in both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .word-exit {
+  .word-exit-up,
+  .word-exit-down {
     animation: none;
     opacity: 0;
   }

@@ -50,7 +50,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
         key={game.gameId}
       >
         <WordInput
-          acceptedWord={game.acceptedWord}
+          wordExit={game.wordExit}
           canHint={game.canHint}
           hintCost={game.hintCost}
           hintReveal={game.hintReveal}
