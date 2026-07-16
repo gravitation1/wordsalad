@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+
 import { useMessages } from '../i18n';
 import type {
   SubmitReadiness,
@@ -9,6 +11,7 @@ interface GameControlsProps {
   canDelete: boolean;
   deleteId: number;
   lastSubmission: SubmittedPreview | null;
+  onClearAll: () => void;
   onDelete: () => void;
   onSubmit: () => void;
   onToss: () => void;
@@ -16,6 +19,8 @@ interface GameControlsProps {
   submitReadiness: SubmitReadiness;
   tossId: number;
 }
+
+const LONG_PRESS_MS = 450;
 
 const BASE_CLASS =
   'min-h-11 w-full touch-manipulation rounded-full border px-2 py-2 font-medium transition active:scale-95';
@@ -71,6 +76,7 @@ export function GameControls({
   canDelete,
   deleteId,
   lastSubmission,
+  onClearAll,
   onDelete,
   onSubmit,
   onToss,
@@ -80,16 +86,51 @@ export function GameControls({
 }: GameControlsProps) {
   const t = useMessages();
 
+  // Long-pressing Delete clears the whole word; a normal tap deletes one
+  // letter. A fired long-press suppresses the trailing click.
+  const longPressTimer = useRef<number | null>(null);
+  const longPressed = useRef(false);
+
+  const cancelLongPress = () => {
+    if (longPressTimer.current !== null) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const startLongPress = () => {
+    longPressed.current = false;
+    longPressTimer.current = window.setTimeout(() => {
+      longPressed.current = true;
+      onClearAll();
+    }, LONG_PRESS_MS);
+  };
+
+  const handleDeleteClick = () => {
+    if (longPressed.current) {
+      longPressed.current = false;
+      return;
+    }
+    onDelete();
+  };
+
   return (
     <div className="grid w-full max-w-xs grid-cols-3 gap-2">
       {/* Remounts on every deletion (key) so the button signals it caused
           the deletion — even when triggered by Backspace. */}
       <button
-        className={`relative ${canDelete ? NEUTRAL_CLASS : DISABLED_CLASS} ${deleteId > 0 ? 'control-press' : ''}`}
+        className={`relative select-none ${canDelete ? NEUTRAL_CLASS : DISABLED_CLASS} ${deleteId > 0 ? 'control-press' : ''}`}
         data-delete-id={deleteId}
         disabled={!canDelete}
         key={`delete-${deleteId}`}
-        onClick={onDelete}
+        onClick={handleDeleteClick}
+        onContextMenu={(event) => {
+          event.preventDefault();
+        }}
+        onPointerCancel={cancelLongPress}
+        onPointerDown={startLongPress}
+        onPointerLeave={cancelLongPress}
+        onPointerUp={cancelLongPress}
         type="button"
       >
         <span className="flex flex-col items-center leading-tight">

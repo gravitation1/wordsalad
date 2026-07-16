@@ -91,6 +91,15 @@ describe('App', () => {
     expect(currentWord()).toBe('T');
   });
 
+  it('clears the whole word with Ctrl/Cmd+Backspace', () => {
+    render(<App dictionary={DICTIONARY} />);
+    typeWord('test');
+    expect(currentWord()).toBe('TEST');
+
+    fireEvent.keyDown(document, { key: 'Backspace', ctrlKey: true });
+    expect(currentWord()).toBe('');
+  });
+
   it('scores a valid word and updates the scoreboard', () => {
     render(<App dictionary={DICTIONARY} />);
     submitWord('test');
@@ -139,9 +148,7 @@ describe('App', () => {
     submitWord('test');
     submitWord('rotted');
     submitWord('worsted');
-    expect(
-      screen.getByText('FOUND ALL THE WORDS! YOU WIN!'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('YOU WIN!')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Play again' }),
     ).toBeInTheDocument();
@@ -174,9 +181,7 @@ describe('App', () => {
 
     // Finishing the restored game still works end to end.
     submitWord('worsted');
-    expect(
-      screen.getByText('FOUND ALL THE WORDS! YOU WIN!'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('YOU WIN!')).toBeInTheDocument();
   });
 
   it('shows the victory state when a completed game is restored', () => {
@@ -186,9 +191,7 @@ describe('App', () => {
     );
     render(<App dictionary={DICTIONARY} />);
 
-    expect(
-      screen.getByText('FOUND ALL THE WORDS! YOU WIN!'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('YOU WIN!')).toBeInTheDocument();
     expect(
       screen.getByText('100.00% · Super-Duper-Genius'),
     ).toBeInTheDocument();
@@ -241,10 +244,10 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
     expect(currentWord()).toBe('TEST'); // shortest of TEST/ROTTED/WORSTED
 
-    // The revealed word is submittable as usual.
+    // The revealed word is submittable, but scores nothing (it is hinted).
     pressKey('Enter');
     expect(screen.getByRole('status')).toHaveTextContent(
-      'TEST earned you 1 point!',
+      'TEST earned you 0 points!',
     );
   });
 
@@ -296,6 +299,57 @@ describe('App', () => {
     );
   });
 
+  it('marks a hinted word plainly with an asterisk in the found list', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    // Reveal the shortest word (TEST) via hint and submit it -> hinted.
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+    pressKey('Enter');
+    // Find another word by hand -> not hinted.
+    submitWord('rotted');
+
+    expect(screen.getByRole('link', { name: 'TEST*' })).toHaveAttribute(
+      'data-hinted',
+      'true',
+    );
+    expect(screen.getByRole('link', { name: 'ROTTED' })).toHaveAttribute(
+      'data-hinted',
+      'false',
+    );
+    expect(screen.getByText('* revealed with a hint')).toBeInTheDocument();
+
+    // Hinted words score nothing: only ROTTED's 3 points count.
+    expect(screen.getByText('Found 2 words · 3 points')).toBeInTheDocument();
+
+    // The hinted mark persists per puzzle (committed when revealed).
+    expect(
+      JSON.parse(
+        window.localStorage.getItem('wordsalad:hinted:WORDTES.T.4') ?? '[]',
+      ),
+    ).toEqual(['TEST']);
+  });
+
+  it('restores hinted marks for a resumed game', () => {
+    window.localStorage.setItem(
+      'wordsalad:WORDTES.T.4',
+      JSON.stringify(['TEST', 'ROTTED']),
+    );
+    window.localStorage.setItem(
+      'wordsalad:hinted:WORDTES.T.4',
+      JSON.stringify(['TEST']),
+    );
+    render(<App dictionary={DICTIONARY} />);
+
+    expect(screen.getByRole('link', { name: 'TEST*' })).toHaveAttribute(
+      'data-hinted',
+      'true',
+    );
+    expect(screen.getByRole('link', { name: 'ROTTED' })).toHaveAttribute(
+      'data-hinted',
+      'false',
+    );
+  });
+
   it('offers the hint only when the word area is empty and words remain', () => {
     render(<App dictionary={DICTIONARY} />);
     expect(screen.getByRole('button', { name: 'Hint' })).toBeInTheDocument();
@@ -314,18 +368,24 @@ describe('App', () => {
   it('counts and persists hints taken', () => {
     render(<App dictionary={DICTIONARY} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // commit TEST
     pressKey('Enter'); // submit TEST, word area empties
-    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // reveal ROTTED
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // commit ROTTED
 
     expect(screen.getByText('· 2 hints')).toBeInTheDocument();
-    expect(window.localStorage.getItem('wordsalad:hints:WORDTES.T.4')).toBe(
-      '2',
-    );
+    // Each hint commits its word the moment it is revealed.
+    expect(
+      JSON.parse(
+        window.localStorage.getItem('wordsalad:hinted:WORDTES.T.4') ?? '[]',
+      ),
+    ).toEqual(['TEST', 'ROTTED']);
   });
 
   it('restores the hint count for a resumed game', () => {
-    window.localStorage.setItem('wordsalad:hints:WORDTES.T.4', '3');
+    window.localStorage.setItem(
+      'wordsalad:hinted:WORDTES.T.4',
+      JSON.stringify(['TEST', 'ROTTED', 'WORSTED']),
+    );
     render(<App dictionary={DICTIONARY} />);
     expect(screen.getByText('· 3 hints')).toBeInTheDocument();
   });
@@ -339,8 +399,37 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
     expect(screen.queryByText('· 1 hint')).not.toBeInTheDocument();
     expect(
-      window.localStorage.getItem('wordsalad:hints:WORDTES.T.4'),
+      window.localStorage.getItem('wordsalad:hinted:WORDTES.T.4'),
     ).toBeNull();
+  });
+
+  it('wins at the 75% threshold and lets you keep playing', () => {
+    render(<App dictionary={DICTIONARY} />);
+    // Max is 15 points; the win line is 11.25.
+    submitWord('worsted'); // 11/15 = 73.3% — just below the line
+    expect(screen.queryByText('YOU WIN!')).not.toBeInTheDocument();
+
+    submitWord('test'); // +1 -> 12/15 = 80% — win
+    expect(screen.getByText('YOU WIN!')).toBeInTheDocument();
+
+    // The game continues: a further word still scores.
+    submitWord('rotted');
+    expect(screen.getByText('Found 3 words · 15 points')).toBeInTheDocument();
+  });
+
+  it('warns when too many hints make the win unreachable', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const note = 'Too many hints — the win is out of reach this game.';
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // commit TEST (1)
+    expect(screen.queryByText(note)).not.toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Backspace', ctrlKey: true }); // clear reveal
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // commit ROTTED (3)
+
+    // 4 of 15 points lost — the earned ceiling (11/15) drops below 75%.
+    expect(screen.getByText(note)).toBeInTheDocument();
+    expect(screen.queryByText('YOU WIN!')).not.toBeInTheDocument();
   });
 
   it('hides the hint once every word is found', () => {

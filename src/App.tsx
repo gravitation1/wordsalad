@@ -70,6 +70,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           canDelete={game.inputLetters.length > 0}
           deleteId={game.deleteId}
           lastSubmission={game.lastSubmission}
+          onClearAll={game.clearInput}
           onDelete={game.deleteLetter}
           onSubmit={game.submitWord}
           onToss={game.tossSalad}
@@ -79,15 +80,18 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
         />
         <FeedbackLine feedback={game.feedback} />
         <Scoreboard
-          completionPercent={game.completionPercent}
-          currentPoints={game.currentPoints}
+          earnedPercent={game.earnedPercent}
+          earnedPoints={game.earnedPoints}
           foundWords={game.foundWords}
           hasWon={game.hasWon}
           hintCount={game.hintCount}
           lastFoundWord={game.lastFoundWord}
           level={game.level}
+          lockedOut={game.lockedOut}
+          lostPercent={game.lostPercent}
           onPlayAgain={game.startNewGame}
           onRestart={game.restartGame}
+          winThreshold={game.winThreshold}
         />
       </div>
     </main>

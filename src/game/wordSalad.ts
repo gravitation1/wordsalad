@@ -140,6 +140,12 @@ export class WordSalad {
     return this.handleValidWord(word);
   }
 
+  // The points a word is worth, whether or not it has been found. Used to
+  // value hinted words that were committed but not submitted.
+  pointsFor(word: string): number {
+    return this.getPointsForWord(word);
+  }
+
   // The shortest word still to be found, for the hint system. Ties resolve
   // to whichever the dictionary yielded first.
   shortestRemainingWord(): string | null {

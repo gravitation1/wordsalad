@@ -33,6 +33,9 @@ export interface Messages {
   restartButton: string;
   hintButton: string;
   hintsUsed: (count: number) => string;
+  hintedLegend: string;
+  lockedOutNote: string;
+  winThresholdLabel: (threshold: number) => string;
   victory: string;
   invalidGameData: string;
   generationFailed: string;
@@ -88,7 +91,11 @@ const EN: Messages = {
   hintButton: 'Hint',
   hintsUsed: (count) =>
     `${count} hint${plural('en', count, { one: '', other: 's' })}`,
-  victory: 'FOUND ALL THE WORDS! YOU WIN!',
+  hintedLegend: '* revealed with a hint',
+  lockedOutNote: 'Too many hints — the win is out of reach this game.',
+  winThresholdLabel: (threshold) =>
+    `Win at ${formatWholePercent('en', threshold)}`,
+  victory: 'YOU WIN!',
   invalidGameData: 'INVALID GAME DATA!',
   generationFailed: 'Failed to generate a game!',
   dictionaryLoadFailed: (detail) =>
@@ -157,7 +164,12 @@ const FR: Messages = {
   hintButton: 'Indice',
   hintsUsed: (count) =>
     `${count} indice${plural('fr', count, { one: '', other: 's' })}`,
-  victory: 'TOUS LES MOTS TROUVÉS ! VOUS AVEZ GAGNÉ !',
+  hintedLegend: '* révélé par un indice',
+  lockedOutNote:
+    'Trop d’indices — la victoire est hors de portée cette partie.',
+  winThresholdLabel: (threshold) =>
+    `Victoire à ${formatWholePercent('fr', threshold)}`,
+  victory: 'VOUS AVEZ GAGNÉ !',
   invalidGameData: 'DONNÉES DE PARTIE INVALIDES !',
   generationFailed: 'Impossible de générer une partie !',
   dictionaryLoadFailed: (detail) =>
@@ -226,7 +238,12 @@ const ES: Messages = {
   hintButton: 'Pista',
   hintsUsed: (count) =>
     `${count} pista${plural('es', count, { one: '', other: 's' })}`,
-  victory: '¡ENCONTRASTE TODAS LAS PALABRAS! ¡GANASTE!',
+  hintedLegend: '* revelada con una pista',
+  lockedOutNote:
+    'Demasiadas pistas: la victoria es inalcanzable en esta partida.',
+  winThresholdLabel: (threshold) =>
+    `Victoria al ${formatWholePercent('es', threshold)}`,
+  victory: '¡GANASTE!',
   invalidGameData: '¡DATOS DE PARTIDA NO VÁLIDOS!',
   generationFailed: '¡No se pudo generar una partida!',
   dictionaryLoadFailed: (detail) =>
@@ -295,7 +312,11 @@ const DE: Messages = {
   hintButton: 'Tipp',
   hintsUsed: (count) =>
     `${count} ${plural('de', count, { one: 'Tipp', other: 'Tipps' })}`,
-  victory: 'ALLE WÖRTER GEFUNDEN! DU GEWINNST!',
+  hintedLegend: '* mit einem Tipp aufgedeckt',
+  lockedOutNote: 'Zu viele Tipps — der Sieg ist in dieser Runde unerreichbar.',
+  winThresholdLabel: (threshold) =>
+    `Sieg bei ${formatWholePercent('de', threshold)}`,
+  victory: 'DU GEWINNST!',
   invalidGameData: 'UNGÜLTIGE SPIELDATEN!',
   generationFailed: 'Es konnte kein Spiel erstellt werden!',
   dictionaryLoadFailed: (detail) =>
@@ -364,7 +385,12 @@ const IT: Messages = {
   hintButton: 'Indizio',
   hintsUsed: (count) =>
     `${count} ${plural('it', count, { one: 'indizio', other: 'indizi' })}`,
-  victory: 'HAI TROVATO TUTTE LE PAROLE! HAI VINTO!',
+  hintedLegend: '* rivelata con un indizio',
+  lockedOutNote:
+    'Troppi indizi: la vittoria è irraggiungibile in questa partita.',
+  winThresholdLabel: (threshold) =>
+    `Vittoria al ${formatWholePercent('it', threshold)}`,
+  victory: 'HAI VINTO!',
   invalidGameData: 'DATI DI GIOCO NON VALIDI!',
   generationFailed: 'Impossibile generare una partita!',
   dictionaryLoadFailed: (detail) =>
@@ -433,7 +459,11 @@ const PT: Messages = {
   hintButton: 'Dica',
   hintsUsed: (count) =>
     `${count} dica${plural('pt', count, { one: '', other: 's' })}`,
-  victory: 'ENCONTROU TODAS AS PALAVRAS! VOCÊ VENCEU!',
+  hintedLegend: '* revelada com uma dica',
+  lockedOutNote: 'Dicas demais — a vitória está fora de alcance neste jogo.',
+  winThresholdLabel: (threshold) =>
+    `Vitória em ${formatWholePercent('pt', threshold)}`,
+  victory: 'VOCÊ VENCEU!',
   invalidGameData: 'DADOS DE JOGO INVÁLIDOS!',
   generationFailed: 'Não foi possível gerar um jogo!',
   dictionaryLoadFailed: (detail) =>
@@ -502,7 +532,11 @@ const NL: Messages = {
   hintButton: 'Hint',
   hintsUsed: (count) =>
     `${count} hint${plural('nl', count, { one: '', other: 's' })}`,
-  victory: 'ALLE WOORDEN GEVONDEN! JIJ WINT!',
+  hintedLegend: '* onthuld met een hint',
+  lockedOutNote: 'Te veel hints — winnen zit er dit spel niet meer in.',
+  winThresholdLabel: (threshold) =>
+    `Winst bij ${formatWholePercent('nl', threshold)}`,
+  victory: 'JIJ WINT!',
   invalidGameData: 'ONGELDIGE SPELDATA!',
   generationFailed: 'Kon geen spel genereren!',
   dictionaryLoadFailed: (detail) =>
@@ -570,7 +604,11 @@ const JA: Messages = {
   restartButton: 'やり直す',
   hintButton: 'ヒント',
   hintsUsed: (count) => `ヒント${count}回`,
-  victory: '全部の単語を見つけました！あなたの勝ち！',
+  hintedLegend: '* ヒントで表示',
+  lockedOutNote: 'ヒントが多すぎて、このゲームでは勝てません。',
+  winThresholdLabel: (threshold) =>
+    `${formatWholePercent('ja', threshold)}で勝利`,
+  victory: 'あなたの勝ち！',
   invalidGameData: '無効なゲームデータ！',
   generationFailed: 'ゲームを生成できませんでした！',
   dictionaryLoadFailed: (detail) => `辞書を読み込めませんでした（${detail}）！`,
@@ -635,7 +673,11 @@ const KO: Messages = {
   restartButton: '다시 시작',
   hintButton: '힌트',
   hintsUsed: (count) => `힌트 ${count}개`,
-  victory: '모든 단어를 찾았어요! 승리!',
+  hintedLegend: '* 힌트로 공개',
+  lockedOutNote: '힌트를 너무 많이 써서 이번 게임은 이길 수 없어요.',
+  winThresholdLabel: (threshold) =>
+    `${formatWholePercent('ko', threshold)}에서 승리`,
+  victory: '승리!',
   invalidGameData: '잘못된 게임 데이터!',
   generationFailed: '게임을 생성하지 못했어요!',
   dictionaryLoadFailed: (detail) => `사전을 불러오지 못했어요 (${detail})!`,
@@ -700,7 +742,11 @@ const ZH: Messages = {
   restartButton: '重新开始',
   hintButton: '提示',
   hintsUsed: (count) => `${count} 次提示`,
-  victory: '找到了所有单词！你赢了！',
+  hintedLegend: '* 用提示揭示',
+  lockedOutNote: '提示用得太多，这局无法获胜了。',
+  winThresholdLabel: (threshold) =>
+    `${formatWholePercent('zh', threshold)} 获胜`,
+  victory: '你赢了！',
   invalidGameData: '无效的游戏数据！',
   generationFailed: '无法生成游戏！',
   dictionaryLoadFailed: (detail) => `无法加载词典（${detail}）！`,
@@ -766,7 +812,11 @@ const RU: Messages = {
   hintButton: 'Подсказка',
   hintsUsed: (count) =>
     `${count} ${plural('ru', count, { one: 'подсказка', few: 'подсказки', other: 'подсказок' })}`,
-  victory: 'ВСЕ СЛОВА НАЙДЕНЫ! ПОБЕДА!',
+  hintedLegend: '* открыто подсказкой',
+  lockedOutNote: 'Слишком много подсказок — победа в этой игре недостижима.',
+  winThresholdLabel: (threshold) =>
+    `Победа при ${formatWholePercent('ru', threshold)}`,
+  victory: 'ПОБЕДА!',
   invalidGameData: 'НЕВЕРНЫЕ ДАННЫЕ ИГРЫ!',
   generationFailed: 'Не удалось создать игру!',
   dictionaryLoadFailed: (detail) => `Не удалось загрузить словарь (${detail})!`,

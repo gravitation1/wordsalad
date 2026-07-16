@@ -11,13 +11,18 @@ import type { WordPreview } from './game/wordSalad';
 import { WordSalad } from './game/wordSalad';
 import {
   clearSavedProgress,
-  loadHintCount,
+  loadHintedWords,
   loadSavedWords,
-  saveHintCount,
+  saveHintedWords,
   saveWords,
 } from './progressStore';
 
 export type { WordPreview } from './game/wordSalad';
+
+// The level is won when earned points reach this fraction of the maximum.
+// Hinted words score nothing, so their points are permanently unreachable;
+// hint too much and the ceiling on earned points drops below this line.
+const WIN_THRESHOLD = 0.75;
 
 export type GameFeedback =
   | { kind: 'letter-rejected'; letter: string }
@@ -31,6 +36,7 @@ export type GameFeedback =
 export interface FoundWord {
   word: string;
   points: number;
+  hinted: boolean;
 }
 
 export type SubmitReadiness = 'empty' | 'partial' | 'ready';
@@ -70,11 +76,14 @@ export interface PlayingGame {
   feedback: GameFeedback | null;
   foundWords: readonly FoundWord[];
   lastFoundWord: string | null;
-  currentPoints: number;
+  earnedPoints: number;
   maxPoints: number;
-  completionPercent: number;
+  earnedPercent: number;
+  lostPercent: number;
+  winThreshold: number;
   level: string;
   hasWon: boolean;
+  lockedOut: boolean;
   canHint: boolean;
   hintCount: number;
   tossId: number;
@@ -82,6 +91,7 @@ export interface PlayingGame {
   gameId: number;
   appendLetter: (character: string) => void;
   deleteLetter: () => void;
+  clearInput: () => void;
   tossSalad: () => void;
   submitWord: () => void;
   startNewGame: () => void;
@@ -100,11 +110,41 @@ export type WordSaladGame = FailedGame | PlayingGame;
 
 type GameInit = { reason: FailureReason } | { wordSalad: WordSalad };
 
-function toFoundWords(wordSalad: WordSalad): readonly FoundWord[] {
+// Hinted (committed) words score nothing, so they show 0 points.
+function toFoundWords(
+  wordSalad: WordSalad,
+  hintedWords: ReadonlySet<string>,
+): readonly FoundWord[] {
   return Array.from(wordSalad.foundWords, ([word, points]) => ({
     word,
-    points,
+    points: hintedWords.has(word) ? 0 : points,
+    hinted: hintedWords.has(word),
   })).sort((a, b) => (a.word < b.word ? -1 : 1));
+}
+
+// Split found-and-committed points into earned (green) and lost-to-hints
+// (red). Committed words that were never submitted still count as lost.
+function tallyPoints(
+  wordSalad: WordSalad,
+  hintedWords: ReadonlySet<string>,
+): { earnedPoints: number; lostPoints: number } {
+  let earnedPoints = 0;
+  let lostPoints = 0;
+
+  for (const [word, points] of wordSalad.foundWords) {
+    if (hintedWords.has(word)) {
+      lostPoints += points;
+    } else {
+      earnedPoints += points;
+    }
+  }
+  for (const word of hintedWords) {
+    if (!wordSalad.foundWords.has(word)) {
+      lostPoints += wordSalad.pointsFor(word);
+    }
+  }
+
+  return { earnedPoints, lostPoints };
 }
 
 // Replay saved words through the engine so every entry is revalidated;
@@ -162,11 +202,13 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   );
   const [inputLetters, setInputLetters] = useState<readonly string[]>([]);
   const [feedback, setFeedback] = useState<GameFeedback | null>(null);
-  const [foundWords, setFoundWords] = useState<readonly FoundWord[]>(() =>
-    wordSalad === null ? [] : toFoundWords(wordSalad),
+  const [hintedWords, setHintedWords] = useState<ReadonlySet<string>>(() =>
+    wordSalad === null
+      ? new Set()
+      : new Set(loadHintedWords(storeWordSalad(wordSalad))),
   );
-  const [currentPoints, setCurrentPoints] = useState(
-    () => wordSalad?.currentPoints ?? 0,
+  const [foundWords, setFoundWords] = useState<readonly FoundWord[]>(() =>
+    wordSalad === null ? [] : toFoundWords(wordSalad, hintedWords),
   );
   const [lastFoundWord, setLastFoundWord] = useState<string | null>(null);
   const [lastSubmission, setLastSubmission] = useState<SubmittedPreview | null>(
@@ -181,12 +223,6 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   const [hintReveal, setHintReveal] = useState<HintReveal | null>(null);
   const [tossId, setTossId] = useState(0);
   const [deleteId, setDeleteId] = useState(0);
-  const [hintCount, setHintCount] = useState(() =>
-    wordSalad === null ? 0 : loadHintCount(storeWordSalad(wordSalad)),
-  );
-  const [hasWon, setHasWon] = useState(
-    () => wordSalad !== null && wordSalad.remainingWords.size === 0,
-  );
 
   useEffect(() => {
     if (wordSalad !== null) {
@@ -245,6 +281,16 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setInputLetters((previous) => previous.slice(0, -1));
   }, [inputLetters]);
 
+  // Clear the whole input at once (long-press Delete, or Ctrl/Cmd+Backspace).
+  const clearInput = useCallback(() => {
+    if (inputLetters.length === 0) {
+      return;
+    }
+    setHintReveal(null);
+    setDeleteId((previous) => previous + 1);
+    setInputLetters([]);
+  }, [inputLetters]);
+
   const tossSalad = useCallback(() => {
     if (wordSalad !== null) {
       setSaladLetters(shuffled(Array.from(wordSalad.characterSet)));
@@ -260,28 +306,36 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     [wordSalad],
   );
 
-  // Fill the input with the shortest unfound word, ready to submit, and
-  // record that a hint was taken.
+  // Reveal the shortest not-yet-hinted unfound word and commit it: its points
+  // are forfeit whether or not it is submitted. The reveal fills the input so
+  // it can still be submitted (and land in the found list) if wanted.
   const revealHint = useCallback(() => {
     if (wordSalad === null) {
       return;
     }
-    const word = wordSalad.shortestRemainingWord();
+    let word: string | null = null;
+    for (const candidate of wordSalad.remainingWords) {
+      if (!hintedWords.has(candidate)) {
+        if (word === null || candidate.length < word.length) {
+          word = candidate;
+        }
+      }
+    }
     if (word === null) {
       return;
     }
+
     const letters = Array.from(word);
     setInputLetters(letters);
     // Drive the reveal animation (letters cascade in, source tiles ripple);
     // clear any stale press so only the hint drives the tiles.
     setLastAppended(null);
     setHintReveal((previous) => ({ id: (previous?.id ?? 0) + 1, letters }));
-    setHintCount((previous) => {
-      const next = previous + 1;
-      saveHintCount(storeWordSalad(wordSalad), next);
-      return next;
-    });
-  }, [wordSalad]);
+
+    const committed = new Set(hintedWords).add(word);
+    setHintedWords(committed);
+    saveHintedWords(storeWordSalad(wordSalad), Array.from(committed));
+  }, [hintedWords, wordSalad]);
 
   const startNewGame = useCallback(() => {
     const init = generateGameInit(dictionary);
@@ -294,7 +348,6 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setInputLetters([]);
     setFeedback(null);
     setFoundWords([]);
-    setCurrentPoints(0);
     setLastFoundWord(null);
     setLastSubmission(null);
     setLastRejection(null);
@@ -304,8 +357,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     // when the board remounts for the fresh game.
     setTossId(0);
     setDeleteId(0);
-    setHintCount(0);
-    setHasWon(false);
+    setHintedWords(new Set());
   }, [dictionary]);
 
   // Same salad, clean slate: rebuild the engine from the same parameters
@@ -328,7 +380,6 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setInputLetters([]);
     setFeedback(null);
     setFoundWords([]);
-    setCurrentPoints(0);
     setLastFoundWord(null);
     setLastSubmission(null);
     setLastRejection(null);
@@ -336,8 +387,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setHintReveal(null);
     setTossId(0);
     setDeleteId(0);
-    setHintCount(0);
-    setHasWon(false);
+    setHintedWords(new Set());
   }, [dictionary, wordSalad]);
 
   const submitWord = useCallback(() => {
@@ -368,20 +418,17 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       return;
     }
 
-    const points = wordSalad.tryWord(word);
-    setFeedback({ kind: 'scored', word, points });
-    setFoundWords(toFoundWords(wordSalad));
-    setCurrentPoints(wordSalad.currentPoints);
-    setLastFoundWord(word);
-    saveWords(
-      storeWordSalad(wordSalad),
-      Array.from(wordSalad.foundWords.keys()),
-    );
+    // The word is hinted if it was already committed via a hint reveal; the
+    // engine still records it, but it scores nothing.
+    const isHinted = hintedWords.has(word);
+    const awarded = wordSalad.tryWord(word);
+    setFeedback({ kind: 'scored', word, points: isHinted ? 0 : awarded });
 
-    if (wordSalad.remainingWords.size === 0) {
-      setHasWon(true);
-    }
-  }, [inputLetters, wordSalad]);
+    const gameKey = storeWordSalad(wordSalad);
+    setFoundWords(toFoundWords(wordSalad, hintedWords));
+    setLastFoundWord(word);
+    saveWords(gameKey, Array.from(wordSalad.foundWords.keys()));
+  }, [hintedWords, inputLetters, wordSalad]);
 
   useEffect(() => {
     if (wordSalad === null) {
@@ -389,7 +436,17 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Leave keyboard shortcuts (copy, reload, select-all, ...) alone.
+      // Ctrl/Cmd+Backspace clears the whole word (matches OS text editing).
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        (event.key === 'Backspace' || event.key === 'Delete')
+      ) {
+        event.preventDefault();
+        clearInput();
+        return;
+      }
+
+      // Leave other keyboard shortcuts (copy, reload, select-all, ...) alone.
       if (event.metaKey || event.ctrlKey || event.altKey) {
         return;
       }
@@ -415,7 +472,14 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [appendLetter, deleteLetter, submitWord, tossSalad, wordSalad]);
+  }, [
+    appendLetter,
+    clearInput,
+    deleteLetter,
+    submitWord,
+    tossSalad,
+    wordSalad,
+  ]);
 
   if (wordSalad === null) {
     return {
@@ -427,11 +491,21 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     };
   }
 
-  const completionPercent = currentPoints / wordSalad.maxPoints;
   const inputPreview =
     inputLetters.length === 0
       ? null
       : wordSalad.previewWord(inputLetters.join(''));
+
+  const { earnedPoints, lostPoints } = tallyPoints(wordSalad, hintedWords);
+  const earnedPercent = earnedPoints / wordSalad.maxPoints;
+  const lostPercent = lostPoints / wordSalad.maxPoints;
+  const hasWon = earnedPercent >= WIN_THRESHOLD;
+  // Earned points can rise at most to (max - lost); once that ceiling falls
+  // below the win line, the level can no longer be won.
+  const lockedOut = !hasWon && lostPercent > 1 - WIN_THRESHOLD;
+  const canHint = Array.from(wordSalad.remainingWords).some(
+    (word) => !hintedWords.has(word),
+  );
 
   return {
     status: 'playing',
@@ -453,18 +527,22 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     feedback,
     foundWords,
     lastFoundWord,
-    currentPoints,
+    earnedPoints,
     maxPoints: wordSalad.maxPoints,
-    completionPercent,
-    level: getLevel(completionPercent),
+    earnedPercent,
+    lostPercent,
+    winThreshold: WIN_THRESHOLD,
+    level: getLevel(earnedPercent),
     hasWon,
-    canHint: wordSalad.remainingWords.size > 0,
-    hintCount,
+    lockedOut,
+    canHint,
+    hintCount: hintedWords.size,
     tossId,
     deleteId,
     gameId: gameState.id,
     appendLetter,
     deleteLetter,
+    clearInput,
     tossSalad,
     submitWord,
     startNewGame,

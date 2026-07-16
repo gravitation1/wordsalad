@@ -7,10 +7,13 @@ import { RatingsDialog } from './RatingsDialog';
 interface ScoreboardProps {
   foundWords: readonly FoundWord[];
   lastFoundWord: string | null;
-  currentPoints: number;
-  completionPercent: number;
+  earnedPoints: number;
+  earnedPercent: number;
+  lostPercent: number;
+  winThreshold: number;
   level: string;
   hasWon: boolean;
+  lockedOut: boolean;
   hintCount: number;
   onPlayAgain: () => void;
   onRestart: () => void;
@@ -19,10 +22,13 @@ interface ScoreboardProps {
 export function Scoreboard({
   foundWords,
   lastFoundWord,
-  currentPoints,
-  completionPercent,
+  earnedPoints,
+  earnedPercent,
+  lostPercent,
+  winThreshold,
   level,
   hasWon,
+  lockedOut,
   hintCount,
   onPlayAgain,
   onRestart,
@@ -52,9 +58,17 @@ export function Scoreboard({
           </button>
         </div>
       ) : null}
+      {lockedOut ? (
+        <p
+          className="rounded-xl bg-red-50 p-3 text-center text-sm font-medium text-red-600 dark:bg-red-500/10 dark:text-red-400"
+          role="status"
+        >
+          {t.lockedOutNote}
+        </p>
+      ) : null}
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          {t.foundSummary(foundWords.length, currentPoints)}
+          {t.foundSummary(foundWords.length, earnedPoints)}
           {hintCount > 0 ? (
             <span className="text-gray-400 dark:text-gray-500">
               {` · ${t.hintsUsed(hintCount)}`}
@@ -72,17 +86,31 @@ export function Scoreboard({
           </button>
         ) : null}
       </div>
-      <div
-        aria-label={t.completionLabel}
-        aria-valuemax={100}
-        aria-valuemin={0}
-        aria-valuenow={Number((completionPercent * 100).toFixed(2))}
-        className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800"
-        role="progressbar"
-      >
+      {/* Green earned points grow from the left; red points lost to hints
+          eat in from the right; the marker is the win threshold. */}
+      <div className="relative py-1">
         <div
-          className="h-full rounded-full bg-accent transition-all"
-          style={{ width: `${completionPercent * 100}%` }}
+          aria-label={t.completionLabel}
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={Number((earnedPercent * 100).toFixed(2))}
+          className="relative h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800"
+          role="progressbar"
+        >
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-accent transition-all"
+            style={{ width: `${earnedPercent * 100}%` }}
+          />
+          <div
+            className="absolute inset-y-0 right-0 bg-red-400 transition-all dark:bg-red-500"
+            style={{ width: `${lostPercent * 100}%` }}
+          />
+        </div>
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 w-0.5 -translate-x-1/2 rounded bg-gray-500 dark:bg-gray-400"
+          style={{ left: `${winThreshold * 100}%` }}
+          title={t.winThresholdLabel(winThreshold)}
         />
       </div>
       <button
@@ -94,11 +122,11 @@ export function Scoreboard({
         ref={ratingsButtonRef}
         type="button"
       >
-        {t.progressLabel(completionPercent, level)}
+        {t.progressLabel(earnedPercent, level)}
       </button>
       {isRatingsOpen ? (
         <RatingsDialog
-          completionPercent={completionPercent}
+          completionPercent={earnedPercent}
           level={level}
           onClose={closeRatings}
         />
@@ -114,18 +142,22 @@ export function Scoreboard({
             </tr>
           </thead>
           <tbody>
-            {foundWords.map(({ word, points }) => (
+            {foundWords.map(({ word, points, hinted }) => (
               <tr key={word}>
                 <td className="py-0.5">
                   <a
-                    className={`italic text-accent hover:underline ${
-                      word === lastFoundWord ? 'font-bold' : ''
-                    }`}
+                    className={`italic hover:underline ${
+                      hinted
+                        ? 'text-gray-500 dark:text-gray-400'
+                        : 'text-accent'
+                    } ${word === lastFoundWord ? 'font-bold' : ''}`}
+                    data-hinted={hinted}
                     href={`https://www.merriam-webster.com/dictionary/${word}`}
                     rel="noreferrer"
                     target="_blank"
                   >
                     {word}
+                    {hinted ? '*' : ''}
                   </a>
                 </td>
                 <td className="py-0.5 text-right">{points}</td>
@@ -133,6 +165,11 @@ export function Scoreboard({
             ))}
           </tbody>
         </table>
+      ) : null}
+      {foundWords.some((found) => found.hinted) ? (
+        <p className="text-xs text-gray-400 dark:text-gray-500">
+          {t.hintedLegend}
+        </p>
       ) : null}
     </section>
   );
