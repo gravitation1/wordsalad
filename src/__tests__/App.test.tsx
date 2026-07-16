@@ -350,6 +350,54 @@ describe('App', () => {
     );
   });
 
+  it('shows the next hint cost on the Hint button', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const hint = () => screen.getByRole('button', { name: 'Hint' });
+    // The next hint reveals the shortest word (TEST, worth 1); the badge
+    // frames the cost as a reduction of the max, not a deduction.
+    expect(hint()).toHaveTextContent('−1 max');
+
+    // Commit TEST; the next hint would reveal ROTTED (worth 3).
+    fireEvent.click(hint());
+    // The spent cost floats away from the (now hidden) hint button.
+    expect(
+      screen.queryByRole('button', { name: 'Hint' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('−1 max')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Backspace', ctrlKey: true });
+    expect(hint()).toHaveTextContent('−3 max');
+  });
+
+  it('shows +0 on Submit for a hinted word, not its point value', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const submit = () => screen.getByRole('button', { name: 'Submit' });
+
+    // A self-typed word shows its real value.
+    typeWord('worsted'); // pangram worth 11
+    expect(submit()).toHaveTextContent('+11');
+    fireEvent.keyDown(document, { key: 'Backspace', ctrlKey: true });
+
+    // A hinted (committed) word in the input shows +0 instead of its value.
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // reveals TEST
+    expect(submit()).toHaveTextContent('+0');
+    expect(submit()).not.toHaveTextContent('+1');
+  });
+
+  it('takes a hint with "?" only when the word area is empty', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    // "?" while typing must not overwrite the word in progress.
+    typeWord('wor');
+    pressKey('?');
+    expect(currentWord()).toBe('WOR');
+
+    // From empty, "?" reveals the shortest word (TEST).
+    fireEvent.keyDown(document, { key: 'Backspace', ctrlKey: true });
+    pressKey('?');
+    expect(currentWord()).toBe('TEST');
+  });
+
   it('offers the hint only when the word area is empty and words remain', () => {
     render(<App dictionary={DICTIONARY} />);
     expect(screen.getByRole('button', { name: 'Hint' })).toBeInTheDocument();
@@ -600,6 +648,35 @@ describe('App', () => {
 
     submitWord('toss');
     expect(submit()).toHaveTextContent('?');
+  });
+
+  it('floats an accepted word out of the word area', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    // A rejected word vanishes without ceremony.
+    submitWord('toss');
+    expect(screen.queryByTestId('word-exit')).not.toBeInTheDocument();
+
+    // A scoring word departs marked as scored.
+    submitWord('test');
+    expect(screen.getByTestId('word-exit')).toHaveAttribute(
+      'data-word-exit',
+      'scored',
+    );
+    expect(screen.getByTestId('word-exit')).toHaveTextContent('TEST');
+
+    // Typing ends the exit so the ghost never overlaps the new word.
+    typeWord('r');
+    expect(screen.queryByTestId('word-exit')).not.toBeInTheDocument();
+    pressKey('Backspace');
+
+    // A hinted word (revealed via "?", worth 0) departs as hinted instead.
+    pressKey('?');
+    pressKey('Enter');
+    expect(screen.getByTestId('word-exit')).toHaveAttribute(
+      'data-word-exit',
+      'hinted',
+    );
   });
 
   it('signals submit readiness through the button state', () => {

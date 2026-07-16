@@ -33,6 +33,8 @@ export interface Messages {
   restartButton: string;
   hintButton: string;
   hintsUsed: (count: number) => string;
+  hintCostBadge: (cost: number) => string;
+  hintCostLabel: (cost: number) => string;
   hintedLegend: string;
   lockedOutNote: string;
   winThresholdLabel: (threshold: number) => string;
@@ -91,6 +93,9 @@ const EN: Messages = {
   hintButton: 'Hint',
   hintsUsed: (count) =>
     `${count} hint${plural('en', count, { one: '', other: 's' })}`,
+  hintCostBadge: (cost) => `−${cost} max`,
+  hintCostLabel: (cost) =>
+    `Reveals a word and lowers your max score by ${cost} point${plural('en', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revealed with a hint',
   lockedOutNote: 'Too many hints — the win is out of reach this game.',
   winThresholdLabel: (threshold) =>
@@ -164,6 +169,9 @@ const FR: Messages = {
   hintButton: 'Indice',
   hintsUsed: (count) =>
     `${count} indice${plural('fr', count, { one: '', other: 's' })}`,
+  hintCostBadge: (cost) => `−${cost} max`,
+  hintCostLabel: (cost) =>
+    `Révèle un mot et réduit votre score max de ${cost} point${plural('fr', cost, { one: '', other: 's' })}`,
   hintedLegend: '* révélé par un indice',
   lockedOutNote:
     'Trop d’indices — la victoire est hors de portée cette partie.',
@@ -238,6 +246,9 @@ const ES: Messages = {
   hintButton: 'Pista',
   hintsUsed: (count) =>
     `${count} pista${plural('es', count, { one: '', other: 's' })}`,
+  hintCostBadge: (cost) => `−${cost} máx`,
+  hintCostLabel: (cost) =>
+    `Revela una palabra y reduce tu puntuación máxima en ${cost} punto${plural('es', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revelada con una pista',
   lockedOutNote:
     'Demasiadas pistas: la victoria es inalcanzable en esta partida.',
@@ -312,6 +323,9 @@ const DE: Messages = {
   hintButton: 'Tipp',
   hintsUsed: (count) =>
     `${count} ${plural('de', count, { one: 'Tipp', other: 'Tipps' })}`,
+  hintCostBadge: (cost) => `−${cost} Max`,
+  hintCostLabel: (cost) =>
+    `Deckt ein Wort auf und senkt deinen Höchstpunktestand um ${cost} ${plural('de', cost, { one: 'Punkt', other: 'Punkte' })}`,
   hintedLegend: '* mit einem Tipp aufgedeckt',
   lockedOutNote: 'Zu viele Tipps — der Sieg ist in dieser Runde unerreichbar.',
   winThresholdLabel: (threshold) =>
@@ -385,6 +399,9 @@ const IT: Messages = {
   hintButton: 'Indizio',
   hintsUsed: (count) =>
     `${count} ${plural('it', count, { one: 'indizio', other: 'indizi' })}`,
+  hintCostBadge: (cost) => `−${cost} max`,
+  hintCostLabel: (cost) =>
+    `Rivela una parola e riduce il punteggio massimo di ${cost} ${plural('it', cost, { one: 'punto', other: 'punti' })}`,
   hintedLegend: '* rivelata con un indizio',
   lockedOutNote:
     'Troppi indizi: la vittoria è irraggiungibile in questa partita.',
@@ -459,6 +476,9 @@ const PT: Messages = {
   hintButton: 'Dica',
   hintsUsed: (count) =>
     `${count} dica${plural('pt', count, { one: '', other: 's' })}`,
+  hintCostBadge: (cost) => `−${cost} máx`,
+  hintCostLabel: (cost) =>
+    `Revela uma palavra e reduz sua pontuação máxima em ${cost} ponto${plural('pt', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revelada com uma dica',
   lockedOutNote: 'Dicas demais — a vitória está fora de alcance neste jogo.',
   winThresholdLabel: (threshold) =>
@@ -532,6 +552,9 @@ const NL: Messages = {
   hintButton: 'Hint',
   hintsUsed: (count) =>
     `${count} hint${plural('nl', count, { one: '', other: 's' })}`,
+  hintCostBadge: (cost) => `−${cost} max`,
+  hintCostLabel: (cost) =>
+    `Onthult een woord en verlaagt je maximale score met ${cost} ${plural('nl', cost, { one: 'punt', other: 'punten' })}`,
   hintedLegend: '* onthuld met een hint',
   lockedOutNote: 'Te veel hints — winnen zit er dit spel niet meer in.',
   winThresholdLabel: (threshold) =>
@@ -604,6 +627,8 @@ const JA: Messages = {
   restartButton: 'やり直す',
   hintButton: 'ヒント',
   hintsUsed: (count) => `ヒント${count}回`,
+  hintCostBadge: (cost) => `最大−${cost}`,
+  hintCostLabel: (cost) => `単語を1つ表示し、最大スコアが${cost}点下がります`,
   hintedLegend: '* ヒントで表示',
   lockedOutNote: 'ヒントが多すぎて、このゲームでは勝てません。',
   winThresholdLabel: (threshold) =>
@@ -673,6 +698,9 @@ const KO: Messages = {
   restartButton: '다시 시작',
   hintButton: '힌트',
   hintsUsed: (count) => `힌트 ${count}개`,
+  hintCostBadge: (cost) => `최대 −${cost}`,
+  hintCostLabel: (cost) =>
+    `단어 하나를 공개하고 최대 점수가 ${cost}점 낮아집니다`,
   hintedLegend: '* 힌트로 공개',
   lockedOutNote: '힌트를 너무 많이 써서 이번 게임은 이길 수 없어요.',
   winThresholdLabel: (threshold) =>
@@ -742,6 +770,8 @@ const ZH: Messages = {
   restartButton: '重新开始',
   hintButton: '提示',
   hintsUsed: (count) => `${count} 次提示`,
+  hintCostBadge: (cost) => `上限−${cost}`,
+  hintCostLabel: (cost) => `揭示一个单词，最高分降低 ${cost} 分`,
   hintedLegend: '* 用提示揭示',
   lockedOutNote: '提示用得太多，这局无法获胜了。',
   winThresholdLabel: (threshold) =>
@@ -812,6 +842,9 @@ const RU: Messages = {
   hintButton: 'Подсказка',
   hintsUsed: (count) =>
     `${count} ${plural('ru', count, { one: 'подсказка', few: 'подсказки', other: 'подсказок' })}`,
+  hintCostBadge: (cost) => `−${cost} макс`,
+  hintCostLabel: (cost) =>
+    `Открывает слово и снижает максимум на ${cost} ${plural('ru', cost, { one: 'очко', few: 'очка', other: 'очков' })}`,
   hintedLegend: '* открыто подсказкой',
   lockedOutNote: 'Слишком много подсказок — победа в этой игре недостижима.',
   winThresholdLabel: (threshold) =>

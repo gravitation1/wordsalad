@@ -50,6 +50,16 @@ const BADGE_CLASS: Record<WordPreview['verdict'], string> = {
   valid: `${BADGE_BASE_CLASS} border-accent bg-white text-accent dark:bg-gray-950`,
 };
 
+// A hinted word is valid but worth 0 points: neutral, not the "+N" green.
+const HINTED_BADGE_CLASS = `${BADGE_BASE_CLASS} border-gray-300 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-500`;
+
+function badgeClass(preview: WordPreview): string {
+  if (preview.verdict === 'valid' && preview.points === 0) {
+    return HINTED_BADGE_CLASS;
+  }
+  return BADGE_CLASS[preview.verdict];
+}
+
 // Keyboard hints only make sense on devices with a precise pointer (i.e.
 // not phones/tablets), detected purely via CSS media query.
 const HINT_CLASS =
@@ -183,7 +193,7 @@ export function GameControls({
           </span>
         </span>
         {preview === null ? null : (
-          <span aria-hidden="true" className={BADGE_CLASS[preview.verdict]}>
+          <span aria-hidden="true" className={badgeClass(preview)}>
             {badgeText(preview)}
           </span>
         )}
@@ -191,7 +201,7 @@ export function GameControls({
           // Remounts on every submission (key) to replay the animation.
           <span
             aria-hidden="true"
-            className={`badge-fly-away pointer-events-none ${BADGE_CLASS[lastSubmission.preview.verdict]}`}
+            className={`badge-fly-away pointer-events-none ${badgeClass(lastSubmission.preview)}`}
             key={lastSubmission.id}
           >
             {badgeText(lastSubmission.preview)}

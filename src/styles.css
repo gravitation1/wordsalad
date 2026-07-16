@@ -99,6 +99,57 @@ body {
   }
 }
 
+/* An accepted word floats up out of the word area, letter by letter. */
+@keyframes word-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+
+.word-exit {
+  animation: word-exit 300ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word-exit {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* The hint button eases back into the word area; after a submission it
+   holds until the exiting word has mostly cleared. */
+@keyframes hint-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hint-enter {
+  animation: hint-enter 200ms ease-out both;
+}
+
+.hint-enter-delayed {
+  animation: hint-enter 200ms ease-out 280ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint-enter,
+  .hint-enter-delayed {
+    animation: none;
+  }
+}
+
 /* Tossed letters hop up with a tilt and settle into their new spots. */
 @keyframes letter-toss {
   0% {

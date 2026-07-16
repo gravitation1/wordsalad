@@ -61,6 +61,19 @@ export interface HintReveal {
   letters: readonly string[];
 }
 
+export interface SpentHint {
+  id: number;
+  cost: number;
+}
+
+// A submitted word the engine accepted (scored, or hinted and worth 0). The
+// word area animates it out instead of dropping it in place.
+export interface AcceptedWord {
+  id: number;
+  letters: readonly string[];
+  scored: boolean;
+}
+
 export interface PlayingGame {
   status: 'playing';
   saladLetters: readonly string[];
@@ -73,6 +86,8 @@ export interface PlayingGame {
   lastRejection: LetterRejection | null;
   lastAppended: LetterActivation | null;
   hintReveal: HintReveal | null;
+  spentHint: SpentHint | null;
+  acceptedWord: AcceptedWord | null;
   feedback: GameFeedback | null;
   foundWords: readonly FoundWord[];
   lastFoundWord: string | null;
@@ -85,6 +100,7 @@ export interface PlayingGame {
   hasWon: boolean;
   lockedOut: boolean;
   canHint: boolean;
+  hintCost: number;
   hintCount: number;
   tossId: number;
   deleteId: number;
@@ -120,6 +136,32 @@ function toFoundWords(
     points: hintedWords.has(word) ? 0 : points,
     hinted: hintedWords.has(word),
   })).sort((a, b) => (a.word < b.word ? -1 : 1));
+}
+
+// A hinted word scores nothing, so its "valid" preview shows 0 points. Valid
+// words are otherwise always worth at least 1, so points === 0 uniquely marks
+// a hinted word for the Submit badge.
+function hintedPreview(preview: WordPreview, isHinted: boolean): WordPreview {
+  return isHinted && preview.verdict === 'valid'
+    ? { verdict: 'valid', points: 0 }
+    : preview;
+}
+
+// The word the next hint would reveal: the shortest unfound word not already
+// committed. Null when no hint is available.
+function nextHintWord(
+  wordSalad: WordSalad,
+  hintedWords: ReadonlySet<string>,
+): string | null {
+  let word: string | null = null;
+  for (const candidate of wordSalad.remainingWords) {
+    if (!hintedWords.has(candidate)) {
+      if (word === null || candidate.length < word.length) {
+        word = candidate;
+      }
+    }
+  }
+  return word;
 }
 
 // Split found-and-committed points into earned (green) and lost-to-hints
@@ -221,6 +263,8 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     null,
   );
   const [hintReveal, setHintReveal] = useState<HintReveal | null>(null);
+  const [spentHint, setSpentHint] = useState<SpentHint | null>(null);
+  const [acceptedWord, setAcceptedWord] = useState<AcceptedWord | null>(null);
   const [tossId, setTossId] = useState(0);
   const [deleteId, setDeleteId] = useState(0);
 
@@ -260,8 +304,10 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       }
 
       // A keystroke ends any hint reveal, so its source tiles stop carrying a
-      // latent press that would re-ripple as later letters are typed.
+      // latent press that would re-ripple as later letters are typed. It also
+      // ends the previous word's exit so the ghost never overlaps new letters.
       setHintReveal(null);
+      setAcceptedWord(null);
       setLastAppended((previous) => ({
         id: (previous?.id ?? 0) + 1,
         letter,
@@ -313,14 +359,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     if (wordSalad === null) {
       return;
     }
-    let word: string | null = null;
-    for (const candidate of wordSalad.remainingWords) {
-      if (!hintedWords.has(candidate)) {
-        if (word === null || candidate.length < word.length) {
-          word = candidate;
-        }
-      }
-    }
+    const word = nextHintWord(wordSalad, hintedWords);
     if (word === null) {
       return;
     }
@@ -328,9 +367,17 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     const letters = Array.from(word);
     setInputLetters(letters);
     // Drive the reveal animation (letters cascade in, source tiles ripple);
-    // clear any stale press so only the hint drives the tiles.
+    // clear any stale press so only the hint drives the tiles, and any
+    // exiting word so the ghost never overlaps the revealed letters.
     setLastAppended(null);
+    setAcceptedWord(null);
     setHintReveal((previous) => ({ id: (previous?.id ?? 0) + 1, letters }));
+
+    // Float the spent cost away from the (vanishing) hint button.
+    setSpentHint((previous) => ({
+      id: (previous?.id ?? 0) + 1,
+      cost: wordSalad.pointsFor(word),
+    }));
 
     const committed = new Set(hintedWords).add(word);
     setHintedWords(committed);
@@ -353,6 +400,8 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setLastRejection(null);
     setLastAppended(null);
     setHintReveal(null);
+    setSpentHint(null);
+    setAcceptedWord(null);
     // Reset the press counters so the control buttons don't replay a ripple
     // when the board remounts for the fresh game.
     setTossId(0);
@@ -385,6 +434,8 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setLastRejection(null);
     setLastAppended(null);
     setHintReveal(null);
+    setSpentHint(null);
+    setAcceptedWord(null);
     setTossId(0);
     setDeleteId(0);
     setHintedWords(new Set());
@@ -403,12 +454,15 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
 
     setHintReveal(null);
 
-    // Record the badge as it looked at submit time (before the engine
-    // mutates), so the view can animate it away.
+    // The word is hinted if it was already committed via a hint reveal; the
+    // engine still records it, but it scores nothing.
+    const isHinted = hintedWords.has(word);
     const preview = wordSalad.previewWord(word);
+    // Record the badge as it looked at submit time (before the engine
+    // mutates), so the view can animate it away — hinted words show +0.
     setLastSubmission((previous) => ({
       id: (previous?.id ?? 0) + 1,
-      preview,
+      preview: hintedPreview(preview, isHinted),
     }));
 
     setInputLetters([]);
@@ -418,9 +472,13 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       return;
     }
 
-    // The word is hinted if it was already committed via a hint reveal; the
-    // engine still records it, but it scores nothing.
-    const isHinted = hintedWords.has(word);
+    // The accepted word animates out of the word area instead of vanishing.
+    setAcceptedWord((previous) => ({
+      id: (previous?.id ?? 0) + 1,
+      letters: Array.from(word),
+      scored: !isHinted,
+    }));
+
     const awarded = wordSalad.tryWord(word);
     setFeedback({ kind: 'scored', word, points: isHinted ? 0 : awarded });
 
@@ -465,6 +523,13 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       } else if (event.key === ' ') {
         event.preventDefault(); // don't scroll the page
         tossSalad();
+      } else if (event.key === '?') {
+        // Take a hint, but only from an empty word area (like the button),
+        // so it never overwrites a word in progress.
+        if (inputLetters.length === 0) {
+          event.preventDefault();
+          revealHint();
+        }
       }
     };
 
@@ -476,6 +541,8 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     appendLetter,
     clearInput,
     deleteLetter,
+    inputLetters,
+    revealHint,
     submitWord,
     tossSalad,
     wordSalad,
@@ -491,10 +558,14 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     };
   }
 
+  const inputWord = inputLetters.join('');
   const inputPreview =
     inputLetters.length === 0
       ? null
-      : wordSalad.previewWord(inputLetters.join(''));
+      : hintedPreview(
+          wordSalad.previewWord(inputWord),
+          hintedWords.has(inputWord),
+        );
 
   const { earnedPoints, lostPoints } = tallyPoints(wordSalad, hintedWords);
   const earnedPercent = earnedPoints / wordSalad.maxPoints;
@@ -503,9 +574,9 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   // Earned points can rise at most to (max - lost); once that ceiling falls
   // below the win line, the level can no longer be won.
   const lockedOut = !hasWon && lostPercent > 1 - WIN_THRESHOLD;
-  const canHint = Array.from(wordSalad.remainingWords).some(
-    (word) => !hintedWords.has(word),
-  );
+  const nextHint = nextHintWord(wordSalad, hintedWords);
+  const canHint = nextHint !== null;
+  const hintCost = nextHint === null ? 0 : wordSalad.pointsFor(nextHint);
 
   return {
     status: 'playing',
@@ -524,6 +595,8 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     lastRejection,
     lastAppended,
     hintReveal,
+    spentHint,
+    acceptedWord,
     feedback,
     foundWords,
     lastFoundWord,
@@ -536,6 +609,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     hasWon,
     lockedOut,
     canHint,
+    hintCost,
     hintCount: hintedWords.size,
     tossId,
     deleteId,
