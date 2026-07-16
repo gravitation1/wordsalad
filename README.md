@@ -13,10 +13,15 @@ Built with React, TypeScript, and Vite. Deployed to GitHub Pages.
 
 ## Dictionary
 
-`public/dictionary.txt` is a subset of the public-domain ENABLE word list
-(Enhanced North American Benchmark Lexicon, mirrored at
-[norvig.com/ngrams/enable1.txt](https://norvig.com/ngrams/enable1.txt)),
-filtered to alphabetic words with British-only spellings removed.
+`public/dictionary.txt` is derived from two public-domain word lists: the
+ENABLE list (Enhanced North American Benchmark Lexicon, mirrored at
+[norvig.com/ngrams/enable1.txt](https://norvig.com/ngrams/enable1.txt))
+restricted to the common-word list
+[12dicts `3of6all`](http://wordlist.aspell.net/12dicts/) (words appearing in at
+least three of six dictionaries, inflections included). It is filtered to
+American, alphabetic words, and a small blocklist of slurs and crude
+vulgarities is removed. The result favors words people actually know over
+obscure but technically-valid entries.
 
 ## License
 
