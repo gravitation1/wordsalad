@@ -380,6 +380,26 @@ describe('App', () => {
     expect(toss()).toHaveAttribute('data-toss-id', '1');
   });
 
+  it('signals the letter tile that was typed or tapped', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const tile = (letter: string) =>
+      screen.getByRole('button', { name: letter });
+
+    expect(tile('T')).toHaveAttribute('data-pressed', 'false');
+
+    typeWord('t');
+    expect(tile('T')).toHaveAttribute('data-pressed', 'true');
+    expect(tile('W')).toHaveAttribute('data-pressed', 'false');
+
+    fireEvent.click(tile('W'));
+    expect(tile('W')).toHaveAttribute('data-pressed', 'true');
+    expect(tile('T')).toHaveAttribute('data-pressed', 'false');
+
+    // A rejected letter is not an activation.
+    typeWord('q');
+    expect(tile('W')).toHaveAttribute('data-pressed', 'true');
+  });
+
   it('disables Delete while there are no letters', () => {
     render(<App dictionary={DICTIONARY} />);
     const deleteButton = () => screen.getByRole('button', { name: 'Delete' });

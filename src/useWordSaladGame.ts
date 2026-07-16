@@ -39,6 +39,11 @@ export interface LetterRejection {
   letter: string;
 }
 
+export interface LetterActivation {
+  id: number;
+  letter: string;
+}
+
 export interface PlayingGame {
   status: 'playing';
   saladLetters: readonly string[];
@@ -49,6 +54,7 @@ export interface PlayingGame {
   submitReadiness: SubmitReadiness;
   lastSubmission: SubmittedPreview | null;
   lastRejection: LetterRejection | null;
+  lastAppended: LetterActivation | null;
   feedback: GameFeedback | null;
   foundWords: readonly FoundWord[];
   lastFoundWord: string | null;
@@ -154,6 +160,9 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   const [lastRejection, setLastRejection] = useState<LetterRejection | null>(
     null,
   );
+  const [lastAppended, setLastAppended] = useState<LetterActivation | null>(
+    null,
+  );
   const [tossId, setTossId] = useState(0);
   const [deleteId, setDeleteId] = useState(0);
   const [hasWon, setHasWon] = useState(
@@ -195,6 +204,10 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
         return;
       }
 
+      setLastAppended((previous) => ({
+        id: (previous?.id ?? 0) + 1,
+        letter,
+      }));
       setInputLetters((previous) => [...previous, letter]);
     },
     [wordSalad],
@@ -236,6 +249,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setLastFoundWord(null);
     setLastSubmission(null);
     setLastRejection(null);
+    setLastAppended(null);
     setHasWon(false);
   }, [dictionary]);
 
@@ -263,6 +277,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setLastFoundWord(null);
     setLastSubmission(null);
     setLastRejection(null);
+    setLastAppended(null);
     setHasWon(false);
   }, [dictionary, wordSalad]);
 
@@ -367,6 +382,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
           : 'partial',
     lastSubmission,
     lastRejection,
+    lastAppended,
     feedback,
     foundWords,
     lastFoundWord,

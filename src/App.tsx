@@ -56,6 +56,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           requiredCharacter={game.requiredCharacter}
         />
         <SaladLetters
+          lastAppended={game.lastAppended}
           letters={game.saladLetters}
           onLetter={game.appendLetter}
           requiredCharacter={game.requiredCharacter}
