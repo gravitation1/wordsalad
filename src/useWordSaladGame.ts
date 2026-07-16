@@ -300,6 +300,10 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setLastRejection(null);
     setLastAppended(null);
     setHintReveal(null);
+    // Reset the press counters so the control buttons don't replay a ripple
+    // when the board remounts for the fresh game.
+    setTossId(0);
+    setDeleteId(0);
     setHintCount(0);
     setHasWon(false);
   }, [dictionary]);
@@ -330,6 +334,8 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setLastRejection(null);
     setLastAppended(null);
     setHintReveal(null);
+    setTossId(0);
+    setDeleteId(0);
     setHintCount(0);
     setHasWon(false);
   }, [dictionary, wordSalad]);

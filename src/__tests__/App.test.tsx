@@ -1,7 +1,15 @@
+import { readFileSync } from 'node:fs';
+
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from '../App';
+
+// The real dictionary, for tests that need New game to actually generate a
+// playable puzzle (the tiny DICTIONARY above cannot satisfy generation).
+const REAL_DICTIONARY = readFileSync('public/dictionary.txt', 'utf8')
+  .split('\n')
+  .filter(Boolean);
 
 // With the character set WORDTES and required character T, the valid words
 // are TEST (1 point), ROTTED (3 points), and WORSTED (a pangram: 4 points
@@ -375,6 +383,25 @@ describe('App', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'TEST earned you 1 point!',
     );
+  });
+
+  it('does not ripple the control buttons when a new game deals in', () => {
+    render(<App dictionary={REAL_DICTIONARY} />);
+    // The hash game is WORDTES, so T is a valid letter; advance the delete
+    // counter by typing then deleting it.
+    typeWord('t');
+    pressKey('Backspace');
+    expect(screen.getByRole('button', { name: 'Delete' })).toHaveAttribute(
+      'data-delete-id',
+      '1',
+    );
+
+    // A fresh game remounts the whole board; the press counters must reset so
+    // the Delete button does not replay its ripple on mount.
+    fireEvent.click(screen.getByRole('button', { name: 'New game' }));
+    const freshDelete = screen.getByRole('button', { name: 'Delete' });
+    expect(freshDelete).toHaveAttribute('data-delete-id', '0');
+    expect(freshDelete).not.toHaveClass('control-press');
   });
 
   it('resumes the hash game instead of regenerating, until New game is used', () => {
