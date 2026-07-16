@@ -77,6 +77,28 @@ body {
   }
 }
 
+/* Hinted letters cascade into the word area instead of appearing at once. */
+@keyframes letter-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.letter-reveal {
+  animation: letter-reveal 220ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .letter-reveal {
+    animation: none;
+  }
+}
+
 /* Tossed letters hop up with a tilt and settle into their new spots. */
 @keyframes letter-toss {
   0% {

@@ -11,6 +11,7 @@ interface ScoreboardProps {
   completionPercent: number;
   level: string;
   hasWon: boolean;
+  hintCount: number;
   onPlayAgain: () => void;
   onRestart: () => void;
 }
@@ -22,6 +23,7 @@ export function Scoreboard({
   completionPercent,
   level,
   hasWon,
+  hintCount,
   onPlayAgain,
   onRestart,
 }: ScoreboardProps) {
@@ -53,6 +55,11 @@ export function Scoreboard({
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm text-gray-600 dark:text-gray-400">
           {t.foundSummary(foundWords.length, currentPoints)}
+          {hintCount > 0 ? (
+            <span className="text-gray-400 dark:text-gray-500">
+              {` · ${t.hintsUsed(hintCount)}`}
+            </span>
+          ) : null}
         </p>
         {foundWords.length > 0 ? (
           <button

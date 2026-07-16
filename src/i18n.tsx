@@ -31,6 +31,8 @@ export interface Messages {
   newGameButton: string;
   playAgainButton: string;
   restartButton: string;
+  hintButton: string;
+  hintsUsed: (count: number) => string;
   victory: string;
   invalidGameData: string;
   generationFailed: string;
@@ -83,6 +85,9 @@ const EN: Messages = {
   newGameButton: 'New game',
   playAgainButton: 'Play again',
   restartButton: 'Restart',
+  hintButton: 'Hint',
+  hintsUsed: (count) =>
+    `${count} hint${plural('en', count, { one: '', other: 's' })}`,
   victory: 'FOUND ALL THE WORDS! YOU WIN!',
   invalidGameData: 'INVALID GAME DATA!',
   generationFailed: 'Failed to generate a game!',
@@ -149,6 +154,9 @@ const FR: Messages = {
   newGameButton: 'Nouvelle partie',
   playAgainButton: 'Rejouer',
   restartButton: 'Recommencer',
+  hintButton: 'Indice',
+  hintsUsed: (count) =>
+    `${count} indice${plural('fr', count, { one: '', other: 's' })}`,
   victory: 'TOUS LES MOTS TROUVÉS ! VOUS AVEZ GAGNÉ !',
   invalidGameData: 'DONNÉES DE PARTIE INVALIDES !',
   generationFailed: 'Impossible de générer une partie !',
@@ -215,6 +223,9 @@ const ES: Messages = {
   newGameButton: 'Nueva partida',
   playAgainButton: 'Jugar otra vez',
   restartButton: 'Reiniciar',
+  hintButton: 'Pista',
+  hintsUsed: (count) =>
+    `${count} pista${plural('es', count, { one: '', other: 's' })}`,
   victory: '¡ENCONTRASTE TODAS LAS PALABRAS! ¡GANASTE!',
   invalidGameData: '¡DATOS DE PARTIDA NO VÁLIDOS!',
   generationFailed: '¡No se pudo generar una partida!',
@@ -281,6 +292,9 @@ const DE: Messages = {
   newGameButton: 'Neues Spiel',
   playAgainButton: 'Nochmal spielen',
   restartButton: 'Neu starten',
+  hintButton: 'Tipp',
+  hintsUsed: (count) =>
+    `${count} ${plural('de', count, { one: 'Tipp', other: 'Tipps' })}`,
   victory: 'ALLE WÖRTER GEFUNDEN! DU GEWINNST!',
   invalidGameData: 'UNGÜLTIGE SPIELDATEN!',
   generationFailed: 'Es konnte kein Spiel erstellt werden!',
@@ -347,6 +361,9 @@ const IT: Messages = {
   newGameButton: 'Nuova partita',
   playAgainButton: 'Gioca ancora',
   restartButton: 'Ricomincia',
+  hintButton: 'Indizio',
+  hintsUsed: (count) =>
+    `${count} ${plural('it', count, { one: 'indizio', other: 'indizi' })}`,
   victory: 'HAI TROVATO TUTTE LE PAROLE! HAI VINTO!',
   invalidGameData: 'DATI DI GIOCO NON VALIDI!',
   generationFailed: 'Impossibile generare una partita!',
@@ -413,6 +430,9 @@ const PT: Messages = {
   newGameButton: 'Novo jogo',
   playAgainButton: 'Jogar de novo',
   restartButton: 'Recomeçar',
+  hintButton: 'Dica',
+  hintsUsed: (count) =>
+    `${count} dica${plural('pt', count, { one: '', other: 's' })}`,
   victory: 'ENCONTROU TODAS AS PALAVRAS! VOCÊ VENCEU!',
   invalidGameData: 'DADOS DE JOGO INVÁLIDOS!',
   generationFailed: 'Não foi possível gerar um jogo!',
@@ -479,6 +499,9 @@ const NL: Messages = {
   newGameButton: 'Nieuw spel',
   playAgainButton: 'Opnieuw spelen',
   restartButton: 'Opnieuw beginnen',
+  hintButton: 'Hint',
+  hintsUsed: (count) =>
+    `${count} hint${plural('nl', count, { one: '', other: 's' })}`,
   victory: 'ALLE WOORDEN GEVONDEN! JIJ WINT!',
   invalidGameData: 'ONGELDIGE SPELDATA!',
   generationFailed: 'Kon geen spel genereren!',
@@ -545,6 +568,8 @@ const JA: Messages = {
   newGameButton: '新しいゲーム',
   playAgainButton: 'もう一度遊ぶ',
   restartButton: 'やり直す',
+  hintButton: 'ヒント',
+  hintsUsed: (count) => `ヒント${count}回`,
   victory: '全部の単語を見つけました！あなたの勝ち！',
   invalidGameData: '無効なゲームデータ！',
   generationFailed: 'ゲームを生成できませんでした！',
@@ -608,6 +633,8 @@ const KO: Messages = {
   newGameButton: '새 게임',
   playAgainButton: '다시 하기',
   restartButton: '다시 시작',
+  hintButton: '힌트',
+  hintsUsed: (count) => `힌트 ${count}개`,
   victory: '모든 단어를 찾았어요! 승리!',
   invalidGameData: '잘못된 게임 데이터!',
   generationFailed: '게임을 생성하지 못했어요!',
@@ -671,6 +698,8 @@ const ZH: Messages = {
   newGameButton: '新游戏',
   playAgainButton: '再玩一局',
   restartButton: '重新开始',
+  hintButton: '提示',
+  hintsUsed: (count) => `${count} 次提示`,
   victory: '找到了所有单词！你赢了！',
   invalidGameData: '无效的游戏数据！',
   generationFailed: '无法生成游戏！',
@@ -734,6 +763,9 @@ const RU: Messages = {
   newGameButton: 'Новая игра',
   playAgainButton: 'Сыграть ещё раз',
   restartButton: 'Начать заново',
+  hintButton: 'Подсказка',
+  hintsUsed: (count) =>
+    `${count} ${plural('ru', count, { one: 'подсказка', few: 'подсказки', other: 'подсказок' })}`,
   victory: 'ВСЕ СЛОВА НАЙДЕНЫ! ПОБЕДА!',
   invalidGameData: 'НЕВЕРНЫЕ ДАННЫЕ ИГРЫ!',
   generationFailed: 'Не удалось создать игру!',

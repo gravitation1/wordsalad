@@ -227,6 +227,106 @@ describe('App', () => {
     expect(currentWord()).toBe('');
   });
 
+  it('reveals the shortest unfound word as a hint, ready to submit', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+    expect(currentWord()).toBe('TEST'); // shortest of TEST/ROTTED/WORSTED
+
+    // The revealed word is submittable as usual.
+    pressKey('Enter');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'TEST earned you 1 point!',
+    );
+  });
+
+  it('cascades hinted letters and ripples their source tiles', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    // Typed letters do not play the reveal animation.
+    typeWord('t');
+    expect(screen.getByLabelText('Current word')).toHaveAttribute(
+      'data-revealing',
+      'false',
+    );
+    pressKey('Backspace');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+    // The revealed word (TEST) animates in...
+    expect(screen.getByLabelText('Current word')).toHaveAttribute(
+      'data-revealing',
+      'true',
+    );
+    // ...and its source tiles (T, E, S) are the ones that ripple.
+    for (const letter of 'TES') {
+      expect(screen.getByRole('button', { name: letter })).toHaveClass(
+        'control-press',
+      );
+    }
+    for (const letter of 'WORD') {
+      expect(screen.getByRole('button', { name: letter })).not.toHaveClass(
+        'control-press',
+      );
+    }
+  });
+
+  it('offers the hint only when the word area is empty and words remain', () => {
+    render(<App dictionary={DICTIONARY} />);
+    expect(screen.getByRole('button', { name: 'Hint' })).toBeInTheDocument();
+
+    // Typing hides the hint (the area now shows the word).
+    typeWord('t');
+    expect(
+      screen.queryByRole('button', { name: 'Hint' }),
+    ).not.toBeInTheDocument();
+
+    // Clearing brings it back.
+    pressKey('Backspace');
+    expect(screen.getByRole('button', { name: 'Hint' })).toBeInTheDocument();
+  });
+
+  it('counts and persists hints taken', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+    pressKey('Enter'); // submit TEST, word area empties
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // reveal ROTTED
+
+    expect(screen.getByText('· 2 hints')).toBeInTheDocument();
+    expect(window.localStorage.getItem('wordsalad:hints:WORDTES.T.4')).toBe(
+      '2',
+    );
+  });
+
+  it('restores the hint count for a resumed game', () => {
+    window.localStorage.setItem('wordsalad:hints:WORDTES.T.4', '3');
+    render(<App dictionary={DICTIONARY} />);
+    expect(screen.getByText('· 3 hints')).toBeInTheDocument();
+  });
+
+  it('clears the hint count when the puzzle is restarted', () => {
+    render(<App dictionary={DICTIONARY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+    pressKey('Enter'); // score so Restart appears
+    expect(screen.getByText('· 1 hint')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
+    expect(screen.queryByText('· 1 hint')).not.toBeInTheDocument();
+    expect(
+      window.localStorage.getItem('wordsalad:hints:WORDTES.T.4'),
+    ).toBeNull();
+  });
+
+  it('hides the hint once every word is found', () => {
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test');
+    submitWord('rotted');
+    submitWord('worsted');
+    expect(
+      screen.queryByRole('button', { name: 'Hint' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('only offers Restart once there is progress to clear', () => {
     render(<App dictionary={DICTIONARY} />);
     expect(

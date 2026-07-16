@@ -50,12 +50,16 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
         key={game.gameId}
       >
         <WordInput
+          canHint={game.canHint}
+          hintReveal={game.hintReveal}
           inputLetters={game.inputLetters}
           isValidCharacter={game.isValidCharacter}
+          onHint={game.revealHint}
           rejection={game.lastRejection}
           requiredCharacter={game.requiredCharacter}
         />
         <SaladLetters
+          hintReveal={game.hintReveal}
           lastAppended={game.lastAppended}
           letters={game.saladLetters}
           onLetter={game.appendLetter}
@@ -79,6 +83,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           currentPoints={game.currentPoints}
           foundWords={game.foundWords}
           hasWon={game.hasWon}
+          hintCount={game.hintCount}
           lastFoundWord={game.lastFoundWord}
           level={game.level}
           onPlayAgain={game.startNewGame}

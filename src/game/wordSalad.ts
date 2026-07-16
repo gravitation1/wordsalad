@@ -140,6 +140,18 @@ export class WordSalad {
     return this.handleValidWord(word);
   }
 
+  // The shortest word still to be found, for the hint system. Ties resolve
+  // to whichever the dictionary yielded first.
+  shortestRemainingWord(): string | null {
+    let shortest: string | null = null;
+    for (const word of this.remainingWords) {
+      if (shortest === null || word.length < shortest.length) {
+        shortest = word;
+      }
+    }
+    return shortest;
+  }
+
   private handleValidWord(word: string): number {
     const points = this.getPointsForWord(word);
     this.foundWords.set(word, points);

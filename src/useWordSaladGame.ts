@@ -9,7 +9,13 @@ import {
 import { getLevel } from './game/levels';
 import type { WordPreview } from './game/wordSalad';
 import { WordSalad } from './game/wordSalad';
-import { clearSavedWords, loadSavedWords, saveWords } from './progressStore';
+import {
+  clearSavedProgress,
+  loadHintCount,
+  loadSavedWords,
+  saveHintCount,
+  saveWords,
+} from './progressStore';
 
 export type { WordPreview } from './game/wordSalad';
 
@@ -44,6 +50,11 @@ export interface LetterActivation {
   letter: string;
 }
 
+export interface HintReveal {
+  id: number;
+  letters: readonly string[];
+}
+
 export interface PlayingGame {
   status: 'playing';
   saladLetters: readonly string[];
@@ -55,6 +66,7 @@ export interface PlayingGame {
   lastSubmission: SubmittedPreview | null;
   lastRejection: LetterRejection | null;
   lastAppended: LetterActivation | null;
+  hintReveal: HintReveal | null;
   feedback: GameFeedback | null;
   foundWords: readonly FoundWord[];
   lastFoundWord: string | null;
@@ -63,6 +75,8 @@ export interface PlayingGame {
   completionPercent: number;
   level: string;
   hasWon: boolean;
+  canHint: boolean;
+  hintCount: number;
   tossId: number;
   deleteId: number;
   gameId: number;
@@ -72,6 +86,7 @@ export interface PlayingGame {
   submitWord: () => void;
   startNewGame: () => void;
   restartGame: () => void;
+  revealHint: () => void;
 }
 
 export type FailureReason = 'generation-failed' | 'invalid-game-data';
@@ -109,7 +124,7 @@ function generateGameInit(dictionary: readonly string[]): GameInit {
     const wordSalad = generateWordSalad(dictionary);
     // An explicitly new game starts with a clean slate, even if the same
     // puzzle was played before.
-    clearSavedWords(storeWordSalad(wordSalad));
+    clearSavedProgress(storeWordSalad(wordSalad));
     return { wordSalad };
   } catch (_error) {
     return { reason: 'generation-failed' };
@@ -163,8 +178,12 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   const [lastAppended, setLastAppended] = useState<LetterActivation | null>(
     null,
   );
+  const [hintReveal, setHintReveal] = useState<HintReveal | null>(null);
   const [tossId, setTossId] = useState(0);
   const [deleteId, setDeleteId] = useState(0);
+  const [hintCount, setHintCount] = useState(() =>
+    wordSalad === null ? 0 : loadHintCount(storeWordSalad(wordSalad)),
+  );
   const [hasWon, setHasWon] = useState(
     () => wordSalad !== null && wordSalad.remainingWords.size === 0,
   );
@@ -237,6 +256,29 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     [wordSalad],
   );
 
+  // Fill the input with the shortest unfound word, ready to submit, and
+  // record that a hint was taken.
+  const revealHint = useCallback(() => {
+    if (wordSalad === null) {
+      return;
+    }
+    const word = wordSalad.shortestRemainingWord();
+    if (word === null) {
+      return;
+    }
+    const letters = Array.from(word);
+    setInputLetters(letters);
+    // Drive the reveal animation (letters cascade in, source tiles ripple);
+    // clear any stale press so only the hint drives the tiles.
+    setLastAppended(null);
+    setHintReveal((previous) => ({ id: (previous?.id ?? 0) + 1, letters }));
+    setHintCount((previous) => {
+      const next = previous + 1;
+      saveHintCount(storeWordSalad(wordSalad), next);
+      return next;
+    });
+  }, [wordSalad]);
+
   const startNewGame = useCallback(() => {
     const init = generateGameInit(dictionary);
     setGameState((previous) => ({ id: previous.id + 1, init }));
@@ -253,6 +295,8 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setLastSubmission(null);
     setLastRejection(null);
     setLastAppended(null);
+    setHintReveal(null);
+    setHintCount(0);
     setHasWon(false);
   }, [dictionary]);
 
@@ -262,7 +306,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     if (wordSalad === null) {
       return;
     }
-    clearSavedWords(storeWordSalad(wordSalad));
+    clearSavedProgress(storeWordSalad(wordSalad));
     const fresh = new WordSalad(
       wordSalad.characterSet,
       wordSalad.requiredCharacter,
@@ -281,6 +325,8 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setLastSubmission(null);
     setLastRejection(null);
     setLastAppended(null);
+    setHintReveal(null);
+    setHintCount(0);
     setHasWon(false);
   }, [dictionary, wordSalad]);
 
@@ -391,6 +437,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     lastSubmission,
     lastRejection,
     lastAppended,
+    hintReveal,
     feedback,
     foundWords,
     lastFoundWord,
@@ -399,6 +446,8 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     completionPercent,
     level: getLevel(completionPercent),
     hasWon,
+    canHint: wordSalad.remainingWords.size > 0,
+    hintCount,
     tossId,
     deleteId,
     gameId: gameState.id,
@@ -408,5 +457,6 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     submitWord,
     startNewGame,
     restartGame,
+    revealHint,
   };
 }

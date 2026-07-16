@@ -1,7 +1,8 @@
 import { useMessages } from '../i18n';
-import type { LetterActivation } from '../useWordSaladGame';
+import type { HintReveal, LetterActivation } from '../useWordSaladGame';
 
 interface SaladLettersProps {
+  hintReveal: HintReveal | null;
   lastAppended: LetterActivation | null;
   letters: readonly string[];
   onLetter: (letter: string) => void;
@@ -9,7 +10,37 @@ interface SaladLettersProps {
   tossId: number;
 }
 
+// Source-tile ripples during a hint cascade in word order, matching the
+// letter reveal's stagger.
+const HINT_STAGGER_MS = 45;
+
+interface TilePress {
+  key: string;
+  delayMs: number;
+}
+
+// A tile ripples because it was just tapped/typed, or because it is a source
+// letter of a freshly revealed hint (staggered by its place in the word).
+function tilePress(
+  letter: string,
+  lastAppended: LetterActivation | null,
+  hintReveal: HintReveal | null,
+): TilePress | null {
+  if (lastAppended?.letter === letter) {
+    return { key: `append-${lastAppended.id}`, delayMs: 0 };
+  }
+  const hintIndex = hintReveal?.letters.indexOf(letter) ?? -1;
+  if (hintIndex >= 0) {
+    return {
+      key: `hint-${hintReveal?.id ?? 0}`,
+      delayMs: hintIndex * HINT_STAGGER_MS,
+    };
+  }
+  return null;
+}
+
 export function SaladLetters({
+  hintReveal,
   lastAppended,
   letters,
   onLetter,
@@ -29,11 +60,11 @@ export function SaladLetters({
     >
       {letters.map((letter, index) => {
         const isRequired = letter === requiredCharacter;
-        const isJustAppended = lastAppended?.letter === letter;
+        const press = tilePress(letter, lastAppended, hintReveal);
         return (
           // The stable outer span owns the toss-in entrance; the inner
           // button remounts per activation (key) to replay the press —
-          // whether the letter was tapped or typed on the keyboard.
+          // whether the letter was tapped, typed, or revealed as a hint.
           <span
             className="letter-toss inline-block"
             key={`${letter}${index}`}
@@ -44,24 +75,30 @@ export function SaladLetters({
                 isRequired
                   ? 'border-accent bg-accent text-white'
                   : 'border-gray-300 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800'
-              } ${isJustAppended ? 'control-press' : ''}`}
+              } ${press === null ? '' : 'control-press'}`}
               data-letter={letter}
-              data-pressed={isJustAppended ? 'true' : 'false'}
+              data-pressed={lastAppended?.letter === letter ? 'true' : 'false'}
               data-required={isRequired ? 'true' : 'false'}
-              key={isJustAppended ? `pressed-${lastAppended?.id ?? 0}` : 'idle'}
+              key={press?.key ?? 'idle'}
               onClick={() => {
                 onLetter(letter);
               }}
+              style={
+                press === null
+                  ? undefined
+                  : { animationDelay: `${press.delayMs}ms` }
+              }
               title={isRequired ? t.requiredLetterTitle : undefined}
               type="button"
             >
               {letter}
-              {isJustAppended ? (
+              {press === null ? null : (
                 <span
                   aria-hidden="true"
                   className="control-ring pointer-events-none absolute inset-0 rounded-xl"
+                  style={{ animationDelay: `${press.delayMs}ms` }}
                 />
-              ) : null}
+              )}
             </button>
           </span>
         );

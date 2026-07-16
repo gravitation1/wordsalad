@@ -126,6 +126,17 @@ describe('WordSalad', () => {
     );
   });
 
+  it('reports the shortest remaining word, or null when none remain', () => {
+    const wordSalad = newWordSalad();
+    // Valid words: TEST (4), ROTTED (6), WORSTED (7).
+    expect(wordSalad.shortestRemainingWord()).toBe('TEST');
+    wordSalad.tryWord('TEST');
+    expect(wordSalad.shortestRemainingWord()).toBe('ROTTED');
+    wordSalad.tryWord('ROTTED');
+    wordSalad.tryWord('WORSTED');
+    expect(wordSalad.shortestRemainingWord()).toBeNull();
+  });
+
   it('previews words without mutating any state', () => {
     const wordSalad = newWordSalad();
 
