@@ -1,5 +1,8 @@
+import { useRef, useState } from 'react';
+
 import { useMessages } from '../i18n';
 import type { FoundWord } from '../useWordSaladGame';
+import { RatingsDialog } from './RatingsDialog';
 
 interface ScoreboardProps {
   foundWords: readonly FoundWord[];
@@ -23,6 +26,15 @@ export function Scoreboard({
   onRestart,
 }: ScoreboardProps) {
   const t = useMessages();
+  const [isRatingsOpen, setIsRatingsOpen] = useState(false);
+  const ratingsButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Closing the dialog restores focus to this trigger; blur it so a
+  // subsequent Enter submits a word instead of re-opening the dialog.
+  const closeRatings = () => {
+    setIsRatingsOpen(false);
+    ratingsButtonRef.current?.blur();
+  };
 
   return (
     <section className="w-full space-y-3">
@@ -66,9 +78,24 @@ export function Scoreboard({
           style={{ width: `${completionPercent * 100}%` }}
         />
       </div>
-      <p className="text-sm text-gray-600 dark:text-gray-400">
+      <button
+        aria-haspopup="dialog"
+        className="-mx-2 -my-1 touch-manipulation rounded px-2 py-1 text-left text-sm text-gray-600 underline decoration-gray-400/60 decoration-dotted underline-offset-4 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+        onClick={() => {
+          setIsRatingsOpen(true);
+        }}
+        ref={ratingsButtonRef}
+        type="button"
+      >
         {t.progressLabel(completionPercent, level)}
-      </p>
+      </button>
+      {isRatingsOpen ? (
+        <RatingsDialog
+          completionPercent={completionPercent}
+          level={level}
+          onClose={closeRatings}
+        />
+      ) : null}
       {foundWords.length > 0 ? (
         <table className="w-full text-left text-sm">
           <thead>

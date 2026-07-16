@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from '../App';
@@ -194,6 +194,37 @@ describe('App', () => {
     render(<App dictionary={DICTIONARY} />);
 
     expect(screen.getByText('Found 1 word · 1 point')).toBeInTheDocument();
+  });
+
+  it('shows the ratings ladder from the progress label', () => {
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test'); // 6.67% -> Meh
+
+    fireEvent.click(screen.getByRole('button', { name: '6.67% · Meh' }));
+
+    const dialog = screen.getByRole('dialog');
+    const rows = within(dialog).getAllByRole('listitem');
+    expect(rows).toHaveLength(11);
+
+    const rowFor = (name: string) =>
+      rows.find((row) => within(row).queryByText(name) !== null);
+    expect(rowFor('Idiot')).toHaveAttribute('data-achieved', 'true');
+    expect(rowFor('Meh')).toHaveAttribute('data-current', 'true');
+    expect(rowFor('Okay')).toHaveAttribute('data-achieved', 'false');
+    expect(rowFor('Super-Duper-Genius')).toHaveTextContent('from 100%');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('ignores game keys while the ratings dialog is open', () => {
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test');
+    fireEvent.click(screen.getByRole('button', { name: '6.67% · Meh' }));
+
+    // Typing must not reach the game behind the modal.
+    typeWord('rot');
+    expect(currentWord()).toBe('');
   });
 
   it('only offers Restart once there is progress to clear', () => {

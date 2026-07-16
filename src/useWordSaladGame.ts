@@ -336,6 +336,11 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
         return;
       }
 
+      // An open modal owns the keyboard; don't drive the game behind it.
+      if (document.querySelector('dialog[open]') !== null) {
+        return;
+      }
+
       if (/^[a-zA-Z]$/.test(event.key)) {
         appendLetter(event.key);
       } else if (event.key === 'Backspace' || event.key === 'Delete') {

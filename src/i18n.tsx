@@ -38,6 +38,10 @@ export interface Messages {
   currentWordLabel: string;
   completionLabel: string;
   requiredLetterTitle: string;
+  ratingsTitle: string;
+  closeButton: string;
+  levelName: (level: string) => string;
+  thresholdFrom: (minimumCompletion: number) => string;
   feedbackText: (feedback: GameFeedback) => string;
   foundSummary: (words: number, points: number) => string;
   progressLabel: (completionPercent: number, level: string) => string;
@@ -61,6 +65,13 @@ function formatPercent(locale: Locale, completionPercent: number): string {
   }).format(completionPercent);
 }
 
+function formatWholePercent(locale: Locale, fraction: number): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'percent',
+    maximumFractionDigits: 0,
+  }).format(fraction);
+}
+
 const EN: Messages = {
   locale: 'en',
   appTitle: 'Word Salad',
@@ -80,6 +91,11 @@ const EN: Messages = {
   currentWordLabel: 'Current word',
   completionLabel: 'Completion',
   requiredLetterTitle: 'Required letter',
+  ratingsTitle: 'Ratings',
+  closeButton: 'Close',
+  levelName: (level) => level,
+  thresholdFrom: (minimumCompletion) =>
+    `from ${formatWholePercent('en', minimumCompletion)}`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -141,6 +157,11 @@ const FR: Messages = {
   currentWordLabel: 'Mot en cours',
   completionLabel: 'Progression',
   requiredLetterTitle: 'Lettre obligatoire',
+  ratingsTitle: 'Niveaux',
+  closeButton: 'Fermer',
+  levelName: (level) => LEVELS_FR[level] ?? level,
+  thresholdFrom: (minimumCompletion) =>
+    `à partir de ${formatWholePercent('fr', minimumCompletion)}`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -202,6 +223,11 @@ const ES: Messages = {
   currentWordLabel: 'Palabra actual',
   completionLabel: 'Progreso',
   requiredLetterTitle: 'Letra obligatoria',
+  ratingsTitle: 'Rangos',
+  closeButton: 'Cerrar',
+  levelName: (level) => LEVELS_ES[level] ?? level,
+  thresholdFrom: (minimumCompletion) =>
+    `desde ${formatWholePercent('es', minimumCompletion)}`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -263,6 +289,11 @@ const DE: Messages = {
   currentWordLabel: 'Aktuelles Wort',
   completionLabel: 'Fortschritt',
   requiredLetterTitle: 'Pflichtbuchstabe',
+  ratingsTitle: 'Ränge',
+  closeButton: 'Schließen',
+  levelName: (level) => LEVELS_DE[level] ?? level,
+  thresholdFrom: (minimumCompletion) =>
+    `ab ${formatWholePercent('de', minimumCompletion)}`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -324,6 +355,11 @@ const IT: Messages = {
   currentWordLabel: 'Parola corrente',
   completionLabel: 'Avanzamento',
   requiredLetterTitle: 'Lettera obbligatoria',
+  ratingsTitle: 'Livelli',
+  closeButton: 'Chiudi',
+  levelName: (level) => LEVELS_IT[level] ?? level,
+  thresholdFrom: (minimumCompletion) =>
+    `da ${formatWholePercent('it', minimumCompletion)}`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -385,6 +421,11 @@ const PT: Messages = {
   currentWordLabel: 'Palavra atual',
   completionLabel: 'Progresso',
   requiredLetterTitle: 'Letra obrigatória',
+  ratingsTitle: 'Níveis',
+  closeButton: 'Fechar',
+  levelName: (level) => LEVELS_PT[level] ?? level,
+  thresholdFrom: (minimumCompletion) =>
+    `a partir de ${formatWholePercent('pt', minimumCompletion)}`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -446,6 +487,11 @@ const NL: Messages = {
   currentWordLabel: 'Huidig woord',
   completionLabel: 'Voortgang',
   requiredLetterTitle: 'Verplichte letter',
+  ratingsTitle: 'Niveaus',
+  closeButton: 'Sluiten',
+  levelName: (level) => LEVELS_NL[level] ?? level,
+  thresholdFrom: (minimumCompletion) =>
+    `vanaf ${formatWholePercent('nl', minimumCompletion)}`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -506,6 +552,11 @@ const JA: Messages = {
   currentWordLabel: '入力中の単語',
   completionLabel: '達成度',
   requiredLetterTitle: '必須の文字',
+  ratingsTitle: 'ランク',
+  closeButton: '閉じる',
+  levelName: (level) => LEVELS_JA[level] ?? level,
+  thresholdFrom: (minimumCompletion) =>
+    `${formatWholePercent('ja', minimumCompletion)}から`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -564,6 +615,11 @@ const KO: Messages = {
   currentWordLabel: '현재 단어',
   completionLabel: '진행도',
   requiredLetterTitle: '필수 글자',
+  ratingsTitle: '등급',
+  closeButton: '닫기',
+  levelName: (level) => LEVELS_KO[level] ?? level,
+  thresholdFrom: (minimumCompletion) =>
+    `${formatWholePercent('ko', minimumCompletion)}부터`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -622,6 +678,11 @@ const ZH: Messages = {
   currentWordLabel: '当前单词',
   completionLabel: '完成度',
   requiredLetterTitle: '必用字母',
+  ratingsTitle: '等级',
+  closeButton: '关闭',
+  levelName: (level) => LEVELS_ZH[level] ?? level,
+  thresholdFrom: (minimumCompletion) =>
+    `${formatWholePercent('zh', minimumCompletion)}起`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -680,6 +741,11 @@ const RU: Messages = {
   currentWordLabel: 'Текущее слово',
   completionLabel: 'Прогресс',
   requiredLetterTitle: 'Обязательная буква',
+  ratingsTitle: 'Звания',
+  closeButton: 'Закрыть',
+  levelName: (level) => LEVELS_RU[level] ?? level,
+  thresholdFrom: (minimumCompletion) =>
+    `от ${formatWholePercent('ru', minimumCompletion)}`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getLevel } from '../levels';
+import { getLevel, getLevelLadder } from '../levels';
 
 describe('getLevel', () => {
   it.each([
@@ -20,5 +20,24 @@ describe('getLevel', () => {
     [1, 'Super-Duper-Genius'],
   ])('maps %f to %s', (completionPercent, level) => {
     expect(getLevel(completionPercent)).toBe(level);
+  });
+});
+
+describe('getLevelLadder', () => {
+  it('lists every level with its minimum completion', () => {
+    const ladder = getLevelLadder();
+    expect(ladder).toHaveLength(11);
+    expect(ladder[0]).toEqual({ level: 'Idiot', minimumCompletion: 0 });
+    expect(ladder).toContainEqual({ level: 'Awesome', minimumCompletion: 0.5 });
+    expect(ladder[10]).toEqual({
+      level: 'Super-Duper-Genius',
+      minimumCompletion: 1,
+    });
+  });
+
+  it('agrees with getLevel at every lower bound', () => {
+    for (const step of getLevelLadder()) {
+      expect(getLevel(step.minimumCompletion)).toBe(step.level);
+    }
   });
 });
