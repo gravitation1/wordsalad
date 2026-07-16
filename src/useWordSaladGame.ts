@@ -226,6 +226,9 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     if (wordSalad !== null) {
       setSaladLetters(shuffled(Array.from(wordSalad.characterSet)));
       setTossId((previous) => previous + 1);
+      // The tiles remount to replay the toss; drop the press marker so the
+      // last-pressed tile does not also replay its ripple.
+      setLastAppended(null);
     }
   }, [wordSalad]);
 

@@ -398,6 +398,12 @@ describe('App', () => {
     // A rejected letter is not an activation.
     typeWord('q');
     expect(tile('W')).toHaveAttribute('data-pressed', 'true');
+
+    // Tossing remounts the tiles; the press marker must not survive it,
+    // or the last-pressed tile would replay its ripple alongside the toss.
+    pressKey(' ');
+    expect(tile('W')).toHaveAttribute('data-pressed', 'false');
+    expect(tile('T')).toHaveAttribute('data-pressed', 'false');
   });
 
   it('disables Delete while there are no letters', () => {
