@@ -223,6 +223,9 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
         return;
       }
 
+      // A keystroke ends any hint reveal, so its source tiles stop carrying a
+      // latent press that would re-ripple as later letters are typed.
+      setHintReveal(null);
       setLastAppended((previous) => ({
         id: (previous?.id ?? 0) + 1,
         letter,
@@ -237,6 +240,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     if (inputLetters.length === 0) {
       return;
     }
+    setHintReveal(null);
     setDeleteId((previous) => previous + 1);
     setInputLetters((previous) => previous.slice(0, -1));
   }, [inputLetters]);
@@ -340,6 +344,8 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     if (word.length === 0) {
       return;
     }
+
+    setHintReveal(null);
 
     // Record the badge as it looked at submit time (before the engine
     // mutates), so the view can animate it away.

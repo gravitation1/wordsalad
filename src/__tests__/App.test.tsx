@@ -270,6 +270,24 @@ describe('App', () => {
     }
   });
 
+  it('does not re-ripple a hint letter when a later letter is typed', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    // Reveal TEST (letters T, E, S), then submit it.
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+    pressKey('Enter');
+
+    // Typing two former hint letters must ripple only the current one.
+    typeWord('s');
+    typeWord('e');
+    expect(screen.getByRole('button', { name: 'S' })).not.toHaveClass(
+      'control-press',
+    );
+    expect(screen.getByRole('button', { name: 'E' })).toHaveClass(
+      'control-press',
+    );
+  });
+
   it('offers the hint only when the word area is empty and words remain', () => {
     render(<App dictionary={DICTIONARY} />);
     expect(screen.getByRole('button', { name: 'Hint' })).toBeInTheDocument();
