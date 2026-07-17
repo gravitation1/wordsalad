@@ -2,6 +2,7 @@ import { useRef } from 'react';
 
 import { useMessages } from '../i18n';
 import type {
+  DeniedControl,
   SubmitReadiness,
   SubmittedPreview,
   WordPreview,
@@ -10,6 +11,7 @@ import type {
 interface GameControlsProps {
   canDelete: boolean;
   deleteId: number;
+  denied: DeniedControl | null;
   lastSubmission: SubmittedPreview | null;
   onClearAll: () => void;
   onDelete: () => void;
@@ -65,6 +67,20 @@ function badgeClass(preview: WordPreview): string {
 const HINT_CLASS =
   'hidden pointer-fine:block text-xs font-normal leading-none opacity-60';
 
+// A keyboard action aimed at this control while it was unavailable: dip in
+// acknowledgment without a ring. The two identical animations alternate by
+// denial parity so repeated denials replay without remounting the button
+// (a remount would replay the fly-away ghosts and entrance animations).
+function denyClass(
+  denied: DeniedControl | null,
+  control: DeniedControl['control'],
+): string {
+  if (denied?.control !== control) {
+    return '';
+  }
+  return denied.id % 2 === 1 ? 'control-deny' : 'control-deny-alt';
+}
+
 function badgeText(preview: WordPreview): string {
   switch (preview.verdict) {
     case 'already-found':
@@ -85,6 +101,7 @@ function badgeText(preview: WordPreview): string {
 export function GameControls({
   canDelete,
   deleteId,
+  denied,
   lastSubmission,
   onClearAll,
   onDelete,
@@ -127,11 +144,14 @@ export function GameControls({
   return (
     <div className="grid w-full max-w-xs grid-cols-3 gap-2">
       {/* Remounts on every deletion (key) so the button signals it caused
-          the deletion — even when triggered by Backspace. */}
+          the deletion — even when triggered by Backspace. aria-disabled
+          (not disabled) keeps CSS :active press feedback working on taps in
+          every browser; the action itself already no-ops in the hook. */}
       <button
-        className={`relative select-none ${canDelete ? NEUTRAL_CLASS : DISABLED_CLASS} ${deleteId > 0 ? 'control-press' : ''}`}
+        aria-disabled={!canDelete}
+        className={`relative select-none ${canDelete ? NEUTRAL_CLASS : DISABLED_CLASS} ${deleteId > 0 ? 'control-press' : ''} ${denyClass(denied, 'delete')}`}
         data-delete-id={deleteId}
-        disabled={!canDelete}
+        data-denied-id={denied?.control === 'delete' ? denied.id : 0}
         key={`delete-${deleteId}`}
         onClick={handleDeleteClick}
         onContextMenu={(event) => {
@@ -179,10 +199,11 @@ export function GameControls({
         ) : null}
       </button>
       <button
-        className={`relative ${SUBMIT_CLASS[submitReadiness]}`}
+        aria-disabled={submitReadiness === 'empty'}
+        className={`relative ${SUBMIT_CLASS[submitReadiness]} ${denyClass(denied, 'submit')}`}
+        data-denied-id={denied?.control === 'submit' ? denied.id : 0}
         data-readiness={submitReadiness}
         data-verdict={preview?.verdict}
-        disabled={submitReadiness === 'empty'}
         onClick={onSubmit}
         type="button"
       >

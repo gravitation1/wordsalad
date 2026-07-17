@@ -253,9 +253,47 @@ body {
   animation: control-ring 500ms ease-out;
 }
 
+/* A control that received keyboard input while unavailable dips without a
+   ring: acknowledged, but nothing fired (taps get this via :active). Two
+   identical animations alternate per denial so each replays without
+   remounting the button. */
+@keyframes control-deny {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes control-deny-alt {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.control-deny {
+  animation: control-deny 250ms ease-out;
+}
+
+.control-deny-alt {
+  animation: control-deny-alt 250ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .control-press,
-  .control-ring {
+  .control-ring,
+  .control-deny,
+  .control-deny-alt {
     animation: none;
   }
 }

@@ -66,6 +66,14 @@ export interface SpentHint {
   cost: number;
 }
 
+// A keyboard action that landed on an unavailable control (Backspace or
+// Enter with an empty word). The control acknowledges it with a press dip
+// but fires nothing — the same feedback a tap on it gives via CSS :active.
+export interface DeniedControl {
+  id: number;
+  control: 'delete' | 'submit';
+}
+
 // How a submitted word left the board: scored, hinted (accepted but worth
 // 0), or rejected outright.
 export type WordExitOutcome = 'scored' | 'hinted' | 'rejected';
@@ -92,6 +100,7 @@ export interface PlayingGame {
   hintReveal: HintReveal | null;
   spentHint: SpentHint | null;
   wordExit: WordExit | null;
+  deniedControl: DeniedControl | null;
   feedback: GameFeedback | null;
   foundWords: readonly FoundWord[];
   lastFoundWord: string | null;
@@ -271,6 +280,9 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   const [hintReveal, setHintReveal] = useState<HintReveal | null>(null);
   const [spentHint, setSpentHint] = useState<SpentHint | null>(null);
   const [wordExit, setWordExit] = useState<WordExit | null>(null);
+  const [deniedControl, setDeniedControl] = useState<DeniedControl | null>(
+    null,
+  );
   const [tossId, setTossId] = useState(0);
   const [deleteId, setDeleteId] = useState(0);
 
@@ -329,6 +341,9 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       return;
     }
     setHintReveal(null);
+    // A fired action supersedes any lingering denial dip, so the button's
+    // remount replays the press, not the dip.
+    setDeniedControl(null);
     setDeleteId((previous) => previous + 1);
     setInputLetters((previous) => previous.slice(0, -1));
   }, [inputLetters]);
@@ -339,6 +354,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       return;
     }
     setHintReveal(null);
+    setDeniedControl(null);
     setDeleteId((previous) => previous + 1);
     setInputLetters([]);
   }, [inputLetters]);
@@ -390,6 +406,16 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     saveHintedWords(storeWordSalad(wordSalad), Array.from(committed));
   }, [hintedWords, wordSalad]);
 
+  // Keyboard input aimed at an unavailable control: the button dips in
+  // acknowledgment without firing. Pointer taps get the equivalent for free
+  // from CSS :active, so only the keyboard paths call this.
+  const denyControl = useCallback((control: DeniedControl['control']) => {
+    setDeniedControl((previous) => ({
+      id: (previous?.id ?? 0) + 1,
+      control,
+    }));
+  }, []);
+
   const startNewGame = useCallback(() => {
     const init = generateGameInit(dictionary);
     setGameState((previous) => ({ id: previous.id + 1, init }));
@@ -408,6 +434,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setHintReveal(null);
     setSpentHint(null);
     setWordExit(null);
+    setDeniedControl(null);
     // Reset the press counters so the control buttons don't replay a ripple
     // when the board remounts for the fresh game.
     setTossId(0);
@@ -442,6 +469,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setHintReveal(null);
     setSpentHint(null);
     setWordExit(null);
+    setDeniedControl(null);
     setTossId(0);
     setDeleteId(0);
     setHintedWords(new Set());
@@ -459,6 +487,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     }
 
     setHintReveal(null);
+    setDeniedControl(null);
 
     // The word is hinted if it was already committed via a hint reveal; the
     // engine still records it, but it scores nothing.
@@ -512,7 +541,11 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
         (event.key === 'Backspace' || event.key === 'Delete')
       ) {
         event.preventDefault();
-        clearInput();
+        if (inputLetters.length === 0) {
+          denyControl('delete');
+        } else {
+          clearInput();
+        }
         return;
       }
 
@@ -529,9 +562,17 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       if (/^[a-zA-Z]$/.test(event.key)) {
         appendLetter(event.key);
       } else if (event.key === 'Backspace' || event.key === 'Delete') {
-        deleteLetter();
+        if (inputLetters.length === 0) {
+          denyControl('delete');
+        } else {
+          deleteLetter();
+        }
       } else if (event.key === 'Enter') {
-        submitWord();
+        if (inputLetters.length === 0) {
+          denyControl('submit');
+        } else {
+          submitWord();
+        }
       } else if (event.key === ' ') {
         event.preventDefault(); // don't scroll the page
         tossSalad();
@@ -553,6 +594,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     appendLetter,
     clearInput,
     deleteLetter,
+    denyControl,
     inputLetters,
     revealHint,
     submitWord,
@@ -612,6 +654,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     hintReveal,
     spentHint,
     wordExit,
+    deniedControl,
     feedback,
     foundWords,
     lastFoundWord,

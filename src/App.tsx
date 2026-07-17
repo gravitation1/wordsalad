@@ -72,6 +72,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
         <GameControls
           canDelete={game.inputLetters.length > 0}
           deleteId={game.deleteId}
+          denied={game.deniedControl}
           lastSubmission={game.lastSubmission}
           onClearAll={game.clearInput}
           onDelete={game.deleteLetter}

@@ -709,13 +709,18 @@ describe('App', () => {
     render(<App dictionary={DICTIONARY} />);
     const submit = () => screen.getByRole('button', { name: 'Submit' });
 
-    // No letters: disabled outright.
-    expect(submit()).toBeDisabled();
+    // No letters: unavailable (aria-disabled keeps the tap press feedback
+    // working cross-browser; the action itself no-ops).
+    expect(submit()).toHaveAttribute('aria-disabled', 'true');
     expect(submit()).toHaveAttribute('data-readiness', 'empty');
+
+    // Clicking the unavailable button fires nothing real.
+    fireEvent.click(submit());
+    expect(screen.queryByTestId('word-exit')).not.toBeInTheDocument();
 
     // Too short (minimum length is 4).
     typeWord('tes');
-    expect(submit()).toBeEnabled();
+    expect(submit()).toHaveAttribute('aria-disabled', 'false');
     expect(submit()).toHaveAttribute('data-readiness', 'partial');
 
     // Structurally valid.
@@ -778,11 +783,41 @@ describe('App', () => {
     render(<App dictionary={DICTIONARY} />);
     const deleteButton = () => screen.getByRole('button', { name: 'Delete' });
 
-    expect(deleteButton()).toBeDisabled();
+    expect(deleteButton()).toHaveAttribute('aria-disabled', 'true');
     typeWord('t');
-    expect(deleteButton()).toBeEnabled();
+    expect(deleteButton()).toHaveAttribute('aria-disabled', 'false');
     pressKey('Backspace');
-    expect(deleteButton()).toBeDisabled();
+    expect(deleteButton()).toHaveAttribute('aria-disabled', 'true');
+
+    // Clicking the unavailable button deletes nothing and fires no signal.
+    fireEvent.click(deleteButton());
+    expect(deleteButton()).toHaveAttribute('data-delete-id', '1');
+  });
+
+  it('acknowledges keyboard input aimed at unavailable controls', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const deleteButton = () => screen.getByRole('button', { name: 'Delete' });
+    const submit = () => screen.getByRole('button', { name: 'Submit' });
+
+    // With an empty word, Backspace and Enter land on unavailable buttons:
+    // each denial dips the matching button (one shared counter).
+    pressKey('Backspace');
+    expect(deleteButton()).toHaveAttribute('data-denied-id', '1');
+    expect(submit()).toHaveAttribute('data-denied-id', '0');
+
+    pressKey('Enter');
+    expect(submit()).toHaveAttribute('data-denied-id', '2');
+    expect(deleteButton()).toHaveAttribute('data-denied-id', '0');
+
+    // Ctrl/Cmd+Backspace on an empty word is a Delete denial too.
+    fireEvent.keyDown(document, { key: 'Backspace', metaKey: true });
+    expect(deleteButton()).toHaveAttribute('data-denied-id', '3');
+
+    // A fired action supersedes the lingering denial.
+    typeWord('t');
+    pressKey('Backspace');
+    expect(deleteButton()).toHaveAttribute('data-denied-id', '0');
+    expect(deleteButton()).toHaveAttribute('data-delete-id', '1');
   });
 
   it('signals the Delete button only when a letter is actually deleted', () => {
