@@ -8,9 +8,12 @@ interface ScoreboardProps {
   foundWords: readonly FoundWord[];
   lastFoundWord: string | null;
   earnedPoints: number;
+  maxPoints: number;
+  lostPoints: number;
   earnedPercent: number;
   lostPercent: number;
   winThreshold: number;
+  winPoints: number;
   level: string;
   hasWon: boolean;
   lockedOut: boolean;
@@ -23,9 +26,12 @@ export function Scoreboard({
   foundWords,
   lastFoundWord,
   earnedPoints,
+  maxPoints,
+  lostPoints,
   earnedPercent,
   lostPercent,
   winThreshold,
+  winPoints,
   level,
   hasWon,
   lockedOut,
@@ -63,15 +69,15 @@ export function Scoreboard({
           className="rounded-xl bg-red-50 p-3 text-center text-sm font-medium text-red-600 dark:bg-red-500/10 dark:text-red-400"
           role="status"
         >
-          {t.lockedOutNote}
+          {t.lockedOutNote(maxPoints - lostPoints, winPoints)}
         </p>
       ) : null}
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          {t.foundSummary(foundWords.length, earnedPoints)}
+          {t.foundSummary(foundWords.length)}
           {hintCount > 0 ? (
             <span className="text-gray-400 dark:text-gray-500">
-              {` · ${t.hintsUsed(hintCount)}`}
+              {` · ${t.hintsUsed(hintCount, lostPoints)}`}
             </span>
           ) : null}
         </p>
@@ -91,9 +97,9 @@ export function Scoreboard({
       <div className="relative py-1">
         <div
           aria-label={t.completionLabel}
-          aria-valuemax={100}
+          aria-valuemax={maxPoints}
           aria-valuemin={0}
-          aria-valuenow={Number((earnedPercent * 100).toFixed(2))}
+          aria-valuenow={earnedPoints}
           className="relative h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800"
           role="progressbar"
         >
@@ -110,7 +116,7 @@ export function Scoreboard({
           aria-hidden="true"
           className="absolute inset-y-0 w-0.5 -translate-x-1/2 rounded bg-gray-500 dark:bg-gray-400"
           style={{ left: `${winThreshold * 100}%` }}
-          title={t.winThresholdLabel(winThreshold)}
+          title={t.winThresholdLabel(winPoints)}
         />
       </div>
       <button
@@ -122,13 +128,15 @@ export function Scoreboard({
         ref={ratingsButtonRef}
         type="button"
       >
-        {t.progressLabel(earnedPercent, level)}
+        {t.progressLabel(earnedPoints, maxPoints, level)}
       </button>
       {isRatingsOpen ? (
         <RatingsDialog
-          completionPercent={earnedPercent}
+          earnedPoints={earnedPoints}
           level={level}
+          maxPoints={maxPoints}
           onClose={closeRatings}
+          winPoints={winPoints}
         />
       ) : null}
       {foundWords.length > 0 ? (

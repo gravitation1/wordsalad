@@ -32,12 +32,12 @@ export interface Messages {
   playAgainButton: string;
   restartButton: string;
   hintButton: string;
-  hintsUsed: (count: number) => string;
+  hintsUsed: (count: number, lostPoints: number) => string;
   hintCostBadge: (cost: number) => string;
   hintCostLabel: (cost: number) => string;
   hintedLegend: string;
-  lockedOutNote: string;
-  winThresholdLabel: (threshold: number) => string;
+  lockedOutNote: (reachablePoints: number, winPoints: number) => string;
+  winThresholdLabel: (winPoints: number) => string;
   victory: string;
   invalidGameData: string;
   generationFailed: string;
@@ -48,10 +48,14 @@ export interface Messages {
   ratingsTitle: string;
   closeButton: string;
   levelName: (level: string) => string;
-  thresholdFrom: (minimumCompletion: number) => string;
+  thresholdFrom: (points: number) => string;
   feedbackText: (feedback: GameFeedback) => string;
-  foundSummary: (words: number, points: number) => string;
-  progressLabel: (completionPercent: number, level: string) => string;
+  foundSummary: (words: number) => string;
+  progressLabel: (
+    earnedPoints: number,
+    maxPoints: number,
+    level: string,
+  ) => string;
 }
 
 // CLDR plural category -> form, with 'other' as the required fallback.
@@ -62,21 +66,6 @@ type PluralForms = Partial<Record<Intl.LDMLPluralRule, string>> & {
 
 function plural(locale: Locale, count: number, forms: PluralForms): string {
   return forms[new Intl.PluralRules(locale).select(count)] ?? forms.other;
-}
-
-function formatPercent(locale: Locale, completionPercent: number): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'percent',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(completionPercent);
-}
-
-function formatWholePercent(locale: Locale, fraction: number): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'percent',
-    maximumFractionDigits: 0,
-  }).format(fraction);
 }
 
 const EN: Messages = {
@@ -91,15 +80,17 @@ const EN: Messages = {
   playAgainButton: 'Play again',
   restartButton: 'Restart',
   hintButton: 'Hint',
-  hintsUsed: (count) =>
-    `${count} hint${plural('en', count, { one: '', other: 's' })}`,
+  hintsUsed: (count, lostPoints) =>
+    `${count} hint${plural('en', count, { one: '', other: 's' })} ` +
+    `(−${lostPoints} pt${plural('en', lostPoints, { one: '', other: 's' })})`,
   hintCostBadge: (cost) => `−${cost} max`,
   hintCostLabel: (cost) =>
     `Reveals a word and lowers your max score by ${cost} point${plural('en', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revealed with a hint',
-  lockedOutNote: 'Too many hints — the win is out of reach this game.',
-  winThresholdLabel: (threshold) =>
-    `Win at ${formatWholePercent('en', threshold)}`,
+  lockedOutNote: (reachablePoints, winPoints) =>
+    `Too many hints — winning takes ${winPoints} points, ` +
+    `but only ${reachablePoints} can still be reached.`,
+  winThresholdLabel: (winPoints) => `Win at ${winPoints} points`,
   victory: 'YOU WIN!',
   invalidGameData: 'INVALID GAME DATA!',
   generationFailed: 'Failed to generate a game!',
@@ -111,8 +102,8 @@ const EN: Messages = {
   ratingsTitle: 'Ratings',
   closeButton: 'Close',
   levelName: (level) => level,
-  thresholdFrom: (minimumCompletion) =>
-    `from ${formatWholePercent('en', minimumCompletion)}`,
+  thresholdFrom: (points) =>
+    `from ${points} pt${plural('en', points, { one: '', other: 's' })}`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -134,11 +125,10 @@ const EN: Messages = {
         }
     }
   },
-  foundSummary: (words, points) =>
-    `Found ${words} word${plural('en', words, { one: '', other: 's' })} · ` +
-    `${points} point${plural('en', points, { one: '', other: 's' })}`,
-  progressLabel: (completionPercent, level) =>
-    `${formatPercent('en', completionPercent)} · ${level}`,
+  foundSummary: (words) =>
+    `Found ${words} word${plural('en', words, { one: '', other: 's' })}`,
+  progressLabel: (earnedPoints, maxPoints, level) =>
+    `${earnedPoints} / ${maxPoints} point${plural('en', maxPoints, { one: '', other: 's' })} · ${level}`,
 };
 
 const LEVELS_FR: Record<string, string> = {
@@ -167,16 +157,17 @@ const FR: Messages = {
   playAgainButton: 'Rejouer',
   restartButton: 'Recommencer',
   hintButton: 'Indice',
-  hintsUsed: (count) =>
-    `${count} indice${plural('fr', count, { one: '', other: 's' })}`,
+  hintsUsed: (count, lostPoints) =>
+    `${count} indice${plural('fr', count, { one: '', other: 's' })} ` +
+    `(−${lostPoints} pt${plural('fr', lostPoints, { one: '', other: 's' })})`,
   hintCostBadge: (cost) => `−${cost} max`,
   hintCostLabel: (cost) =>
     `Révèle un mot et réduit votre score max de ${cost} point${plural('fr', cost, { one: '', other: 's' })}`,
   hintedLegend: '* révélé par un indice',
-  lockedOutNote:
-    'Trop d’indices — la victoire est hors de portée cette partie.',
-  winThresholdLabel: (threshold) =>
-    `Victoire à ${formatWholePercent('fr', threshold)}`,
+  lockedOutNote: (reachablePoints, winPoints) =>
+    `Trop d’indices — il faut ${winPoints} points pour gagner, ` +
+    `mais seulement ${reachablePoints} restent accessibles.`,
+  winThresholdLabel: (winPoints) => `Victoire à ${winPoints} points`,
   victory: 'VOUS AVEZ GAGNÉ !',
   invalidGameData: 'DONNÉES DE PARTIE INVALIDES !',
   generationFailed: 'Impossible de générer une partie !',
@@ -188,8 +179,8 @@ const FR: Messages = {
   ratingsTitle: 'Niveaux',
   closeButton: 'Fermer',
   levelName: (level) => LEVELS_FR[level] ?? level,
-  thresholdFrom: (minimumCompletion) =>
-    `à partir de ${formatWholePercent('fr', minimumCompletion)}`,
+  thresholdFrom: (points) =>
+    `à partir de ${points} pt${plural('fr', points, { one: '', other: 's' })}`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -211,11 +202,10 @@ const FR: Messages = {
         }
     }
   },
-  foundSummary: (words, points) =>
-    `${words} mot${plural('fr', words, { one: '', other: 's' })} trouvé${plural('fr', words, { one: '', other: 's' })} · ` +
-    `${points} point${plural('fr', points, { one: '', other: 's' })}`,
-  progressLabel: (completionPercent, level) =>
-    `${formatPercent('fr', completionPercent)} · ${LEVELS_FR[level] ?? level}`,
+  foundSummary: (words) =>
+    `${words} mot${plural('fr', words, { one: '', other: 's' })} trouvé${plural('fr', words, { one: '', other: 's' })}`,
+  progressLabel: (earnedPoints, maxPoints, level) =>
+    `${earnedPoints} / ${maxPoints} point${plural('fr', maxPoints, { one: '', other: 's' })} · ${LEVELS_FR[level] ?? level}`,
 };
 
 const LEVELS_ES: Record<string, string> = {
@@ -244,16 +234,17 @@ const ES: Messages = {
   playAgainButton: 'Jugar otra vez',
   restartButton: 'Reiniciar',
   hintButton: 'Pista',
-  hintsUsed: (count) =>
-    `${count} pista${plural('es', count, { one: '', other: 's' })}`,
+  hintsUsed: (count, lostPoints) =>
+    `${count} pista${plural('es', count, { one: '', other: 's' })} ` +
+    `(−${lostPoints} pt${plural('es', lostPoints, { one: '', other: 's' })})`,
   hintCostBadge: (cost) => `−${cost} máx`,
   hintCostLabel: (cost) =>
     `Revela una palabra y reduce tu puntuación máxima en ${cost} punto${plural('es', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revelada con una pista',
-  lockedOutNote:
-    'Demasiadas pistas: la victoria es inalcanzable en esta partida.',
-  winThresholdLabel: (threshold) =>
-    `Victoria al ${formatWholePercent('es', threshold)}`,
+  lockedOutNote: (reachablePoints, winPoints) =>
+    `Demasiadas pistas: para ganar se necesitan ${winPoints} puntos, ` +
+    `pero solo quedan ${reachablePoints} alcanzables.`,
+  winThresholdLabel: (winPoints) => `Victoria con ${winPoints} puntos`,
   victory: '¡GANASTE!',
   invalidGameData: '¡DATOS DE PARTIDA NO VÁLIDOS!',
   generationFailed: '¡No se pudo generar una partida!',
@@ -265,8 +256,8 @@ const ES: Messages = {
   ratingsTitle: 'Rangos',
   closeButton: 'Cerrar',
   levelName: (level) => LEVELS_ES[level] ?? level,
-  thresholdFrom: (minimumCompletion) =>
-    `desde ${formatWholePercent('es', minimumCompletion)}`,
+  thresholdFrom: (points) =>
+    `desde ${points} pt${plural('es', points, { one: '', other: 's' })}`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -288,11 +279,10 @@ const ES: Messages = {
         }
     }
   },
-  foundSummary: (words, points) =>
-    `${words} palabra${plural('es', words, { one: '', other: 's' })} encontrada${plural('es', words, { one: '', other: 's' })} · ` +
-    `${points} punto${plural('es', points, { one: '', other: 's' })}`,
-  progressLabel: (completionPercent, level) =>
-    `${formatPercent('es', completionPercent)} · ${LEVELS_ES[level] ?? level}`,
+  foundSummary: (words) =>
+    `${words} palabra${plural('es', words, { one: '', other: 's' })} encontrada${plural('es', words, { one: '', other: 's' })}`,
+  progressLabel: (earnedPoints, maxPoints, level) =>
+    `${earnedPoints} / ${maxPoints} punto${plural('es', maxPoints, { one: '', other: 's' })} · ${LEVELS_ES[level] ?? level}`,
 };
 
 const LEVELS_DE: Record<string, string> = {
@@ -321,15 +311,18 @@ const DE: Messages = {
   playAgainButton: 'Nochmal spielen',
   restartButton: 'Neu starten',
   hintButton: 'Tipp',
-  hintsUsed: (count) =>
-    `${count} ${plural('de', count, { one: 'Tipp', other: 'Tipps' })}`,
+  hintsUsed: (count, lostPoints) =>
+    `${count} ${plural('de', count, { one: 'Tipp', other: 'Tipps' })} ` +
+    `(−${lostPoints} Pkt.)`,
   hintCostBadge: (cost) => `−${cost} Max`,
   hintCostLabel: (cost) =>
     `Deckt ein Wort auf und senkt deinen Höchstpunktestand um ${cost} ${plural('de', cost, { one: 'Punkt', other: 'Punkte' })}`,
   hintedLegend: '* mit einem Tipp aufgedeckt',
-  lockedOutNote: 'Zu viele Tipps — der Sieg ist in dieser Runde unerreichbar.',
-  winThresholdLabel: (threshold) =>
-    `Sieg bei ${formatWholePercent('de', threshold)}`,
+  lockedOutNote: (reachablePoints, winPoints) =>
+    `Zu viele Tipps — zum Sieg sind ${winPoints} Punkte nötig, ` +
+    `aber nur noch ${reachablePoints} ${plural('de', reachablePoints, { one: 'ist', other: 'sind' })} erreichbar.`,
+  winThresholdLabel: (winPoints) =>
+    `Sieg ab ${winPoints} ${plural('de', winPoints, { one: 'Punkt', other: 'Punkten' })}`,
   victory: 'DU GEWINNST!',
   invalidGameData: 'UNGÜLTIGE SPIELDATEN!',
   generationFailed: 'Es konnte kein Spiel erstellt werden!',
@@ -341,8 +334,7 @@ const DE: Messages = {
   ratingsTitle: 'Ränge',
   closeButton: 'Schließen',
   levelName: (level) => LEVELS_DE[level] ?? level,
-  thresholdFrom: (minimumCompletion) =>
-    `ab ${formatWholePercent('de', minimumCompletion)}`,
+  thresholdFrom: (points) => `ab ${points} Pkt.`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -364,11 +356,10 @@ const DE: Messages = {
         }
     }
   },
-  foundSummary: (words, points) =>
-    `${words} ${plural('de', words, { one: 'Wort', other: 'Wörter' })} gefunden · ` +
-    `${points} ${plural('de', points, { one: 'Punkt', other: 'Punkte' })}`,
-  progressLabel: (completionPercent, level) =>
-    `${formatPercent('de', completionPercent)} · ${LEVELS_DE[level] ?? level}`,
+  foundSummary: (words) =>
+    `${words} ${plural('de', words, { one: 'Wort', other: 'Wörter' })} gefunden`,
+  progressLabel: (earnedPoints, maxPoints, level) =>
+    `${earnedPoints} / ${maxPoints} ${plural('de', maxPoints, { one: 'Punkt', other: 'Punkte' })} · ${LEVELS_DE[level] ?? level}`,
 };
 
 const LEVELS_IT: Record<string, string> = {
@@ -397,16 +388,18 @@ const IT: Messages = {
   playAgainButton: 'Gioca ancora',
   restartButton: 'Ricomincia',
   hintButton: 'Indizio',
-  hintsUsed: (count) =>
-    `${count} ${plural('it', count, { one: 'indizio', other: 'indizi' })}`,
+  hintsUsed: (count, lostPoints) =>
+    `${count} ${plural('it', count, { one: 'indizio', other: 'indizi' })} ` +
+    `(−${lostPoints} pt)`,
   hintCostBadge: (cost) => `−${cost} max`,
   hintCostLabel: (cost) =>
     `Rivela una parola e riduce il punteggio massimo di ${cost} ${plural('it', cost, { one: 'punto', other: 'punti' })}`,
   hintedLegend: '* rivelata con un indizio',
-  lockedOutNote:
-    'Troppi indizi: la vittoria è irraggiungibile in questa partita.',
-  winThresholdLabel: (threshold) =>
-    `Vittoria al ${formatWholePercent('it', threshold)}`,
+  lockedOutNote: (reachablePoints, winPoints) =>
+    `Troppi indizi: per vincere ${plural('it', winPoints, { one: 'serve', other: 'servono' })} ${winPoints} ${plural('it', winPoints, { one: 'punto', other: 'punti' })}, ` +
+    `ma ne ${plural('it', reachablePoints, { one: 'resta raggiungibile', other: 'restano raggiungibili' })} solo ${reachablePoints}.`,
+  winThresholdLabel: (winPoints) =>
+    `Vittoria a ${winPoints} ${plural('it', winPoints, { one: 'punto', other: 'punti' })}`,
   victory: 'HAI VINTO!',
   invalidGameData: 'DATI DI GIOCO NON VALIDI!',
   generationFailed: 'Impossibile generare una partita!',
@@ -418,8 +411,7 @@ const IT: Messages = {
   ratingsTitle: 'Livelli',
   closeButton: 'Chiudi',
   levelName: (level) => LEVELS_IT[level] ?? level,
-  thresholdFrom: (minimumCompletion) =>
-    `da ${formatWholePercent('it', minimumCompletion)}`,
+  thresholdFrom: (points) => `da ${points} pt`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -441,11 +433,10 @@ const IT: Messages = {
         }
     }
   },
-  foundSummary: (words, points) =>
-    `${words} ${plural('it', words, { one: 'parola trovata', other: 'parole trovate' })} · ` +
-    `${points} ${plural('it', points, { one: 'punto', other: 'punti' })}`,
-  progressLabel: (completionPercent, level) =>
-    `${formatPercent('it', completionPercent)} · ${LEVELS_IT[level] ?? level}`,
+  foundSummary: (words) =>
+    `${words} ${plural('it', words, { one: 'parola trovata', other: 'parole trovate' })}`,
+  progressLabel: (earnedPoints, maxPoints, level) =>
+    `${earnedPoints} / ${maxPoints} ${plural('it', maxPoints, { one: 'punto', other: 'punti' })} · ${LEVELS_IT[level] ?? level}`,
 };
 
 const LEVELS_PT: Record<string, string> = {
@@ -474,15 +465,17 @@ const PT: Messages = {
   playAgainButton: 'Jogar de novo',
   restartButton: 'Recomeçar',
   hintButton: 'Dica',
-  hintsUsed: (count) =>
-    `${count} dica${plural('pt', count, { one: '', other: 's' })}`,
+  hintsUsed: (count, lostPoints) =>
+    `${count} dica${plural('pt', count, { one: '', other: 's' })} ` +
+    `(−${lostPoints} pt${plural('pt', lostPoints, { one: '', other: 's' })})`,
   hintCostBadge: (cost) => `−${cost} máx`,
   hintCostLabel: (cost) =>
     `Revela uma palavra e reduz sua pontuação máxima em ${cost} ponto${plural('pt', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revelada com uma dica',
-  lockedOutNote: 'Dicas demais — a vitória está fora de alcance neste jogo.',
-  winThresholdLabel: (threshold) =>
-    `Vitória em ${formatWholePercent('pt', threshold)}`,
+  lockedOutNote: (reachablePoints, winPoints) =>
+    `Dicas demais — vencer exige ${winPoints} pontos, ` +
+    `mas só dá para alcançar ${reachablePoints}.`,
+  winThresholdLabel: (winPoints) => `Vitória com ${winPoints} pontos`,
   victory: 'VOCÊ VENCEU!',
   invalidGameData: 'DADOS DE JOGO INVÁLIDOS!',
   generationFailed: 'Não foi possível gerar um jogo!',
@@ -494,8 +487,8 @@ const PT: Messages = {
   ratingsTitle: 'Níveis',
   closeButton: 'Fechar',
   levelName: (level) => LEVELS_PT[level] ?? level,
-  thresholdFrom: (minimumCompletion) =>
-    `a partir de ${formatWholePercent('pt', minimumCompletion)}`,
+  thresholdFrom: (points) =>
+    `a partir de ${points} pt${plural('pt', points, { one: '', other: 's' })}`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -517,11 +510,10 @@ const PT: Messages = {
         }
     }
   },
-  foundSummary: (words, points) =>
-    `${words} palavra${plural('pt', words, { one: '', other: 's' })} encontrada${plural('pt', words, { one: '', other: 's' })} · ` +
-    `${points} ponto${plural('pt', points, { one: '', other: 's' })}`,
-  progressLabel: (completionPercent, level) =>
-    `${formatPercent('pt', completionPercent)} · ${LEVELS_PT[level] ?? level}`,
+  foundSummary: (words) =>
+    `${words} palavra${plural('pt', words, { one: '', other: 's' })} encontrada${plural('pt', words, { one: '', other: 's' })}`,
+  progressLabel: (earnedPoints, maxPoints, level) =>
+    `${earnedPoints} / ${maxPoints} ponto${plural('pt', maxPoints, { one: '', other: 's' })} · ${LEVELS_PT[level] ?? level}`,
 };
 
 const LEVELS_NL: Record<string, string> = {
@@ -550,15 +542,18 @@ const NL: Messages = {
   playAgainButton: 'Opnieuw spelen',
   restartButton: 'Opnieuw beginnen',
   hintButton: 'Hint',
-  hintsUsed: (count) =>
-    `${count} hint${plural('nl', count, { one: '', other: 's' })}`,
+  hintsUsed: (count, lostPoints) =>
+    `${count} hint${plural('nl', count, { one: '', other: 's' })} ` +
+    `(−${lostPoints} ${plural('nl', lostPoints, { one: 'pt', other: 'ptn' })})`,
   hintCostBadge: (cost) => `−${cost} max`,
   hintCostLabel: (cost) =>
     `Onthult een woord en verlaagt je maximale score met ${cost} ${plural('nl', cost, { one: 'punt', other: 'punten' })}`,
   hintedLegend: '* onthuld met een hint',
-  lockedOutNote: 'Te veel hints — winnen zit er dit spel niet meer in.',
-  winThresholdLabel: (threshold) =>
-    `Winst bij ${formatWholePercent('nl', threshold)}`,
+  lockedOutNote: (reachablePoints, winPoints) =>
+    `Te veel hints — winnen vergt ${winPoints} punten, ` +
+    `maar er ${plural('nl', reachablePoints, { one: 'is', other: 'zijn' })} er nog maar ${reachablePoints} haalbaar.`,
+  winThresholdLabel: (winPoints) =>
+    `Winst bij ${winPoints} ${plural('nl', winPoints, { one: 'punt', other: 'punten' })}`,
   victory: 'JIJ WINT!',
   invalidGameData: 'ONGELDIGE SPELDATA!',
   generationFailed: 'Kon geen spel genereren!',
@@ -570,8 +565,8 @@ const NL: Messages = {
   ratingsTitle: 'Niveaus',
   closeButton: 'Sluiten',
   levelName: (level) => LEVELS_NL[level] ?? level,
-  thresholdFrom: (minimumCompletion) =>
-    `vanaf ${formatWholePercent('nl', minimumCompletion)}`,
+  thresholdFrom: (points) =>
+    `vanaf ${points} ${plural('nl', points, { one: 'pt', other: 'ptn' })}`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -593,11 +588,10 @@ const NL: Messages = {
         }
     }
   },
-  foundSummary: (words, points) =>
-    `${words} ${plural('nl', words, { one: 'woord', other: 'woorden' })} gevonden · ` +
-    `${points} ${plural('nl', points, { one: 'punt', other: 'punten' })}`,
-  progressLabel: (completionPercent, level) =>
-    `${formatPercent('nl', completionPercent)} · ${LEVELS_NL[level] ?? level}`,
+  foundSummary: (words) =>
+    `${words} ${plural('nl', words, { one: 'woord', other: 'woorden' })} gevonden`,
+  progressLabel: (earnedPoints, maxPoints, level) =>
+    `${earnedPoints} / ${maxPoints} ${plural('nl', maxPoints, { one: 'punt', other: 'punten' })} · ${LEVELS_NL[level] ?? level}`,
 };
 
 const LEVELS_JA: Record<string, string> = {
@@ -626,13 +620,14 @@ const JA: Messages = {
   playAgainButton: 'もう一度遊ぶ',
   restartButton: 'やり直す',
   hintButton: 'ヒント',
-  hintsUsed: (count) => `ヒント${count}回`,
+  hintsUsed: (count, lostPoints) => `ヒント${count}回（−${lostPoints}点）`,
   hintCostBadge: (cost) => `最大−${cost}`,
   hintCostLabel: (cost) => `単語を1つ表示し、最大スコアが${cost}点下がります`,
   hintedLegend: '* ヒントで表示',
-  lockedOutNote: 'ヒントが多すぎて、このゲームでは勝てません。',
-  winThresholdLabel: (threshold) =>
-    `${formatWholePercent('ja', threshold)}で勝利`,
+  lockedOutNote: (reachablePoints, winPoints) =>
+    `ヒントが多すぎます — 勝利には${winPoints}ポイント必要ですが、` +
+    `あと最大${reachablePoints}ポイントしか獲得できません。`,
+  winThresholdLabel: (winPoints) => `${winPoints}ポイントで勝利`,
   victory: 'あなたの勝ち！',
   invalidGameData: '無効なゲームデータ！',
   generationFailed: 'ゲームを生成できませんでした！',
@@ -643,8 +638,7 @@ const JA: Messages = {
   ratingsTitle: 'ランク',
   closeButton: '閉じる',
   levelName: (level) => LEVELS_JA[level] ?? level,
-  thresholdFrom: (minimumCompletion) =>
-    `${formatWholePercent('ja', minimumCompletion)}から`,
+  thresholdFrom: (points) => `${points}ポイントから`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -666,9 +660,9 @@ const JA: Messages = {
         }
     }
   },
-  foundSummary: (words, points) => `${words}個の単語 · ${points}ポイント`,
-  progressLabel: (completionPercent, level) =>
-    `${formatPercent('ja', completionPercent)} · ${LEVELS_JA[level] ?? level}`,
+  foundSummary: (words) => `${words}個の単語`,
+  progressLabel: (earnedPoints, maxPoints, level) =>
+    `${earnedPoints} / ${maxPoints}ポイント · ${LEVELS_JA[level] ?? level}`,
 };
 
 const LEVELS_KO: Record<string, string> = {
@@ -697,14 +691,15 @@ const KO: Messages = {
   playAgainButton: '다시 하기',
   restartButton: '다시 시작',
   hintButton: '힌트',
-  hintsUsed: (count) => `힌트 ${count}개`,
+  hintsUsed: (count, lostPoints) => `힌트 ${count}개 (−${lostPoints}점)`,
   hintCostBadge: (cost) => `최대 −${cost}`,
   hintCostLabel: (cost) =>
     `단어 하나를 공개하고 최대 점수가 ${cost}점 낮아집니다`,
   hintedLegend: '* 힌트로 공개',
-  lockedOutNote: '힌트를 너무 많이 써서 이번 게임은 이길 수 없어요.',
-  winThresholdLabel: (threshold) =>
-    `${formatWholePercent('ko', threshold)}에서 승리`,
+  lockedOutNote: (reachablePoints, winPoints) =>
+    `힌트를 너무 많이 썼어요 — 승리에는 ${winPoints}점이 필요하지만 ` +
+    `이제 최대 ${reachablePoints}점만 얻을 수 있어요.`,
+  winThresholdLabel: (winPoints) => `${winPoints}점에서 승리`,
   victory: '승리!',
   invalidGameData: '잘못된 게임 데이터!',
   generationFailed: '게임을 생성하지 못했어요!',
@@ -715,8 +710,7 @@ const KO: Messages = {
   ratingsTitle: '등급',
   closeButton: '닫기',
   levelName: (level) => LEVELS_KO[level] ?? level,
-  thresholdFrom: (minimumCompletion) =>
-    `${formatWholePercent('ko', minimumCompletion)}부터`,
+  thresholdFrom: (points) => `${points}점부터`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -738,9 +732,9 @@ const KO: Messages = {
         }
     }
   },
-  foundSummary: (words, points) => `단어 ${words}개 · ${points}점`,
-  progressLabel: (completionPercent, level) =>
-    `${formatPercent('ko', completionPercent)} · ${LEVELS_KO[level] ?? level}`,
+  foundSummary: (words) => `단어 ${words}개`,
+  progressLabel: (earnedPoints, maxPoints, level) =>
+    `${earnedPoints} / ${maxPoints}점 · ${LEVELS_KO[level] ?? level}`,
 };
 
 const LEVELS_ZH: Record<string, string> = {
@@ -769,13 +763,14 @@ const ZH: Messages = {
   playAgainButton: '再玩一局',
   restartButton: '重新开始',
   hintButton: '提示',
-  hintsUsed: (count) => `${count} 次提示`,
+  hintsUsed: (count, lostPoints) => `${count} 次提示（−${lostPoints} 分）`,
   hintCostBadge: (cost) => `上限−${cost}`,
   hintCostLabel: (cost) => `揭示一个单词，最高分降低 ${cost} 分`,
   hintedLegend: '* 用提示揭示',
-  lockedOutNote: '提示用得太多，这局无法获胜了。',
-  winThresholdLabel: (threshold) =>
-    `${formatWholePercent('zh', threshold)} 获胜`,
+  lockedOutNote: (reachablePoints, winPoints) =>
+    `提示用得太多——获胜需要 ${winPoints} 分，` +
+    `但最多只能拿到 ${reachablePoints} 分。`,
+  winThresholdLabel: (winPoints) => `${winPoints} 分获胜`,
   victory: '你赢了！',
   invalidGameData: '无效的游戏数据！',
   generationFailed: '无法生成游戏！',
@@ -786,8 +781,7 @@ const ZH: Messages = {
   ratingsTitle: '等级',
   closeButton: '关闭',
   levelName: (level) => LEVELS_ZH[level] ?? level,
-  thresholdFrom: (minimumCompletion) =>
-    `${formatWholePercent('zh', minimumCompletion)}起`,
+  thresholdFrom: (points) => `${points} 分起`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -809,9 +803,9 @@ const ZH: Messages = {
         }
     }
   },
-  foundSummary: (words, points) => `已找到 ${words} 个单词 · ${points} 分`,
-  progressLabel: (completionPercent, level) =>
-    `${formatPercent('zh', completionPercent)} · ${LEVELS_ZH[level] ?? level}`,
+  foundSummary: (words) => `已找到 ${words} 个单词`,
+  progressLabel: (earnedPoints, maxPoints, level) =>
+    `${earnedPoints} / ${maxPoints} 分 · ${LEVELS_ZH[level] ?? level}`,
 };
 
 const LEVELS_RU: Record<string, string> = {
@@ -840,15 +834,18 @@ const RU: Messages = {
   playAgainButton: 'Сыграть ещё раз',
   restartButton: 'Начать заново',
   hintButton: 'Подсказка',
-  hintsUsed: (count) =>
-    `${count} ${plural('ru', count, { one: 'подсказка', few: 'подсказки', other: 'подсказок' })}`,
+  hintsUsed: (count, lostPoints) =>
+    `${count} ${plural('ru', count, { one: 'подсказка', few: 'подсказки', other: 'подсказок' })} ` +
+    `(−${lostPoints} очк.)`,
   hintCostBadge: (cost) => `−${cost} макс`,
   hintCostLabel: (cost) =>
     `Открывает слово и снижает максимум на ${cost} ${plural('ru', cost, { one: 'очко', few: 'очка', other: 'очков' })}`,
   hintedLegend: '* открыто подсказкой',
-  lockedOutNote: 'Слишком много подсказок — победа в этой игре недостижима.',
-  winThresholdLabel: (threshold) =>
-    `Победа при ${formatWholePercent('ru', threshold)}`,
+  lockedOutNote: (reachablePoints, winPoints) =>
+    `Слишком много подсказок — для победы нужно ${winPoints} ${plural('ru', winPoints, { one: 'очко', few: 'очка', other: 'очков' })}, ` +
+    `но достижимо не больше ${reachablePoints}.`,
+  winThresholdLabel: (winPoints) =>
+    `Победа при ${winPoints} ${plural('ru', winPoints, { one: 'очке', other: 'очках' })}`,
   victory: 'ПОБЕДА!',
   invalidGameData: 'НЕВЕРНЫЕ ДАННЫЕ ИГРЫ!',
   generationFailed: 'Не удалось создать игру!',
@@ -859,8 +856,7 @@ const RU: Messages = {
   ratingsTitle: 'Звания',
   closeButton: 'Закрыть',
   levelName: (level) => LEVELS_RU[level] ?? level,
-  thresholdFrom: (minimumCompletion) =>
-    `от ${formatWholePercent('ru', minimumCompletion)}`,
+  thresholdFrom: (points) => `от ${points} очк.`,
   feedbackText: (feedback) => {
     switch (feedback.kind) {
       case 'letter-rejected':
@@ -882,11 +878,10 @@ const RU: Messages = {
         }
     }
   },
-  foundSummary: (words, points) =>
-    `Найдено ${words} ${plural('ru', words, { one: 'слово', few: 'слова', other: 'слов' })} · ` +
-    `${points} ${plural('ru', points, { one: 'очко', few: 'очка', other: 'очков' })}`,
-  progressLabel: (completionPercent, level) =>
-    `${formatPercent('ru', completionPercent)} · ${LEVELS_RU[level] ?? level}`,
+  foundSummary: (words) =>
+    `Найдено ${words} ${plural('ru', words, { one: 'слово', few: 'слова', other: 'слов' })}`,
+  progressLabel: (earnedPoints, maxPoints, level) =>
+    `${earnedPoints} / ${maxPoints} ${plural('ru', maxPoints, { one: 'очко', few: 'очка', other: 'очков' })} · ${LEVELS_RU[level] ?? level}`,
 };
 
 export const CATALOGS: Record<Locale, Messages> = {

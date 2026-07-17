@@ -6,7 +6,7 @@ import {
   shuffled,
   storeWordSalad,
 } from './game/generation';
-import { getLevel } from './game/levels';
+import { completionToPoints, getLevel } from './game/levels';
 import type { WordPreview } from './game/wordSalad';
 import { WordSalad } from './game/wordSalad';
 import {
@@ -97,9 +97,11 @@ export interface PlayingGame {
   lastFoundWord: string | null;
   earnedPoints: number;
   maxPoints: number;
+  lostPoints: number;
   earnedPercent: number;
   lostPercent: number;
   winThreshold: number;
+  winPoints: number;
   level: string;
   hasWon: boolean;
   lockedOut: boolean;
@@ -580,10 +582,13 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   const { earnedPoints, lostPoints } = tallyPoints(wordSalad, hintedWords);
   const earnedPercent = earnedPoints / wordSalad.maxPoints;
   const lostPercent = lostPoints / wordSalad.maxPoints;
-  const hasWon = earnedPercent >= WIN_THRESHOLD;
+  // The win line in whole points; the UI reports this number, so deciding
+  // the win with it keeps the display and the mechanic in lockstep.
+  const winPoints = completionToPoints(WIN_THRESHOLD, wordSalad.maxPoints);
+  const hasWon = earnedPoints >= winPoints;
   // Earned points can rise at most to (max - lost); once that ceiling falls
   // below the win line, the level can no longer be won.
-  const lockedOut = !hasWon && lostPercent > 1 - WIN_THRESHOLD;
+  const lockedOut = !hasWon && wordSalad.maxPoints - lostPoints < winPoints;
   const nextHint = nextHintWord(wordSalad, hintedWords);
   const canHint = nextHint !== null;
   const hintCost = nextHint === null ? 0 : wordSalad.pointsFor(nextHint);
@@ -612,9 +617,11 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     lastFoundWord,
     earnedPoints,
     maxPoints: wordSalad.maxPoints,
+    lostPoints,
     earnedPercent,
     lostPercent,
     winThreshold: WIN_THRESHOLD,
+    winPoints,
     level: getLevel(earnedPercent),
     hasWon,
     lockedOut,

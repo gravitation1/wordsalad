@@ -92,8 +92,11 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           level={game.level}
           lockedOut={game.lockedOut}
           lostPercent={game.lostPercent}
+          lostPoints={game.lostPoints}
+          maxPoints={game.maxPoints}
           onPlayAgain={game.startNewGame}
           onRestart={game.restartGame}
+          winPoints={game.winPoints}
           winThreshold={game.winThreshold}
         />
       </div>

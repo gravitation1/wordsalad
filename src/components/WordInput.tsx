@@ -133,71 +133,80 @@ export function WordInput({
   };
 
   return (
-    <p
-      className={`flex h-10 items-center text-3xl font-semibold tracking-widest ${
-        rejection === null ? '' : 'input-shake'
-      }`}
-      // Remounts on every rejection (key) to replay the shake.
-      key={rejection?.id ?? 0}
-    >
+    <p className="flex h-10 items-center text-3xl font-semibold tracking-widest">
+      {/* Shakes on every rejection by alternating between two identical
+          animations (a name change replays without a remount, which would
+          reset the hint button's entrance). The fixed ghosts below must stay
+          OUTSIDE this wrapper: its shake transform would become their
+          containing block, throwing their viewport coordinates off. */}
       <span
-        aria-label={t.currentWordLabel}
-        data-revealing={isRevealing}
-        ref={wordRef}
+        className={`flex items-center ${
+          rejection === null
+            ? ''
+            : rejection.id % 2 === 1
+              ? 'input-shake'
+              : 'input-shake-alt'
+        }`}
       >
-        {inputLetters.map((letter, index) => (
-          <span
-            className={`${letterClass(letter, requiredCharacter, isValidCharacter)} ${
-              isRevealing ? 'letter-reveal' : ''
-            }`}
-            key={`${letter}${index}`}
-            style={
-              isRevealing
-                ? { animationDelay: `${index * REVEAL_STAGGER_MS}ms` }
-                : undefined
-            }
-          >
-            {letter}
-          </span>
-        ))}
-      </span>
-      {showHint ? (
-        <button
-          // The button eases in; after a submission it waits out the exiting
-          // word so the two never hard-cut in the same frame.
-          className={`${wordExit === null ? 'hint-enter' : 'hint-enter-delayed'} flex h-10 touch-manipulation items-center gap-2 rounded-full bg-gray-100 px-4 text-sm font-medium text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200`}
-          onClick={handleHint}
-          title={t.hintCostLabel(hintCost)}
-          type="button"
+        <span
+          aria-label={t.currentWordLabel}
+          data-revealing={isRevealing}
+          ref={wordRef}
         >
-          {t.hintButton}
-          {/* Taking a hint lowers your reachable max score by this much. */}
-          <span
-            aria-hidden="true"
-            className={HINT_BADGE_CLASS}
-            ref={costBadgeRef}
+          {inputLetters.map((letter, index) => (
+            <span
+              className={`${letterClass(letter, requiredCharacter, isValidCharacter)} ${
+                isRevealing ? 'letter-reveal' : ''
+              }`}
+              key={`${letter}${index}`}
+              style={
+                isRevealing
+                  ? { animationDelay: `${index * REVEAL_STAGGER_MS}ms` }
+                  : undefined
+              }
+            >
+              {letter}
+            </span>
+          ))}
+        </span>
+        {showHint ? (
+          <button
+            // The button eases in; after a submission it waits out the exiting
+            // word so the two never hard-cut in the same frame.
+            className={`${wordExit === null ? 'hint-enter' : 'hint-enter-delayed'} flex h-10 touch-manipulation items-center gap-2 rounded-full bg-gray-100 px-4 text-sm font-medium text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200`}
+            onClick={handleHint}
+            title={t.hintCostLabel(hintCost)}
+            type="button"
           >
-            {t.hintCostBadge(hintCost)}
-          </span>
-          {/* Keyboard shortcut, shown only where there is a real keyboard. */}
-          <span
-            aria-hidden="true"
-            className="hidden h-4 w-4 items-center justify-center rounded border border-gray-300 text-[10px] font-normal leading-none tracking-normal text-gray-400 pointer-fine:inline-flex dark:border-gray-600 dark:text-gray-500"
-          >
-            {/* tracking-normal above: inherited letter-spacing trails the
+            {t.hintButton}
+            {/* Taking a hint lowers your reachable max score by this much. */}
+            <span
+              aria-hidden="true"
+              className={HINT_BADGE_CLASS}
+              ref={costBadgeRef}
+            >
+              {t.hintCostBadge(hintCost)}
+            </span>
+            {/* Keyboard shortcut, shown only where there is a real keyboard. */}
+            <span
+              aria-hidden="true"
+              className="hidden h-4 w-4 items-center justify-center rounded border border-gray-300 text-[10px] font-normal leading-none tracking-normal text-gray-400 pointer-fine:inline-flex dark:border-gray-600 dark:text-gray-500"
+            >
+              {/* tracking-normal above: inherited letter-spacing trails the
                 glyph and skews it off-center. The half-pixel lift moves the
                 ink to its measured optical center. */}
-            <span className="inline-block -translate-y-[0.5px]">?</span>
+              <span className="inline-block -translate-y-[0.5px]">?</span>
+            </span>
+          </button>
+        ) : (
+          <span
+            aria-hidden="true"
+            className="animate-pulse font-light text-gray-400"
+          >
+            |
           </span>
-        </button>
-      ) : (
-        <span
-          aria-hidden="true"
-          className="animate-pulse font-light text-gray-400"
-        >
-          |
-        </span>
-      )}
+        )}
+      </span>
       {/* The submitted word animates away from where it sat — rising when
           accepted, sinking when rejected — its letters peeling off left to
           right, while the hint button returns underneath. */}
@@ -207,7 +216,7 @@ export function WordInput({
           className="pointer-events-none fixed"
           data-testid="word-exit"
           data-word-exit={wordExit.outcome}
-          key={wordExit.id}
+          key={`exit-${wordExit.id}`}
           ref={placeExitGhost}
         >
           {wordExit.letters.map((letter, index) => (
@@ -226,7 +235,7 @@ export function WordInput({
         <span
           aria-hidden="true"
           className={`badge-fly-away pointer-events-none fixed ${HINT_BADGE_CLASS}`}
-          key={spentHint.id}
+          key={`spent-${spentHint.id}`}
           style={{ left: ghostOrigin.left, top: ghostOrigin.top }}
         >
           {t.hintCostBadge(spentHint.cost)}

@@ -1,21 +1,33 @@
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 
-import { getLevelLadder } from '../game/levels';
+import { completionToPoints, getLevelLadder } from '../game/levels';
 import { useMessages } from '../i18n';
 
 interface RatingsDialogProps {
-  completionPercent: number;
+  earnedPoints: number;
+  maxPoints: number;
+  winPoints: number;
   level: string;
   onClose: () => void;
 }
 
 export function RatingsDialog({
-  completionPercent,
+  earnedPoints,
+  maxPoints,
+  winPoints,
   level,
   onClose,
 }: RatingsDialogProps) {
   const t = useMessages();
   const dialogRef = useRef<HTMLDialogElement>(null);
+
+  // Each rung's lower bound on this puzzle's whole-point scale, plus where
+  // the win line falls: right above the first rung that reaches it.
+  const ladder = getLevelLadder().map((step) => ({
+    ...step,
+    points: completionToPoints(step.minimumCompletion, maxPoints),
+  }));
+  const winIndex = ladder.findIndex((step) => step.points >= winPoints);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -60,30 +72,44 @@ export function RatingsDialog({
         {t.ratingsTitle}
       </h2>
       <ul className="space-y-1.5">
-        {getLevelLadder().map((step) => {
-          const isAchieved = completionPercent >= step.minimumCompletion;
+        {ladder.map((step, index) => {
+          const isAchieved = earnedPoints >= step.points;
           const isCurrent = step.level === level;
           return (
-            <li
-              className={`flex items-baseline justify-between gap-4 text-sm ${
-                isCurrent
-                  ? 'font-semibold text-accent'
-                  : isAchieved
-                    ? ''
-                    : 'text-gray-400 dark:text-gray-600'
-              }`}
-              data-achieved={isAchieved ? 'true' : 'false'}
-              data-current={isCurrent ? 'true' : 'false'}
-              key={step.level}
-            >
-              <span className="flex items-center gap-1.5">
-                <span aria-hidden="true">{isAchieved ? '✓' : '○'}</span>
-                {t.levelName(step.level)}
-              </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {t.thresholdFrom(step.minimumCompletion)}
-              </span>
-            </li>
+            <Fragment key={step.level}>
+              {index === winIndex ? (
+                <li className="flex items-center gap-2 pt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                  <span
+                    aria-hidden="true"
+                    className="h-px flex-1 bg-gray-300 dark:bg-gray-600"
+                  />
+                  {t.winThresholdLabel(winPoints)}
+                  <span
+                    aria-hidden="true"
+                    className="h-px flex-1 bg-gray-300 dark:bg-gray-600"
+                  />
+                </li>
+              ) : null}
+              <li
+                className={`flex items-baseline justify-between gap-4 text-sm ${
+                  isCurrent
+                    ? 'font-semibold text-accent'
+                    : isAchieved
+                      ? ''
+                      : 'text-gray-400 dark:text-gray-600'
+                }`}
+                data-achieved={isAchieved ? 'true' : 'false'}
+                data-current={isCurrent ? 'true' : 'false'}
+              >
+                <span className="flex items-center gap-1.5">
+                  <span aria-hidden="true">{isAchieved ? '✓' : '○'}</span>
+                  {t.levelName(step.level)}
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {t.thresholdFrom(step.points)}
+                </span>
+              </li>
+            </Fragment>
           );
         })}
       </ul>

@@ -40,3 +40,13 @@ export function getLevelLadder(): readonly LevelStep[] {
   ladder.push({ level: TOP_LEVEL, minimumCompletion: 1 });
   return ladder;
 }
+
+// The smallest whole-point score that reaches a completion fraction. The
+// epsilon absorbs float noise so a boundary that means exactly N points
+// never rounds up to N + 1.
+export function completionToPoints(
+  fraction: number,
+  maxPoints: number,
+): number {
+  return Math.ceil(fraction * maxPoints - 1e-9);
+}

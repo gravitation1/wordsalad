@@ -60,7 +60,7 @@ describe('App', () => {
       'data-required',
       'false',
     );
-    expect(screen.getByText('Found 0 words · 0 points')).toBeInTheDocument();
+    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
   });
 
   it('stores the game in the location hash', () => {
@@ -107,8 +107,8 @@ describe('App', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'TEST earned you 1 point!',
     );
-    expect(screen.getByText('Found 1 word · 1 point')).toBeInTheDocument();
-    expect(screen.getByText('6.67% · Meh')).toBeInTheDocument();
+    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+    expect(screen.getByText('1 / 15 points · Meh')).toBeInTheDocument();
     expect(currentWord()).toBe('');
 
     const link = screen.getByRole('link', { name: 'TEST' });
@@ -152,9 +152,9 @@ describe('App', () => {
     expect(
       screen.getByRole('button', { name: 'Play again' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Found 3 words · 15 points')).toBeInTheDocument();
+    expect(screen.getByText('Found 3 words')).toBeInTheDocument();
     expect(
-      screen.getByText('100.00% · Super-Duper-Genius'),
+      screen.getByText('15 / 15 points · Super-Duper-Genius'),
     ).toBeInTheDocument();
   });
 
@@ -175,7 +175,7 @@ describe('App', () => {
     );
     render(<App dictionary={DICTIONARY} />);
 
-    expect(screen.getByText('Found 2 words · 4 points')).toBeInTheDocument();
+    expect(screen.getByText('Found 2 words')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'TEST' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'ROTTED' })).toBeInTheDocument();
 
@@ -193,7 +193,7 @@ describe('App', () => {
 
     expect(screen.getByText('YOU WIN!')).toBeInTheDocument();
     expect(
-      screen.getByText('100.00% · Super-Duper-Genius'),
+      screen.getByText('15 / 15 points · Super-Duper-Genius'),
     ).toBeInTheDocument();
   });
 
@@ -204,25 +204,31 @@ describe('App', () => {
     );
     render(<App dictionary={DICTIONARY} />);
 
-    expect(screen.getByText('Found 1 word · 1 point')).toBeInTheDocument();
+    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
   });
 
   it('shows the ratings ladder from the progress label', () => {
     render(<App dictionary={DICTIONARY} />);
-    submitWord('test'); // 6.67% -> Meh
+    submitWord('test'); // 1 of 15 points -> Meh
 
-    fireEvent.click(screen.getByRole('button', { name: '6.67% · Meh' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: '1 / 15 points · Meh' }),
+    );
 
     const dialog = screen.getByRole('dialog');
     const rows = within(dialog).getAllByRole('listitem');
-    expect(rows).toHaveLength(11);
+    // The 11 rating rungs plus the win line marker.
+    expect(rows).toHaveLength(12);
 
     const rowFor = (name: string) =>
       rows.find((row) => within(row).queryByText(name) !== null);
     expect(rowFor('Idiot')).toHaveAttribute('data-achieved', 'true');
     expect(rowFor('Meh')).toHaveAttribute('data-current', 'true');
     expect(rowFor('Okay')).toHaveAttribute('data-achieved', 'false');
-    expect(rowFor('Super-Duper-Genius')).toHaveTextContent('from 100%');
+    expect(rowFor('Super-Duper-Genius')).toHaveTextContent('from 15 pts');
+
+    // The win line marks where victory falls on the ladder (12 of 15).
+    expect(within(dialog).getByText('Win at 12 points')).toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -231,7 +237,9 @@ describe('App', () => {
   it('ignores game keys while the ratings dialog is open', () => {
     render(<App dictionary={DICTIONARY} />);
     submitWord('test');
-    fireEvent.click(screen.getByRole('button', { name: '6.67% · Meh' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: '1 / 15 points · Meh' }),
+    );
 
     // Typing must not reach the game behind the modal.
     typeWord('rot');
@@ -319,7 +327,7 @@ describe('App', () => {
     expect(screen.getByText('* revealed with a hint')).toBeInTheDocument();
 
     // Hinted words score nothing: only ROTTED's 3 points count.
-    expect(screen.getByText('Found 2 words · 3 points')).toBeInTheDocument();
+    expect(screen.getByText('Found 2 words')).toBeInTheDocument();
 
     // The hinted mark persists per puzzle (committed when revealed).
     expect(
@@ -420,7 +428,7 @@ describe('App', () => {
     pressKey('Enter'); // submit TEST, word area empties
     fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // commit ROTTED
 
-    expect(screen.getByText('· 2 hints')).toBeInTheDocument();
+    expect(screen.getByText('· 2 hints (−4 pts)')).toBeInTheDocument();
     // Each hint commits its word the moment it is revealed.
     expect(
       JSON.parse(
@@ -435,17 +443,17 @@ describe('App', () => {
       JSON.stringify(['TEST', 'ROTTED', 'WORSTED']),
     );
     render(<App dictionary={DICTIONARY} />);
-    expect(screen.getByText('· 3 hints')).toBeInTheDocument();
+    expect(screen.getByText('· 3 hints (−15 pts)')).toBeInTheDocument();
   });
 
   it('clears the hint count when the puzzle is restarted', () => {
     render(<App dictionary={DICTIONARY} />);
     fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
     pressKey('Enter'); // score so Restart appears
-    expect(screen.getByText('· 1 hint')).toBeInTheDocument();
+    expect(screen.getByText('· 1 hint (−1 pt)')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
-    expect(screen.queryByText('· 1 hint')).not.toBeInTheDocument();
+    expect(screen.queryByText('· 1 hint (−1 pt)')).not.toBeInTheDocument();
     expect(
       window.localStorage.getItem('wordsalad:hinted:WORDTES.T.4'),
     ).toBeNull();
@@ -453,7 +461,7 @@ describe('App', () => {
 
   it('wins at the 75% threshold and lets you keep playing', () => {
     render(<App dictionary={DICTIONARY} />);
-    // Max is 15 points; the win line is 11.25.
+    // Max is 15 points; the win line is 12 (75% rounded up).
     submitWord('worsted'); // 11/15 = 73.3% — just below the line
     expect(screen.queryByText('YOU WIN!')).not.toBeInTheDocument();
 
@@ -462,12 +470,13 @@ describe('App', () => {
 
     // The game continues: a further word still scores.
     submitWord('rotted');
-    expect(screen.getByText('Found 3 words · 15 points')).toBeInTheDocument();
+    expect(screen.getByText('Found 3 words')).toBeInTheDocument();
   });
 
   it('warns when too many hints make the win unreachable', () => {
     render(<App dictionary={DICTIONARY} />);
-    const note = 'Too many hints — the win is out of reach this game.';
+    const note =
+      'Too many hints — winning takes 12 points, but only 11 can still be reached.';
 
     fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // commit TEST (1)
     expect(screen.queryByText(note)).not.toBeInTheDocument();
@@ -504,11 +513,11 @@ describe('App', () => {
     render(<App dictionary={DICTIONARY} />);
     submitWord('test');
     submitWord('rotted');
-    expect(screen.getByText('Found 2 words · 4 points')).toBeInTheDocument();
+    expect(screen.getByText('Found 2 words')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
 
-    expect(screen.getByText('Found 0 words · 0 points')).toBeInTheDocument();
+    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
     expect(window.localStorage.getItem('wordsalad:WORDTES.T.4')).toBeNull();
 
     // Same puzzle: the letters are unchanged and TEST scores again.
@@ -588,7 +597,7 @@ describe('App', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'TEST earned you 1 point!',
     );
-    expect(screen.getByText('Found 1 word · 1 point')).toBeInTheDocument();
+    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
   });
 
   it('removes the last tapped letter with the Delete button', () => {
@@ -681,6 +690,19 @@ describe('App', () => {
       'data-word-exit',
       'hinted',
     );
+  });
+
+  it('leaves the exit ghost alone when a letter is rejected', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    submitWord('toss'); // rejected: the ghost sinks away
+    const ghost = screen.getByTestId('word-exit');
+
+    // A rejected letter shakes the word area, but the ghost must not
+    // remount with it — a remount replays the exit animation, and the
+    // shake's transform would hijack the ghost's fixed positioning.
+    pressKey('q');
+    expect(screen.getByTestId('word-exit')).toBe(ghost);
   });
 
   it('signals submit readiness through the button state', () => {
