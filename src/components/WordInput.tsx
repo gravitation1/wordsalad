@@ -22,8 +22,8 @@ interface WordInputProps {
   isValidCharacter: (character: string) => boolean;
 }
 
-// Faded to sit quietly beside the muted "Hint" label; still red to tie it to
-// the bar's lost-max anti-progress.
+// Faded to sit quietly beside the muted "Hint" label; red as a cost warning
+// before the purchase (once spent, the bar shows the loss in neutral gray).
 const HINT_BADGE_CLASS =
   'flex h-5 items-center whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2 text-[11px] font-semibold text-red-400 dark:border-red-400/25 dark:bg-red-400/10 dark:text-red-400/80';
 

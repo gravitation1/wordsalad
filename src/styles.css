@@ -2,8 +2,11 @@
 
 /* Design tokens: change these to restyle the whole game. */
 @theme {
-  --color-accent: #059669;
-  --color-accent-soft: #ecfdf5;
+  /* One accent for both themes: teal-600 is dark enough to carry white
+     text on filled tiles and buttons, yet bright enough to read as accent
+     text on the dark surfaces. */
+  --color-accent: #0d9488; /* teal-600 */
+  --color-accent-soft: #f0fdfa; /* teal-50 */
 }
 
 body {

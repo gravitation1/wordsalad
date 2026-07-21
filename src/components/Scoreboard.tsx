@@ -107,18 +107,23 @@ export function Scoreboard({
           className="relative h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800"
           role="progressbar"
         >
+          {/* Both fills advance with flat edges — the container's clip rounds
+              the outer ends — so they butt cleanly when they meet. */}
           <div
-            className="absolute inset-y-0 left-0 rounded-full bg-accent transition-all"
+            className="absolute inset-y-0 left-0 bg-accent transition-all"
             style={{ width: `${earnedPercent * 100}%` }}
           />
+          {/* Lost-to-hints points are spent, not alarming: the same gray the
+              hinted words wear in the drum and on the +0 badge. */}
           <div
-            className="absolute inset-y-0 right-0 bg-red-400 transition-all dark:bg-red-500"
+            className="absolute inset-y-0 right-0 bg-gray-400 transition-all dark:bg-gray-600"
             style={{ width: `${lostPercent * 100}%` }}
           />
         </div>
+        {/* Dark enough to stay visible on top of the gray lost segment. */}
         <div
           aria-hidden="true"
-          className="absolute inset-y-0 w-0.5 -translate-x-1/2 rounded bg-gray-500 dark:bg-gray-400"
+          className="absolute inset-y-0 w-0.5 -translate-x-1/2 rounded bg-gray-700 dark:bg-gray-300"
           style={{ left: `${winThreshold * 100}%` }}
           title={t.winThresholdLabel(winPoints)}
         />
