@@ -64,10 +64,11 @@ export function SaladLetters({
   return (
     // Remounts on every toss (key) so the letters replay the toss animation
     // as they land in their new order. On small screens the width is capped
-    // to four tiles (4 x 3rem + 3 x 0.5rem gaps) so seven letters wrap into
-    // a balanced, centered 4+3 instead of an awkward 6+1.
+    // to four tiles so seven letters wrap into a balanced, centered 4+3
+    // instead of an awkward 6+1 (the cap matches the tile size: 4 tiles +
+    // 3 gaps at each size).
     <div
-      className="flex max-w-[13.5rem] flex-wrap justify-center gap-2 sm:max-w-none"
+      className="flex max-w-[13.5rem] flex-wrap justify-center gap-2 pointer-coarse:max-w-[15.5rem] sm:max-w-none"
       key={tossId}
     >
       {letters.map((letter, index) => {
@@ -83,7 +84,9 @@ export function SaladLetters({
             style={{ animationDelay: `${index * 45}ms` }}
           >
             <button
-              className={`relative h-12 w-12 touch-manipulation rounded-xl border text-xl font-semibold transition active:scale-90 ${
+              // Touch devices get larger tiles: bigger targets and wider
+              // tap-center spacing, the two levers against mis-taps.
+              className={`relative h-12 w-12 touch-manipulation rounded-xl border text-xl font-semibold transition active:scale-90 pointer-coarse:h-14 pointer-coarse:w-14 pointer-coarse:text-2xl ${
                 isRequired
                   ? 'border-accent bg-accent text-white'
                   : 'border-gray-300 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800'
