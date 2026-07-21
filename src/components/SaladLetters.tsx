@@ -1,7 +1,12 @@
 import { useMessages } from '../i18n';
-import type { HintReveal, LetterActivation } from '../useWordSaladGame';
+import type {
+  Celebration,
+  HintReveal,
+  LetterActivation,
+} from '../useWordSaladGame';
 
 interface SaladLettersProps {
+  celebration: Celebration | null;
   hintReveal: HintReveal | null;
   lastAppended: LetterActivation | null;
   letters: readonly string[];
@@ -40,6 +45,7 @@ function tilePress(
 }
 
 export function SaladLetters({
+  celebration,
   hintReveal,
   lastAppended,
   letters,
@@ -48,6 +54,12 @@ export function SaladLetters({
   tossId,
 }: SaladLettersProps) {
   const t = useMessages();
+
+  // The win moment sends a staggered wave through the tiles. It replaces
+  // the (long finished) toss entrance on the same element, and only for the
+  // toss generation the win happened under — a later toss remounts the
+  // tiles back onto their plain entrance instead of re-waving.
+  const cheering = celebration !== null && celebration.tossId === tossId;
 
   return (
     // Remounts on every toss (key) so the letters replay the toss animation
@@ -66,7 +78,7 @@ export function SaladLetters({
           // button remounts per activation (key) to replay the press —
           // whether the letter was tapped, typed, or revealed as a hint.
           <span
-            className="letter-toss inline-block"
+            className={`${cheering ? 'tile-cheer' : 'letter-toss'} inline-block`}
             key={`${letter}${index}`}
             style={{ animationDelay: `${index * 45}ms` }}
           >

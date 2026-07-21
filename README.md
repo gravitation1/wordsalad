@@ -43,6 +43,22 @@ pnpm run format
 pnpm test
 ```
 
+## Fixture puzzles
+
+Because the hash encodes the whole puzzle, a rigged charset makes end-game
+states reachable in seconds for manual testing:
+
+- `#ACHYQJX.C.4` — contains exactly one word, `ACHY`. Submitting it wins and
+  completes the board in a single move: use it to check the win fanfare, the
+  completion mark, and (via Restart) to replay the celebration on a loop.
+- `#AZIMUTH.I.4` — the pangram `AZIMUTH` alone crosses the 75% win line
+  (11 of 14 points), leaving `IMAM`, `MAIM`, and `MITT` unsolved: use it to
+  check the "celebrate but keep playing" state — post-win finds, post-win
+  hints, and finishing the board after the banner is already up.
+
+A refresh after winning shows the calm restored-win state (banner, no
+fanfare). The fanfare only fires on the submission that crosses the line.
+
 ## Build and deploy
 
 `pnpm run build` runs the typecheck and lint, then emits the static site into

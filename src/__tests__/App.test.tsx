@@ -183,6 +183,41 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  it('celebrates only at the moment the win line is crossed', () => {
+    render(<App dictionary={DICTIONARY} />);
+    expect(screen.queryByTestId('confetti')).not.toBeInTheDocument();
+
+    submitWord('worsted'); // 11 of the 12 needed — not yet
+    expect(screen.queryByTestId('confetti')).not.toBeInTheDocument();
+
+    submitWord('test'); // 12: the win moment
+    expect(screen.getByTestId('confetti')).toBeInTheDocument();
+    // The confetti is made of the puzzle's own letters, nothing generic.
+    expect(screen.getByTestId('confetti')).toHaveTextContent(/^[WORDTES]+$/);
+  });
+
+  it('swaps the cursor for a completion mark once every word is found', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    submitWord('worsted');
+    submitWord('test'); // won at 12 of 15, but ROTTED is still out there
+    expect(screen.queryByTestId('complete-mark')).not.toBeInTheDocument();
+
+    submitWord('rotted'); // board cleared
+    expect(screen.getByTestId('complete-mark')).toBeInTheDocument();
+  });
+
+  it('does not celebrate a restored, already-won game', () => {
+    window.localStorage.setItem(
+      'wordsalad:WORDTES.T.4',
+      JSON.stringify(['TEST', 'ROTTED', 'WORSTED']),
+    );
+    render(<App dictionary={DICTIONARY} />);
+
+    expect(screen.getByText('YOU WIN!')).toBeInTheDocument();
+    expect(screen.queryByTestId('confetti')).not.toBeInTheDocument();
+  });
+
   it('persists found words as they are scored', () => {
     render(<App dictionary={DICTIONARY} />);
     submitWord('test');
@@ -398,8 +433,35 @@ describe('App', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText('−1 max')).toBeInTheDocument();
 
+    // Deleting the reveal leaves TEST paid-for but unfound: the next hint
+    // re-reveals it for free, so no cost chip is shown.
     fireEvent.keyDown(document, { key: 'Backspace', ctrlKey: true });
+    expect(hint()).not.toHaveTextContent('max');
+
+    // Once the paid word is submitted, the next hint is a fresh charge.
+    fireEvent.click(hint()); // re-reveals TEST
+    pressKey('Enter');
     expect(hint()).toHaveTextContent('−3 max');
+  });
+
+  it('re-reveals a deleted hint instead of charging for a new word', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const hint = () => screen.getByRole('button', { name: 'Hint' });
+
+    fireEvent.click(hint()); // reveals and commits TEST
+    expect(currentWord()).toBe('TEST');
+
+    fireEvent.keyDown(document, { key: 'Backspace', ctrlKey: true });
+    fireEvent.click(hint()); // the word was already paid for: same word
+    expect(currentWord()).toBe('TEST');
+
+    // Still only one committed word and one point lost.
+    expect(
+      JSON.parse(
+        window.localStorage.getItem('wordsalad:hinted:WORDTES.T.4') ?? '[]',
+      ),
+    ).toEqual(['TEST']);
+    expect(screen.getByText('· 1 hint (−1 pt)')).toBeInTheDocument();
   });
 
   it('shows +0 on Submit for a hinted word, not its point value', () => {
@@ -506,7 +568,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // commit TEST (1)
     expect(screen.queryByText(note)).not.toBeInTheDocument();
 
-    fireEvent.keyDown(document, { key: 'Backspace', ctrlKey: true }); // clear reveal
+    pressKey('Enter'); // submit TEST so the next hint is a fresh word
     fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // commit ROTTED (3)
 
     // 4 of 15 points lost — the earned ceiling (11/15) drops below 75%.

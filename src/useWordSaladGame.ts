@@ -72,6 +72,14 @@ export interface SpentHint {
   cost: number;
 }
 
+// The moment a submission pushes earned points across the win line. Fires
+// exactly once per game, at the crossing — never for a restored win. The
+// tossId lets the tile wave skip replaying after a post-win toss remount.
+export interface Celebration {
+  id: number;
+  tossId: number;
+}
+
 // A keyboard action that landed on an unavailable control (Backspace or
 // Enter with an empty word). The control acknowledges it with a press dip
 // but fires nothing — the same feedback a tap on it gives via CSS :active.
@@ -107,6 +115,7 @@ export interface PlayingGame {
   spentHint: SpentHint | null;
   wordExit: WordExit | null;
   deniedControl: DeniedControl | null;
+  celebration: Celebration | null;
   feedback: GameFeedback | null;
   foundWords: readonly FoundWord[];
   wordSlots: readonly WordSlot[];
@@ -120,6 +129,8 @@ export interface PlayingGame {
   winPoints: number;
   level: string;
   hasWon: boolean;
+  // Every word found: nothing is left to type.
+  isComplete: boolean;
   lockedOut: boolean;
   canHint: boolean;
   hintCost: number;
@@ -169,12 +180,26 @@ function hintedPreview(preview: WordPreview, isHinted: boolean): WordPreview {
     : preview;
 }
 
-// The word the next hint would reveal: the shortest unfound word not already
-// committed. Null when no hint is available.
+// The word the next hint reveals, and what it costs. A committed word the
+// player deleted before submitting re-reveals for free — it was already
+// paid for — before any new word is offered. Otherwise it is the shortest
+// unfound word not yet committed, at that word's point cost.
 function nextHintWord(
   wordSalad: WordSalad,
   hintedWords: ReadonlySet<string>,
-): string | null {
+): { word: string; cost: number } | null {
+  let rehint: string | null = null;
+  for (const word of hintedWords) {
+    if (!wordSalad.foundWords.has(word)) {
+      if (rehint === null || word.length < rehint.length) {
+        rehint = word;
+      }
+    }
+  }
+  if (rehint !== null) {
+    return { word: rehint, cost: 0 };
+  }
+
   let word: string | null = null;
   for (const candidate of wordSalad.remainingWords) {
     if (!hintedWords.has(candidate)) {
@@ -183,7 +208,7 @@ function nextHintWord(
       }
     }
   }
-  return word;
+  return word === null ? null : { word, cost: wordSalad.pointsFor(word) };
 }
 
 // Split found-and-committed points into earned (green) and lost-to-hints
@@ -290,6 +315,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   const [deniedControl, setDeniedControl] = useState<DeniedControl | null>(
     null,
   );
+  const [celebration, setCelebration] = useState<Celebration | null>(null);
   const [tossId, setTossId] = useState(0);
   const [deleteId, setDeleteId] = useState(0);
 
@@ -381,19 +407,20 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     [wordSalad],
   );
 
-  // Reveal the shortest not-yet-hinted unfound word and commit it: its points
-  // are forfeit whether or not it is submitted. The reveal fills the input so
-  // it can still be submitted (and land in the found list) if wanted.
+  // Reveal the next hint word and commit it: its points are forfeit whether
+  // or not it is submitted. The reveal fills the input so it can still be
+  // submitted (and land in the found list) if wanted. Re-revealing a
+  // committed word the player deleted charges nothing new.
   const revealHint = useCallback(() => {
     if (wordSalad === null) {
       return;
     }
-    const word = nextHintWord(wordSalad, hintedWords);
-    if (word === null) {
+    const hint = nextHintWord(wordSalad, hintedWords);
+    if (hint === null) {
       return;
     }
 
-    const letters = Array.from(word);
+    const letters = Array.from(hint.word);
     setInputLetters(letters);
     // Drive the reveal animation (letters cascade in, source tiles ripple);
     // clear any stale press so only the hint drives the tiles, and any
@@ -402,15 +429,19 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setWordExit(null);
     setHintReveal((previous) => ({ id: (previous?.id ?? 0) + 1, letters }));
 
-    // Float the spent cost away from the (vanishing) hint button.
-    setSpentHint((previous) => ({
-      id: (previous?.id ?? 0) + 1,
-      cost: wordSalad.pointsFor(word),
-    }));
+    // Only a fresh hint spends points and commits; a re-reveal was already
+    // paid for when it was first revealed.
+    if (hint.cost > 0) {
+      // Float the spent cost away from the (vanishing) hint button.
+      setSpentHint((previous) => ({
+        id: (previous?.id ?? 0) + 1,
+        cost: hint.cost,
+      }));
 
-    const committed = new Set(hintedWords).add(word);
-    setHintedWords(committed);
-    saveHintedWords(storeWordSalad(wordSalad), Array.from(committed));
+      const committed = new Set(hintedWords).add(hint.word);
+      setHintedWords(committed);
+      saveHintedWords(storeWordSalad(wordSalad), Array.from(committed));
+    }
   }, [hintedWords, wordSalad]);
 
   // Keyboard input aimed at an unavailable control: the button dips in
@@ -442,6 +473,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setSpentHint(null);
     setWordExit(null);
     setDeniedControl(null);
+    setCelebration(null);
     // Reset the press counters so the control buttons don't replay a ripple
     // when the board remounts for the fresh game.
     setTossId(0);
@@ -477,6 +509,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setSpentHint(null);
     setWordExit(null);
     setDeniedControl(null);
+    setCelebration(null);
     setTossId(0);
     setDeleteId(0);
     setHintedWords(new Set());
@@ -527,14 +560,24 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       return;
     }
 
+    // Detect the submission that crosses the win line, so the view can
+    // celebrate the moment itself (and never a restored, already-won game).
+    const winPoints = completionToPoints(WIN_THRESHOLD, wordSalad.maxPoints);
+    const earnedBefore = tallyPoints(wordSalad, hintedWords).earnedPoints;
+
     const awarded = wordSalad.tryWord(word);
     setFeedback({ kind: 'scored', word, points: isHinted ? 0 : awarded });
+
+    const earnedAfter = tallyPoints(wordSalad, hintedWords).earnedPoints;
+    if (earnedBefore < winPoints && earnedAfter >= winPoints) {
+      setCelebration((previous) => ({ id: (previous?.id ?? 0) + 1, tossId }));
+    }
 
     const gameKey = storeWordSalad(wordSalad);
     setFoundWords(toFoundWords(wordSalad, hintedWords));
     setLastFoundWord(word);
     saveWords(gameKey, Array.from(wordSalad.foundWords.keys()));
-  }, [hintedWords, inputLetters, wordSalad]);
+  }, [hintedWords, inputLetters, tossId, wordSalad]);
 
   useEffect(() => {
     if (wordSalad === null) {
@@ -655,7 +698,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   const lockedOut = !hasWon && wordSalad.maxPoints - lostPoints < winPoints;
   const nextHint = nextHintWord(wordSalad, hintedWords);
   const canHint = nextHint !== null;
-  const hintCost = nextHint === null ? 0 : wordSalad.pointsFor(nextHint);
+  const hintCost = nextHint === null ? 0 : nextHint.cost;
 
   return {
     status: 'playing',
@@ -677,6 +720,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     spentHint,
     wordExit,
     deniedControl,
+    celebration,
     feedback,
     foundWords,
     wordSlots,
@@ -690,6 +734,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     winPoints,
     level: getLevel(earnedPercent),
     hasWon,
+    isComplete: wordSlots.every((slot) => slot.found !== null),
     lockedOut,
     canHint,
     hintCost,

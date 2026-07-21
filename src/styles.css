@@ -324,6 +324,137 @@ body {
   }
 }
 
+/* Win fanfare: confetti rains from above the viewport, the banner springs
+   in with a fading accent halo, and the tiles do a staggered wave. */
+@keyframes confetti-fall {
+  from {
+    opacity: 1;
+    transform: translate3d(0, -6vh, 0) rotate(0deg);
+  }
+  70% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(var(--confetti-drift), 95vh, 0)
+      rotate(var(--confetti-spin));
+  }
+}
+
+.confetti-piece {
+  animation: confetti-fall 1500ms ease-in both;
+}
+
+@keyframes win-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 35%, transparent);
+  }
+  60% {
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    box-shadow: 0 0 0 24px transparent;
+  }
+}
+
+.win-pop {
+  animation: win-pop 600ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+@keyframes tile-cheer {
+  0%,
+  100% {
+    transform: none;
+  }
+  40% {
+    transform: translateY(-10px) rotate(-4deg);
+  }
+  70% {
+    transform: translateY(2px);
+  }
+}
+
+.tile-cheer {
+  animation: tile-cheer 500ms ease-in-out both;
+}
+
+/* Pieces exploding radially out of the win banner's center. */
+@keyframes burst-fly {
+  from {
+    opacity: 1;
+    transform: rotate(var(--burst-angle)) translateX(6px);
+  }
+  to {
+    opacity: 0;
+    transform: rotate(var(--burst-angle)) translateX(var(--burst-distance));
+  }
+}
+
+.burst-piece {
+  animation: burst-fly 800ms ease-out both;
+}
+
+/* The victory title's letters vault in one after another. */
+@keyframes win-letter {
+  0% {
+    opacity: 0;
+    transform: translateY(0.6em);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-0.12em);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.win-letter {
+  animation: win-letter 450ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+/* A single shine sweep across the progress bar at the win moment. */
+@keyframes bar-shine {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(350%);
+  }
+}
+
+.bar-shine::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  width: 40%;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgb(255 255 255 / 0.7),
+    transparent
+  );
+  animation: bar-shine 900ms ease-out 250ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti-piece,
+  .burst-piece,
+  .bar-shine::after {
+    display: none;
+  }
+  .win-pop,
+  .tile-cheer,
+  .win-letter {
+    animation: none;
+  }
+}
+
 /* A fresh game deals in quickly; the letters then cascade on their own. */
 @keyframes game-enter {
   from {

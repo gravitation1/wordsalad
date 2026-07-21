@@ -1,3 +1,4 @@
+import { Confetti } from './components/Confetti';
 import { FeedbackLine } from './components/FeedbackLine';
 import { GameControls } from './components/GameControls';
 import { SaladLetters } from './components/SaladLetters';
@@ -52,6 +53,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
         <WordInput
           wordExit={game.wordExit}
           canHint={game.canHint}
+          isComplete={game.isComplete}
           hintCost={game.hintCost}
           hintReveal={game.hintReveal}
           spentHint={game.spentHint}
@@ -62,6 +64,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           requiredCharacter={game.requiredCharacter}
         />
         <SaladLetters
+          celebration={game.celebration}
           hintReveal={game.hintReveal}
           lastAppended={game.lastAppended}
           letters={game.saladLetters}
@@ -84,7 +87,10 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
         />
         <FeedbackLine feedback={game.feedback} />
         <Scoreboard
+          celebration={game.celebration}
           earnedPercent={game.earnedPercent}
+          requiredCharacter={game.requiredCharacter}
+          saladLetters={game.saladLetters}
           earnedPoints={game.earnedPoints}
           hasWon={game.hasWon}
           hintCount={game.hintCount}
@@ -101,6 +107,14 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           wordSlots={game.wordSlots}
         />
       </div>
+      {/* Remounts per celebration (key) — though a game only wins once. */}
+      {game.celebration === null ? null : (
+        <Confetti
+          key={game.celebration.id}
+          letters={game.saladLetters}
+          requiredCharacter={game.requiredCharacter}
+        />
+      )}
     </main>
   );
 }

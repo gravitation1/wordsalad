@@ -1,11 +1,16 @@
 import { useRef, useState } from 'react';
 
 import { useMessages } from '../i18n';
-import type { WordSlot } from '../useWordSaladGame';
+import type { Celebration, WordSlot } from '../useWordSaladGame';
+import { WinBurst } from './Confetti';
 import { RatingsDialog } from './RatingsDialog';
 import { WordDrum } from './WordDrum';
 
 interface ScoreboardProps {
+  celebration: Celebration | null;
+  // For the celebration burst's letter tiles.
+  saladLetters: readonly string[];
+  requiredCharacter: string;
   wordSlots: readonly WordSlot[];
   lastFoundWord: string | null;
   earnedPoints: number;
@@ -24,6 +29,9 @@ interface ScoreboardProps {
 }
 
 export function Scoreboard({
+  celebration,
+  saladLetters,
+  requiredCharacter,
   wordSlots,
   lastFoundWord,
   earnedPoints,
@@ -47,6 +55,21 @@ export function Scoreboard({
   const foundCount = wordSlots.filter((slot) => slot.found !== null).length;
   const anyHinted = wordSlots.some((slot) => slot.found?.hinted ?? false);
 
+  // The victory phrase as per-word tile groups, with a running index so the
+  // vault stagger flows across word boundaries.
+  const victoryTiles: { character: string; delayIndex: number }[][] = [];
+  let delayCounter = 0;
+  for (const word of t.victory.split(' ')) {
+    if (word.length > 0) {
+      victoryTiles.push(
+        Array.from(word).map((character) => ({
+          character,
+          delayIndex: delayCounter++,
+        })),
+      );
+    }
+  }
+
   // Closing the dialog restores focus to this trigger; blur it so a
   // subsequent Enter submits a word instead of re-opening the dialog.
   const closeRatings = () => {
@@ -57,8 +80,54 @@ export function Scoreboard({
   return (
     <section className="w-full space-y-3">
       {hasWon ? (
-        <div className="space-y-2 rounded-xl bg-accent-soft p-3 text-center dark:bg-accent/15">
-          <p className="font-semibold text-accent">{t.victory}</p>
+        // Springs in only at the moment of winning; a restored win is calm.
+        <div
+          className={`relative space-y-2 rounded-xl bg-accent-soft p-4 text-center dark:bg-accent/15 ${
+            celebration === null ? '' : 'win-pop'
+          }`}
+        >
+          {celebration === null ? null : (
+            <WinBurst
+              letters={saladLetters}
+              requiredCharacter={requiredCharacter}
+            />
+          )}
+          <p>
+            {/* Real text for readers and tests; the visible tiles — the
+                victory phrase spelled in the game's own letter tiles, with
+                punctuation in accent — vault in one by one on the win.
+                Tiles group per word so wrapping never splits a word. */}
+            <span className="sr-only">{t.victory}</span>
+            <span
+              aria-hidden="true"
+              className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5"
+            >
+              {victoryTiles.map((word, wordIndex) => (
+                <span className="flex gap-1.5" key={wordIndex}>
+                  {word.map(({ character, delayIndex }) => (
+                    <span
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg text-base font-bold ${
+                        /[\p{L}\p{N}]/u.test(character)
+                          ? 'border border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
+                          : 'bg-accent text-white'
+                      } ${celebration === null ? '' : 'win-letter'}`}
+                      key={delayIndex}
+                      style={
+                        celebration === null
+                          ? undefined
+                          : { animationDelay: `${delayIndex * 45}ms` }
+                      }
+                    >
+                      {character}
+                    </span>
+                  ))}
+                </span>
+              ))}
+            </span>
+          </p>
+          <p className="text-sm font-semibold text-accent">
+            {t.levelName(level)}
+          </p>
           <button
             className="min-h-11 touch-manipulation rounded-full bg-accent px-5 py-2 font-medium text-white transition hover:bg-accent/90 active:scale-95"
             onClick={onPlayAgain}
@@ -104,7 +173,9 @@ export function Scoreboard({
           aria-valuemax={maxPoints}
           aria-valuemin={0}
           aria-valuenow={earnedPoints}
-          className="relative h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800"
+          className={`relative h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800 ${
+            celebration === null ? '' : 'bar-shine'
+          }`}
           role="progressbar"
         >
           {/* Both fills advance with flat edges — the container's clip rounds

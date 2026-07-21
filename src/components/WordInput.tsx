@@ -12,6 +12,7 @@ import type {
 interface WordInputProps {
   wordExit: WordExit | null;
   canHint: boolean;
+  isComplete: boolean;
   hintCost: number;
   hintReveal: HintReveal | null;
   spentHint: SpentHint | null;
@@ -72,6 +73,7 @@ function isHintReveal(
 export function WordInput({
   wordExit,
   canHint,
+  isComplete,
   hintCost,
   hintReveal,
   spentHint,
@@ -175,18 +177,21 @@ export function WordInput({
             // word so the two never hard-cut in the same frame.
             className={`${wordExit === null ? 'hint-enter' : 'hint-enter-delayed'} flex h-10 touch-manipulation items-center gap-2 rounded-full bg-gray-100 px-4 text-sm font-medium text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200`}
             onClick={handleHint}
-            title={t.hintCostLabel(hintCost)}
+            title={hintCost > 0 ? t.hintCostLabel(hintCost) : t.hintAgainLabel}
             type="button"
           >
             {t.hintButton}
-            {/* Taking a hint lowers your reachable max score by this much. */}
-            <span
-              aria-hidden="true"
-              className={HINT_BADGE_CLASS}
-              ref={costBadgeRef}
-            >
-              {t.hintCostBadge(hintCost)}
-            </span>
+            {/* Taking a hint lowers your reachable max score by this much.
+                Re-revealing an already-paid word is free: no cost chip. */}
+            {hintCost > 0 ? (
+              <span
+                aria-hidden="true"
+                className={HINT_BADGE_CLASS}
+                ref={costBadgeRef}
+              >
+                {t.hintCostBadge(hintCost)}
+              </span>
+            ) : null}
             {/* Keyboard shortcut, shown only where there is a real keyboard. */}
             <span
               aria-hidden="true"
@@ -198,6 +203,16 @@ export function WordInput({
               <span className="inline-block -translate-y-[0.5px]">?</span>
             </span>
           </button>
+        ) : isComplete ? (
+          // The board is cleared: a tile-styled check where the typing
+          // cursor would otherwise beckon for words that don't exist.
+          <span
+            aria-hidden="true"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-base font-bold text-white"
+            data-testid="complete-mark"
+          >
+            ✓
+          </span>
         ) : (
           <span
             aria-hidden="true"

@@ -35,6 +35,7 @@ export interface Messages {
   hintsUsed: (count: number, lostPoints: number) => string;
   hintCostBadge: (cost: number) => string;
   hintCostLabel: (cost: number) => string;
+  hintAgainLabel: string;
   hintedLegend: string;
   lockedOutNote: (reachablePoints: number, winPoints: number) => string;
   winThresholdLabel: (winPoints: number) => string;
@@ -87,6 +88,7 @@ const EN: Messages = {
   hintCostLabel: (cost) =>
     `Reveals a word and lowers your max score by ${cost} point${plural('en', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revealed with a hint',
+  hintAgainLabel: 'Shows your hinted word again — no extra cost',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Too many hints — winning takes ${winPoints} points, ` +
     `but only ${reachablePoints} can still be reached.`,
@@ -164,6 +166,7 @@ const FR: Messages = {
   hintCostLabel: (cost) =>
     `Révèle un mot et réduit votre score max de ${cost} point${plural('fr', cost, { one: '', other: 's' })}`,
   hintedLegend: '* révélé par un indice',
+  hintAgainLabel: 'Réaffiche votre mot d’indice — sans coût supplémentaire',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Trop d’indices — il faut ${winPoints} points pour gagner, ` +
     `mais seulement ${reachablePoints} restent accessibles.`,
@@ -241,6 +244,7 @@ const ES: Messages = {
   hintCostLabel: (cost) =>
     `Revela una palabra y reduce tu puntuación máxima en ${cost} punto${plural('es', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revelada con una pista',
+  hintAgainLabel: 'Vuelve a mostrar la palabra de la pista, sin coste extra',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Demasiadas pistas: para ganar se necesitan ${winPoints} puntos, ` +
     `pero solo quedan ${reachablePoints} alcanzables.`,
@@ -318,6 +322,8 @@ const DE: Messages = {
   hintCostLabel: (cost) =>
     `Deckt ein Wort auf und senkt deinen Höchstpunktestand um ${cost} ${plural('de', cost, { one: 'Punkt', other: 'Punkte' })}`,
   hintedLegend: '* mit einem Tipp aufgedeckt',
+  hintAgainLabel:
+    'Zeigt dein aufgedecktes Wort erneut — ohne zusätzliche Kosten',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Zu viele Tipps — zum Sieg sind ${winPoints} Punkte nötig, ` +
     `aber nur noch ${reachablePoints} ${plural('de', reachablePoints, { one: 'ist', other: 'sind' })} erreichbar.`,
@@ -395,6 +401,8 @@ const IT: Messages = {
   hintCostLabel: (cost) =>
     `Rivela una parola e riduce il punteggio massimo di ${cost} ${plural('it', cost, { one: 'punto', other: 'punti' })}`,
   hintedLegend: '* rivelata con un indizio',
+  hintAgainLabel:
+    'Mostra di nuovo la parola dell’indizio, senza costi aggiuntivi',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Troppi indizi: per vincere ${plural('it', winPoints, { one: 'serve', other: 'servono' })} ${winPoints} ${plural('it', winPoints, { one: 'punto', other: 'punti' })}, ` +
     `ma ne ${plural('it', reachablePoints, { one: 'resta raggiungibile', other: 'restano raggiungibili' })} solo ${reachablePoints}.`,
@@ -472,6 +480,7 @@ const PT: Messages = {
   hintCostLabel: (cost) =>
     `Revela uma palavra e reduz sua pontuação máxima em ${cost} ponto${plural('pt', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revelada com uma dica',
+  hintAgainLabel: 'Mostra novamente a palavra da dica, sem custo extra',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Dicas demais — vencer exige ${winPoints} pontos, ` +
     `mas só dá para alcançar ${reachablePoints}.`,
@@ -549,6 +558,7 @@ const NL: Messages = {
   hintCostLabel: (cost) =>
     `Onthult een woord en verlaagt je maximale score met ${cost} ${plural('nl', cost, { one: 'punt', other: 'punten' })}`,
   hintedLegend: '* onthuld met een hint',
+  hintAgainLabel: 'Toont je hintwoord opnieuw — zonder extra kosten',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Te veel hints — winnen vergt ${winPoints} punten, ` +
     `maar er ${plural('nl', reachablePoints, { one: 'is', other: 'zijn' })} er nog maar ${reachablePoints} haalbaar.`,
@@ -624,6 +634,7 @@ const JA: Messages = {
   hintCostBadge: (cost) => `最大−${cost}`,
   hintCostLabel: (cost) => `単語を1つ表示し、最大スコアが${cost}点下がります`,
   hintedLegend: '* ヒントで表示',
+  hintAgainLabel: 'ヒントで表示した単語をもう一度表示します（追加コストなし）',
   lockedOutNote: (reachablePoints, winPoints) =>
     `ヒントが多すぎます — 勝利には${winPoints}ポイント必要ですが、` +
     `あと最大${reachablePoints}ポイントしか獲得できません。`,
@@ -696,6 +707,7 @@ const KO: Messages = {
   hintCostLabel: (cost) =>
     `단어 하나를 공개하고 최대 점수가 ${cost}점 낮아집니다`,
   hintedLegend: '* 힌트로 공개',
+  hintAgainLabel: '힌트로 공개한 단어를 다시 보여줘요 (추가 비용 없음)',
   lockedOutNote: (reachablePoints, winPoints) =>
     `힌트를 너무 많이 썼어요 — 승리에는 ${winPoints}점이 필요하지만 ` +
     `이제 최대 ${reachablePoints}점만 얻을 수 있어요.`,
@@ -767,6 +779,7 @@ const ZH: Messages = {
   hintCostBadge: (cost) => `上限−${cost}`,
   hintCostLabel: (cost) => `揭示一个单词，最高分降低 ${cost} 分`,
   hintedLegend: '* 用提示揭示',
+  hintAgainLabel: '再次显示提示过的单词，无额外扣分',
   lockedOutNote: (reachablePoints, winPoints) =>
     `提示用得太多——获胜需要 ${winPoints} 分，` +
     `但最多只能拿到 ${reachablePoints} 分。`,
@@ -841,6 +854,8 @@ const RU: Messages = {
   hintCostLabel: (cost) =>
     `Открывает слово и снижает максимум на ${cost} ${plural('ru', cost, { one: 'очко', few: 'очка', other: 'очков' })}`,
   hintedLegend: '* открыто подсказкой',
+  hintAgainLabel:
+    'Снова показывает слово из подсказки — без дополнительной платы',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Слишком много подсказок — для победы нужно ${winPoints} ${plural('ru', winPoints, { one: 'очко', few: 'очка', other: 'очков' })}, ` +
     `но достижимо не больше ${reachablePoints}.`,
