@@ -86,7 +86,6 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
         <Scoreboard
           earnedPercent={game.earnedPercent}
           earnedPoints={game.earnedPoints}
-          foundWords={game.foundWords}
           hasWon={game.hasWon}
           hintCount={game.hintCount}
           lastFoundWord={game.lastFoundWord}
@@ -99,6 +98,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           onRestart={game.restartGame}
           winPoints={game.winPoints}
           winThreshold={game.winThreshold}
+          wordSlots={game.wordSlots}
         />
       </div>
     </main>

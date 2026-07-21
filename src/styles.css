@@ -168,6 +168,29 @@ body {
   }
 }
 
+/* A found word flips into its drum slot, split-flap style. The short delay
+   lets the drum's spin-to-slot get underway first. */
+@keyframes slot-reveal {
+  from {
+    opacity: 0;
+    transform: perspective(400px) rotateX(-80deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.slot-reveal {
+  animation: slot-reveal 400ms 150ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot-reveal {
+    animation: none;
+  }
+}
+
 /* The hint button eases back into the word area; after a submission it
    holds until the exiting word has mostly cleared. */
 @keyframes hint-enter {

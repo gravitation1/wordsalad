@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react';
 
 import { useMessages } from '../i18n';
-import type { FoundWord } from '../useWordSaladGame';
+import type { WordSlot } from '../useWordSaladGame';
 import { RatingsDialog } from './RatingsDialog';
+import { WordDrum } from './WordDrum';
 
 interface ScoreboardProps {
-  foundWords: readonly FoundWord[];
+  wordSlots: readonly WordSlot[];
   lastFoundWord: string | null;
   earnedPoints: number;
   maxPoints: number;
@@ -23,7 +24,7 @@ interface ScoreboardProps {
 }
 
 export function Scoreboard({
-  foundWords,
+  wordSlots,
   lastFoundWord,
   earnedPoints,
   maxPoints,
@@ -42,6 +43,9 @@ export function Scoreboard({
   const t = useMessages();
   const [isRatingsOpen, setIsRatingsOpen] = useState(false);
   const ratingsButtonRef = useRef<HTMLButtonElement>(null);
+
+  const foundCount = wordSlots.filter((slot) => slot.found !== null).length;
+  const anyHinted = wordSlots.some((slot) => slot.found?.hinted ?? false);
 
   // Closing the dialog restores focus to this trigger; blur it so a
   // subsequent Enter submits a word instead of re-opening the dialog.
@@ -74,14 +78,14 @@ export function Scoreboard({
       ) : null}
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          {t.foundSummary(foundWords.length)}
+          {t.foundSummary(foundCount)}
           {hintCount > 0 ? (
             <span className="text-gray-400 dark:text-gray-500">
               {` · ${t.hintsUsed(hintCount, lostPoints)}`}
             </span>
           ) : null}
         </p>
-        {foundWords.length > 0 ? (
+        {foundCount > 0 ? (
           <button
             className="-m-2 flex touch-manipulation items-center gap-1 p-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
             onClick={onRestart}
@@ -139,42 +143,14 @@ export function Scoreboard({
           winPoints={winPoints}
         />
       ) : null}
-      {foundWords.length > 0 ? (
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="text-gray-500 dark:text-gray-400">
-              <th className="py-1 font-medium">{t.wordsHeader}</th>
-              <th className="w-16 py-1 text-right font-medium">
-                {t.pointsHeader}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {foundWords.map(({ word, points, hinted }) => (
-              <tr key={word}>
-                <td className="py-0.5">
-                  <a
-                    className={`italic hover:underline ${
-                      hinted
-                        ? 'text-gray-500 dark:text-gray-400'
-                        : 'text-accent'
-                    } ${word === lastFoundWord ? 'font-bold' : ''}`}
-                    data-hinted={hinted}
-                    href={`https://www.merriam-webster.com/dictionary/${word}`}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    {word}
-                    {hinted ? '*' : ''}
-                  </a>
-                </td>
-                <td className="py-0.5 text-right">{points}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : null}
-      {foundWords.some((found) => found.hinted) ? (
+      {/* The full word map: every word owns an alphabetized slot from the
+          start, anonymous until found. The drum keeps the height fixed. */}
+      <div className="flex items-baseline justify-between gap-4 text-sm text-gray-500 dark:text-gray-400">
+        <span className="font-medium">{t.wordsHeader}</span>
+        <span className="w-16 text-right font-medium">{t.pointsHeader}</span>
+      </div>
+      <WordDrum lastFoundWord={lastFoundWord} slots={wordSlots} />
+      {anyHinted ? (
         <p className="text-xs text-gray-400 dark:text-gray-500">
           {t.hintedLegend}
         </p>

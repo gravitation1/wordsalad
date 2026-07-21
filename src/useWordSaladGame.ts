@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   generateWordSalad,
@@ -37,6 +37,12 @@ export interface FoundWord {
   word: string;
   points: number;
   hinted: boolean;
+}
+
+// One row of the alphabetized word list. Unfound slots stay anonymous: the
+// view learns that a word exists (and where it sorts), never what it is.
+export interface WordSlot {
+  found: FoundWord | null;
 }
 
 export type SubmitReadiness = 'empty' | 'partial' | 'ready';
@@ -103,6 +109,7 @@ export interface PlayingGame {
   deniedControl: DeniedControl | null;
   feedback: GameFeedback | null;
   foundWords: readonly FoundWord[];
+  wordSlots: readonly WordSlot[];
   lastFoundWord: string | null;
   earnedPoints: number;
   maxPoints: number;
@@ -602,6 +609,21 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     wordSalad,
   ]);
 
+  // Every word in the puzzle, alphabetized once per engine instance. Found
+  // or not, each word owns a fixed slot for the life of the game.
+  const allWords = useMemo(
+    () =>
+      wordSalad === null
+        ? []
+        : [...wordSalad.foundWords.keys(), ...wordSalad.remainingWords].sort(),
+    [wordSalad],
+  );
+
+  const wordSlots = useMemo<readonly WordSlot[]>(() => {
+    const found = new Map(foundWords.map((entry) => [entry.word, entry]));
+    return allWords.map((word) => ({ found: found.get(word) ?? null }));
+  }, [allWords, foundWords]);
+
   if (wordSalad === null) {
     return {
       status: 'error',
@@ -657,6 +679,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     deniedControl,
     feedback,
     foundWords,
+    wordSlots,
     lastFoundWord,
     earnedPoints,
     maxPoints: wordSalad.maxPoints,

@@ -116,7 +116,32 @@ describe('App', () => {
       'href',
       'https://www.merriam-webster.com/dictionary/TEST',
     );
-    expect(screen.getByRole('cell', { name: '1' })).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('word-drum')).getByText('1'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows an anonymous slot for every word in the puzzle', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const slots = () =>
+      within(screen.getByTestId('word-drum')).getAllByTestId('word-slot');
+
+    // Three words exist; the drum knows the count but names none of them.
+    expect(slots()).toHaveLength(3);
+    for (const slot of slots()) {
+      expect(slot).toHaveAttribute('data-found', 'false');
+      expect(slot).toHaveTextContent('?');
+    }
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+
+    // Finding TEST fills its alphabetical slot (ROTTED, TEST, WORSTED).
+    submitWord('test');
+    expect(slots()[1]).toHaveAttribute('data-found', 'true');
+    expect(
+      within(slots()[1]).getByRole('link', { name: 'TEST' }),
+    ).toBeInTheDocument();
+    expect(slots()[0]).toHaveAttribute('data-found', 'false');
+    expect(slots()[2]).toHaveAttribute('data-found', 'false');
   });
 
   it('announces an error for a word that is not in the dictionary', () => {
