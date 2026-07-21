@@ -41,6 +41,10 @@ export interface Messages {
   statWon: string;
   statStreak: string;
   statHints: string;
+  shareButton: string;
+  shareCopied: string;
+  challengeNote: (points: number) => string;
+  challengeBeaten: (points: number) => string;
   hintButton: string;
   hintsUsed: (count: number, lostPoints: number) => string;
   hintCostBadge: (cost: number) => string;
@@ -101,6 +105,10 @@ const EN: Messages = {
   statWon: 'Won',
   statStreak: 'Streak',
   statHints: 'Hints',
+  shareButton: 'Share',
+  shareCopied: 'Copied to clipboard!',
+  challengeNote: (points) => `Shared score to beat: ${points}`,
+  challengeBeaten: (points) => `You beat the shared score of ${points}!`,
   hintButton: 'Hint',
   hintsUsed: (count, lostPoints) =>
     `${count} hint${plural('en', count, { one: '', other: 's' })} ` +
@@ -192,6 +200,11 @@ const FR: Messages = {
   statWon: 'Gagnées',
   statStreak: 'Série',
   statHints: 'Indices',
+  shareButton: 'Partager',
+  shareCopied: 'Copié dans le presse-papiers !',
+  challengeNote: (points) => `Score partagé à battre : ${points}`,
+  challengeBeaten: (points) =>
+    `Vous avez battu le score partagé de ${points} !`,
   hintButton: 'Indice',
   hintsUsed: (count, lostPoints) =>
     `${count} indice${plural('fr', count, { one: '', other: 's' })} ` +
@@ -283,6 +296,11 @@ const ES: Messages = {
   statWon: 'Ganadas',
   statStreak: 'Racha',
   statHints: 'Pistas',
+  shareButton: 'Compartir',
+  shareCopied: '¡Copiado al portapapeles!',
+  challengeNote: (points) => `Puntuación compartida a batir: ${points}`,
+  challengeBeaten: (points) =>
+    `¡Superaste la puntuación compartida de ${points}!`,
   hintButton: 'Pista',
   hintsUsed: (count, lostPoints) =>
     `${count} pista${plural('es', count, { one: '', other: 's' })} ` +
@@ -374,6 +392,11 @@ const DE: Messages = {
   statWon: 'Gewonnen',
   statStreak: 'Serie',
   statHints: 'Tipps',
+  shareButton: 'Teilen',
+  shareCopied: 'In die Zwischenablage kopiert!',
+  challengeNote: (points) => `Geteilte Punktzahl zum Schlagen: ${points}`,
+  challengeBeaten: (points) =>
+    `Du hast die geteilte Punktzahl von ${points} geschlagen!`,
   hintButton: 'Tipp',
   hintsUsed: (count, lostPoints) =>
     `${count} ${plural('de', count, { one: 'Tipp', other: 'Tipps' })} ` +
@@ -466,6 +489,11 @@ const IT: Messages = {
   statWon: 'Vinte',
   statStreak: 'Serie',
   statHints: 'Indizi',
+  shareButton: 'Condividi',
+  shareCopied: 'Copiato negli appunti!',
+  challengeNote: (points) => `Punteggio condiviso da battere: ${points}`,
+  challengeBeaten: (points) =>
+    `Hai battuto il punteggio condiviso di ${points}!`,
   hintButton: 'Indizio',
   hintsUsed: (count, lostPoints) =>
     `${count} ${plural('it', count, { one: 'indizio', other: 'indizi' })} ` +
@@ -558,6 +586,11 @@ const PT: Messages = {
   statWon: 'Vencidas',
   statStreak: 'Sequência',
   statHints: 'Dicas',
+  shareButton: 'Compartilhar',
+  shareCopied: 'Copiado para a área de transferência!',
+  challengeNote: (points) => `Pontuação compartilhada a bater: ${points}`,
+  challengeBeaten: (points) =>
+    `Você superou a pontuação compartilhada de ${points}!`,
   hintButton: 'Dica',
   hintsUsed: (count, lostPoints) =>
     `${count} dica${plural('pt', count, { one: '', other: 's' })} ` +
@@ -649,6 +682,11 @@ const NL: Messages = {
   statWon: 'Gewonnen',
   statStreak: 'Reeks',
   statHints: 'Hints',
+  shareButton: 'Delen',
+  shareCopied: 'Gekopieerd naar het klembord!',
+  challengeNote: (points) => `Gedeelde score om te verslaan: ${points}`,
+  challengeBeaten: (points) =>
+    `Je hebt de gedeelde score van ${points} verslagen!`,
   hintButton: 'Hint',
   hintsUsed: (count, lostPoints) =>
     `${count} hint${plural('nl', count, { one: '', other: 's' })} ` +
@@ -740,6 +778,10 @@ const JA: Messages = {
   statWon: '勝利',
   statStreak: '連続日数',
   statHints: 'ヒント',
+  shareButton: '共有',
+  shareCopied: 'クリップボードにコピーしました！',
+  challengeNote: (points) => `共有されたスコア：${points}（これを超えよう）`,
+  challengeBeaten: (points) => `共有されたスコア${points}を超えました！`,
   hintButton: 'ヒント',
   hintsUsed: (count, lostPoints) => `ヒント${count}回（−${lostPoints}点）`,
   hintCostBadge: (cost) => `最大−${cost}`,
@@ -824,6 +866,10 @@ const KO: Messages = {
   statWon: '승리',
   statStreak: '연속',
   statHints: '힌트',
+  shareButton: '공유',
+  shareCopied: '클립보드에 복사했어요!',
+  challengeNote: (points) => `공유된 점수: ${points} (도전해 보세요)`,
+  challengeBeaten: (points) => `공유된 점수 ${points}점을 넘었어요!`,
   hintButton: '힌트',
   hintsUsed: (count, lostPoints) => `힌트 ${count}개 (−${lostPoints}점)`,
   hintCostBadge: (cost) => `최대 −${cost}`,
@@ -909,6 +955,10 @@ const ZH: Messages = {
   statWon: '获胜',
   statStreak: '连续天数',
   statHints: '提示',
+  shareButton: '分享',
+  shareCopied: '已复制到剪贴板！',
+  challengeNote: (points) => `好友分享的分数：${points}（超过它！）`,
+  challengeBeaten: (points) => `你超过了分享的分数 ${points}！`,
   hintButton: '提示',
   hintsUsed: (count, lostPoints) => `${count} 次提示（−${lostPoints} 分）`,
   hintCostBadge: (cost) => `上限−${cost}`,
@@ -992,6 +1042,10 @@ const RU: Messages = {
   statWon: 'Побед',
   statStreak: 'Серия',
   statHints: 'Подсказки',
+  shareButton: 'Поделиться',
+  shareCopied: 'Скопировано в буфер обмена!',
+  challengeNote: (points) => `Поделились результатом ${points} — побейте его!`,
+  challengeBeaten: (points) => `Вы побили результат ${points}!`,
   hintButton: 'Подсказка',
   hintsUsed: (count, lostPoints) =>
     `${count} ${plural('ru', count, { one: 'подсказка', few: 'подсказки', other: 'подсказок' })} ` +

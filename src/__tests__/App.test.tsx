@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '../App';
 
@@ -164,6 +164,48 @@ describe('App', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('runs a challenge from a shared score link', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '?letters=WORDTES&required=T&score=2&hints=0',
+    );
+    render(<App dictionary={DICTIONARY} />);
+
+    // The challenge params are consumed, not kept in the URL.
+    expect(new URLSearchParams(window.location.search).get('score')).toBeNull();
+
+    expect(screen.getByTestId('challenge')).toHaveTextContent(
+      'Shared score to beat: 2',
+    );
+    submitWord('test'); // 1 point: not there yet
+    expect(screen.getByTestId('challenge')).toHaveTextContent(
+      'Shared score to beat: 2',
+    );
+    submitWord('rotted'); // 4 points: beaten
+    expect(screen.getByTestId('challenge')).toHaveTextContent(
+      'You beat the shared score of 2!',
+    );
+  });
+
+  it('shares a themed snippet with a challenge link', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test');
+    fireEvent.click(screen.getByRole('button', { name: /Share/ }));
+
+    expect(await screen.findByText('Copied to clipboard!')).toBeVisible();
+    const text = writeText.mock.calls[0][0] as string;
+    expect(text).toContain('Word Salad · DEORSTW (T)');
+    expect(text).toContain('1/15 · Meh');
+    expect(text).toContain('letters=DEORSTW&required=T&score=1&hints=0');
   });
 
   it('blurs the History trigger on close so Enter cannot re-open it', () => {

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useMessages } from '../i18n';
 import type { Celebration, WordSlot } from '../useWordSaladGame';
@@ -24,8 +24,25 @@ interface ScoreboardProps {
   hasWon: boolean;
   lockedOut: boolean;
   hintCount: number;
+  challengeScore: number | null;
   onPlayAgain: () => void;
   onRestart: () => void;
+}
+
+// The share snippet's miniature bar: earned, lost-to-hints, unclaimed.
+const SHARE_BAR_SEGMENTS = 7;
+
+function shareBar(earned: number, lost: number, max: number): string {
+  const greens = Math.round((earned / max) * SHARE_BAR_SEGMENTS);
+  const darks = Math.min(
+    SHARE_BAR_SEGMENTS - greens,
+    Math.round((lost / max) * SHARE_BAR_SEGMENTS),
+  );
+  return (
+    '🟩'.repeat(greens) +
+    '⬛'.repeat(darks) +
+    '⬜'.repeat(SHARE_BAR_SEGMENTS - greens - darks)
+  );
 }
 
 export function Scoreboard({
@@ -45,12 +62,67 @@ export function Scoreboard({
   hasWon,
   lockedOut,
   hintCount,
+  challengeScore,
   onPlayAgain,
   onRestart,
 }: ScoreboardProps) {
   const t = useMessages();
   const [isRatingsOpen, setIsRatingsOpen] = useState(false);
   const ratingsButtonRef = useRef<HTMLButtonElement>(null);
+
+  // "Copied!" flashes on the Share button after a clipboard fallback.
+  const [shareCopied, setShareCopied] = useState(false);
+  const copiedTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (copiedTimer.current !== null) {
+        window.clearTimeout(copiedTimer.current);
+      }
+    },
+    [],
+  );
+
+  // Wordle-style share: a themed snippet whose link replays this puzzle and
+  // carries the score as a challenge. Native share sheet where available,
+  // clipboard otherwise; the score is a claim, verified socially.
+  const handleShare = async () => {
+    const url = new URL(window.location.href);
+    const letters = url.searchParams.get('letters') ?? '';
+    url.searchParams.set('score', String(earnedPoints));
+    url.searchParams.set('hints', String(hintCount));
+
+    const summary =
+      `${earnedPoints}/${maxPoints} · ${t.levelName(level)}` +
+      (hasWon ? ' ✓' : '') +
+      (hintCount > 0 ? ` · ${t.hintsUsed(hintCount, lostPoints)}` : '');
+    const text = [
+      `${t.appTitle} · ${letters} (${requiredCharacter})`,
+      summary,
+      shareBar(earnedPoints, lostPoints, maxPoints),
+      url.toString(),
+    ].join('\n');
+
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share({ text });
+        return;
+      }
+    } catch (_error) {
+      return; // the user dismissed the share sheet
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setShareCopied(true);
+      if (copiedTimer.current !== null) {
+        window.clearTimeout(copiedTimer.current);
+      }
+      copiedTimer.current = window.setTimeout(() => {
+        setShareCopied(false);
+      }, 2000);
+    } catch (_error) {
+      // No share sheet, no clipboard: nothing to do.
+    }
+  };
 
   const foundCount = wordSlots.filter((slot) => slot.found !== null).length;
   const anyHinted = wordSlots.some((slot) => slot.found?.hinted ?? false);
@@ -145,6 +217,23 @@ export function Scoreboard({
           {t.lockedOutNote(maxPoints - lostPoints, winPoints)}
         </p>
       ) : null}
+      {/* A score that arrived via a shared link: the duel banner. */}
+      {challengeScore === null ? null : earnedPoints > challengeScore ? (
+        <p
+          className="rounded-xl bg-accent-soft p-3 text-center text-sm font-medium text-accent dark:bg-accent/15"
+          data-testid="challenge"
+          role="status"
+        >
+          {t.challengeBeaten(challengeScore)}
+        </p>
+      ) : (
+        <p
+          className="rounded-xl bg-gray-100 p-3 text-center text-sm font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+          data-testid="challenge"
+        >
+          {t.challengeNote(challengeScore)}
+        </p>
+      )}
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm text-gray-600 dark:text-gray-400">
           {t.foundSummary(foundCount)}
@@ -155,14 +244,26 @@ export function Scoreboard({
           ) : null}
         </p>
         {foundCount > 0 ? (
-          <button
-            className="-m-2 flex touch-manipulation items-center gap-1 p-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
-            onClick={onRestart}
-            type="button"
-          >
-            <span aria-hidden="true">⟲</span>
-            {t.restartButton}
-          </button>
+          <span className="flex items-center gap-3">
+            <button
+              className="-my-2 flex touch-manipulation items-center gap-1 py-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
+              onClick={() => {
+                void handleShare();
+              }}
+              type="button"
+            >
+              <span aria-hidden="true">↗</span>
+              {shareCopied ? t.shareCopied : t.shareButton}
+            </button>
+            <button
+              className="-my-2 flex touch-manipulation items-center gap-1 py-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
+              onClick={onRestart}
+              type="button"
+            >
+              <span aria-hidden="true">⟲</span>
+              {t.restartButton}
+            </button>
+          </span>
         ) : null}
       </div>
       {/* Green earned points grow from the left; red points lost to hints

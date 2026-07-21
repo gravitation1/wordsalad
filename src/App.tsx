@@ -135,6 +135,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
         <FeedbackLine feedback={game.feedback} />
         <Scoreboard
           celebration={game.celebration}
+          challengeScore={game.challengeScore}
           earnedPercent={game.earnedPercent}
           requiredCharacter={game.requiredCharacter}
           saladLetters={game.saladLetters}

@@ -141,6 +141,9 @@ export interface PlayingGame {
   // while a win is still genuinely at stake.
   hintForfeitsWin: boolean;
   hintCount: number;
+  // A score carried in by a shared URL, to beat on this puzzle. Null when
+  // the game was not opened from a share link.
+  challengeScore: number | null;
   tossId: number;
   deleteId: number;
   gameId: number;
@@ -332,6 +335,13 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     null,
   );
   const [celebration, setCelebration] = useState<Celebration | null>(null);
+  // Read once at boot; the URL-write effect strips it so re-sharing never
+  // carries a stale challenge along.
+  const [challengeScore, setChallengeScore] = useState<number | null>(() => {
+    const raw = new URLSearchParams(window.location.search).get('score');
+    const score = raw === null ? Number.NaN : Number(raw);
+    return Number.isInteger(score) && score > 0 ? score : null;
+  });
   const [tossId, setTossId] = useState(0);
   const [deleteId, setDeleteId] = useState(0);
 
@@ -353,6 +363,9 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     } else {
       url.searchParams.set('min', minimumLength);
     }
+    // Share-link challenge params are consumed at boot, not kept.
+    url.searchParams.delete('score');
+    url.searchParams.delete('hints');
     url.hash = '';
     window.history.replaceState(null, '', url.toString());
   }, [wordSalad]);
@@ -506,6 +519,8 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setWordExit(null);
     setDeniedControl(null);
     setCelebration(null);
+    // A shared challenge belongs to the puzzle it arrived with.
+    setChallengeScore(null);
     // Reset the press counters so the control buttons don't replay a ripple
     // when the board remounts for the fresh game.
     setTossId(0);
@@ -799,6 +814,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     hintCost,
     hintForfeitsWin,
     hintCount: hintedWords.size,
+    challengeScore,
     tossId,
     deleteId,
     gameId: gameState.id,
