@@ -59,12 +59,12 @@ describe('randomCharacterString', () => {
 });
 
 describe('storeWordSalad and loadWordSalad', () => {
-  it('round-trips a game through the location hash format', () => {
+  it('round-trips a game through its encoded form', () => {
     const original = new WordSalad(new Set('WORDTES'), 'T', 4, DICTIONARY);
     const stored = storeWordSalad(original);
-    expect(stored).toBe('WORDTES.T.4');
+    expect(stored).toBe('DEORSTW.T.4');
 
-    const loaded = loadWordSalad(DICTIONARY, `#${stored}`);
+    const loaded = loadWordSalad(DICTIONARY, stored);
     expect(loaded.characterSet).toEqual(original.characterSet);
     expect(loaded.requiredCharacter).toBe('T');
     expect(loaded.minimumLength).toBe(4);
@@ -72,48 +72,48 @@ describe('storeWordSalad and loadWordSalad', () => {
     expect(storeWordSalad(loaded)).toBe(stored);
   });
 
-  it('rejects a hash with the wrong number of pieces', () => {
-    expect(() => loadWordSalad(DICTIONARY, '#WORDTES')).toThrowError(
+  it('rejects an encoding with the wrong number of pieces', () => {
+    expect(() => loadWordSalad(DICTIONARY, 'WORDTES')).toThrowError(
       'Invalid game data!',
     );
-    expect(() => loadWordSalad(DICTIONARY, '#WORDTES.T')).toThrowError(
+    expect(() => loadWordSalad(DICTIONARY, 'WORDTES.T')).toThrowError(
       'Invalid game data!',
     );
-    expect(() => loadWordSalad(DICTIONARY, '#WORDTES.T.4.9')).toThrowError(
+    expect(() => loadWordSalad(DICTIONARY, 'WORDTES.T.4.9')).toThrowError(
       'Invalid game data!',
     );
   });
 
-  it('normalizes a lowercase hash', () => {
-    const loaded = loadWordSalad(DICTIONARY, '#wordtes.t.4');
-    expect(storeWordSalad(loaded)).toBe('WORDTES.T.4');
+  it('normalizes a lowercase encoding', () => {
+    const loaded = loadWordSalad(DICTIONARY, 'wordtes.t.4');
+    expect(storeWordSalad(loaded)).toBe('DEORSTW.T.4');
   });
 
-  it('rejects malformed hash pieces', () => {
+  it('rejects malformed encoding pieces', () => {
     const malformed = [
-      '#WOR^TES.T.4', // non-alphabetic character in the set
-      '#WORDTES.TT.4', // multi-letter required character
-      '#WORDTES.7.4', // non-alphabetic required character
-      '#WORDTES.T.0', // minimum length below 1
-      '#WORDTES.T.-5', // negative minimum length
-      '#WORDTES.T.4abc', // non-numeric minimum length
-      '#WORDTES.T.', // empty minimum length
+      'WOR^TES.T.4', // non-alphabetic character in the set
+      'WORDTES.TT.4', // multi-letter required character
+      'WORDTES.7.4', // non-alphabetic required character
+      'WORDTES.T.0', // minimum length below 1
+      'WORDTES.T.-5', // negative minimum length
+      'WORDTES.T.4abc', // non-numeric minimum length
+      'WORDTES.T.', // empty minimum length
     ];
-    for (const hash of malformed) {
-      expect(() => loadWordSalad(DICTIONARY, hash)).toThrowError(
+    for (const encoded of malformed) {
+      expect(() => loadWordSalad(DICTIONARY, encoded)).toThrowError(
         'Invalid game data!',
       );
     }
   });
 
-  it('rejects a hash whose required character is not in the set', () => {
-    expect(() => loadWordSalad(DICTIONARY, '#WORDES.T.4')).toThrowError(
+  it('rejects an encoding whose required character is not in the set', () => {
+    expect(() => loadWordSalad(DICTIONARY, 'WORDES.T.4')).toThrowError(
       'Missing required character!',
     );
   });
 
   it('rejects a hash with no valid words', () => {
-    expect(() => loadWordSalad(DICTIONARY, '#XYZQJKV.X.4')).toThrowError(
+    expect(() => loadWordSalad(DICTIONARY, 'XYZQJKV.X.4')).toThrowError(
       'No valid words!',
     );
   });

@@ -1,15 +1,45 @@
+import { useRef, useState } from 'react';
+
 import { Confetti } from './components/Confetti';
 import { FeedbackLine } from './components/FeedbackLine';
 import { GameControls } from './components/GameControls';
+import { HistoryDialog } from './components/HistoryDialog';
 import { SaladLetters } from './components/SaladLetters';
 import { Scoreboard } from './components/Scoreboard';
 import { WordInput } from './components/WordInput';
 import { useMessages } from './i18n';
+import type { HistoryEntry } from './progressStore';
+import { loadSummaries } from './progressStore';
 import { useWordSaladGame } from './useWordSaladGame';
+
+// Loaded in the History button's click handler (reading storage and the
+// clock are event-time work; render stays pure).
+interface HistorySnapshot {
+  entries: readonly HistoryEntry[];
+  langParam: string | null;
+  now: number;
+}
 
 export function App({ dictionary }: { dictionary: readonly string[] }) {
   const t = useMessages();
   const game = useWordSaladGame(dictionary);
+  const [history, setHistory] = useState<HistorySnapshot | null>(null);
+  const historyButtonRef = useRef<HTMLButtonElement>(null);
+
+  const openHistory = () => {
+    setHistory({
+      entries: loadSummaries(),
+      langParam: new URLSearchParams(window.location.search).get('lang'),
+      now: Date.now(),
+    });
+  };
+
+  // Closing the dialog restores focus to this trigger; blur it so a
+  // subsequent Enter submits a word instead of re-opening the dialog.
+  const closeHistory = () => {
+    setHistory(null);
+    historyButtonRef.current?.blur();
+  };
 
   if (game.status === 'error') {
     return (
@@ -43,7 +73,23 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           </span>
           {t.newGameButton}
         </button>
+        <button
+          className="-m-2 touch-manipulation p-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
+          onClick={openHistory}
+          ref={historyButtonRef}
+          type="button"
+        >
+          {t.historyButton}
+        </button>
       </header>
+      {history === null ? null : (
+        <HistoryDialog
+          entries={history.entries}
+          langParam={history.langParam}
+          now={history.now}
+          onClose={closeHistory}
+        />
+      )}
       {/* Remounts on every new game (key) so the board deals in fresh. */}
       <div
         className="game-enter flex w-full flex-col items-center gap-5"
@@ -55,6 +101,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           canHint={game.canHint}
           isComplete={game.isComplete}
           hintCost={game.hintCost}
+          hintForfeitsWin={game.hintForfeitsWin}
           hintReveal={game.hintReveal}
           spentHint={game.spentHint}
           inputLetters={game.inputLetters}

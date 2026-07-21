@@ -81,7 +81,7 @@ describe('plural forms', () => {
 describe('French UI', () => {
   beforeEach(() => {
     window.localStorage.clear();
-    window.history.replaceState(null, '', '#WORDTES.T.4');
+    window.history.replaceState(null, '', '?letters=WORDTES&required=T');
   });
 
   afterEach(() => {
@@ -128,7 +128,7 @@ describe('French UI', () => {
 describe('Japanese UI', () => {
   beforeEach(() => {
     window.localStorage.clear();
-    window.history.replaceState(null, '', '#WORDTES.T.4');
+    window.history.replaceState(null, '', '?letters=WORDTES&required=T');
   });
 
   afterEach(() => {

@@ -31,11 +31,22 @@ export interface Messages {
   newGameButton: string;
   playAgainButton: string;
   restartButton: string;
+  historyButton: string;
+  historyTitle: string;
+  historyEmpty: string;
+  sortRecent: string;
+  sortResult: string;
+  sortRating: string;
+  statPlayed: string;
+  statWon: string;
+  statStreak: string;
+  statHints: string;
   hintButton: string;
   hintsUsed: (count: number, lostPoints: number) => string;
   hintCostBadge: (cost: number) => string;
   hintCostLabel: (cost: number) => string;
   hintAgainLabel: string;
+  hintForfeitsWinLabel: string;
   hintedLegend: string;
   lockedOutNote: (reachablePoints: number, winPoints: number) => string;
   winThresholdLabel: (winPoints: number) => string;
@@ -80,6 +91,16 @@ const EN: Messages = {
   newGameButton: 'New game',
   playAgainButton: 'Play again',
   restartButton: 'Restart',
+  historyButton: 'History',
+  historyTitle: 'History',
+  historyEmpty: 'Nothing here yet — score a word to start your history.',
+  sortRecent: 'Recent',
+  sortResult: 'Result',
+  sortRating: 'Rating',
+  statPlayed: 'Played',
+  statWon: 'Won',
+  statStreak: 'Streak',
+  statHints: 'Hints',
   hintButton: 'Hint',
   hintsUsed: (count, lostPoints) =>
     `${count} hint${plural('en', count, { one: '', other: 's' })} ` +
@@ -89,6 +110,8 @@ const EN: Messages = {
     `Reveals a word and lowers your max score by ${cost} point${plural('en', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revealed with a hint',
   hintAgainLabel: 'Shows your hinted word again — no extra cost',
+  hintForfeitsWinLabel:
+    'Reveals a word — your best possible score would drop below the win line',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Too many hints — winning takes ${winPoints} points, ` +
     `but only ${reachablePoints} can still be reached.`,
@@ -158,6 +181,17 @@ const FR: Messages = {
   newGameButton: 'Nouvelle partie',
   playAgainButton: 'Rejouer',
   restartButton: 'Recommencer',
+  historyButton: 'Historique',
+  historyTitle: 'Historique',
+  historyEmpty:
+    'Rien ici pour l’instant — marquez un mot pour commencer votre historique.',
+  sortRecent: 'Récents',
+  sortResult: 'Résultat',
+  sortRating: 'Niveau',
+  statPlayed: 'Parties',
+  statWon: 'Gagnées',
+  statStreak: 'Série',
+  statHints: 'Indices',
   hintButton: 'Indice',
   hintsUsed: (count, lostPoints) =>
     `${count} indice${plural('fr', count, { one: '', other: 's' })} ` +
@@ -167,6 +201,8 @@ const FR: Messages = {
     `Révèle un mot et réduit votre score max de ${cost} point${plural('fr', cost, { one: '', other: 's' })}`,
   hintedLegend: '* révélé par un indice',
   hintAgainLabel: 'Réaffiche votre mot d’indice — sans coût supplémentaire',
+  hintForfeitsWinLabel:
+    'Révèle un mot — votre score maximum possible passerait sous le seuil de victoire',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Trop d’indices — il faut ${winPoints} points pour gagner, ` +
     `mais seulement ${reachablePoints} restent accessibles.`,
@@ -236,6 +272,17 @@ const ES: Messages = {
   newGameButton: 'Nueva partida',
   playAgainButton: 'Jugar otra vez',
   restartButton: 'Reiniciar',
+  historyButton: 'Historial',
+  historyTitle: 'Historial',
+  historyEmpty:
+    'Aún no hay nada: consigue una palabra para empezar tu historial.',
+  sortRecent: 'Recientes',
+  sortResult: 'Resultado',
+  sortRating: 'Rango',
+  statPlayed: 'Partidas',
+  statWon: 'Ganadas',
+  statStreak: 'Racha',
+  statHints: 'Pistas',
   hintButton: 'Pista',
   hintsUsed: (count, lostPoints) =>
     `${count} pista${plural('es', count, { one: '', other: 's' })} ` +
@@ -245,6 +292,8 @@ const ES: Messages = {
     `Revela una palabra y reduce tu puntuación máxima en ${cost} punto${plural('es', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revelada con una pista',
   hintAgainLabel: 'Vuelve a mostrar la palabra de la pista, sin coste extra',
+  hintForfeitsWinLabel:
+    'Revela una palabra: tu puntuación máxima posible caería por debajo del umbral de victoria',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Demasiadas pistas: para ganar se necesitan ${winPoints} puntos, ` +
     `pero solo quedan ${reachablePoints} alcanzables.`,
@@ -314,6 +363,17 @@ const DE: Messages = {
   newGameButton: 'Neues Spiel',
   playAgainButton: 'Nochmal spielen',
   restartButton: 'Neu starten',
+  historyButton: 'Verlauf',
+  historyTitle: 'Verlauf',
+  historyEmpty:
+    'Noch nichts hier — finde ein Wort, um deinen Verlauf zu starten.',
+  sortRecent: 'Zuletzt',
+  sortResult: 'Ergebnis',
+  sortRating: 'Rang',
+  statPlayed: 'Spiele',
+  statWon: 'Gewonnen',
+  statStreak: 'Serie',
+  statHints: 'Tipps',
   hintButton: 'Tipp',
   hintsUsed: (count, lostPoints) =>
     `${count} ${plural('de', count, { one: 'Tipp', other: 'Tipps' })} ` +
@@ -324,6 +384,8 @@ const DE: Messages = {
   hintedLegend: '* mit einem Tipp aufgedeckt',
   hintAgainLabel:
     'Zeigt dein aufgedecktes Wort erneut — ohne zusätzliche Kosten',
+  hintForfeitsWinLabel:
+    'Deckt ein Wort auf — dein bestmöglicher Punktestand fiele unter die Siegmarke',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Zu viele Tipps — zum Sieg sind ${winPoints} Punkte nötig, ` +
     `aber nur noch ${reachablePoints} ${plural('de', reachablePoints, { one: 'ist', other: 'sind' })} erreichbar.`,
@@ -393,6 +455,17 @@ const IT: Messages = {
   newGameButton: 'Nuova partita',
   playAgainButton: 'Gioca ancora',
   restartButton: 'Ricomincia',
+  historyButton: 'Cronologia',
+  historyTitle: 'Cronologia',
+  historyEmpty:
+    'Ancora niente qui: trova una parola per iniziare la cronologia.',
+  sortRecent: 'Recenti',
+  sortResult: 'Risultato',
+  sortRating: 'Livello',
+  statPlayed: 'Partite',
+  statWon: 'Vinte',
+  statStreak: 'Serie',
+  statHints: 'Indizi',
   hintButton: 'Indizio',
   hintsUsed: (count, lostPoints) =>
     `${count} ${plural('it', count, { one: 'indizio', other: 'indizi' })} ` +
@@ -403,6 +476,8 @@ const IT: Messages = {
   hintedLegend: '* rivelata con un indizio',
   hintAgainLabel:
     'Mostra di nuovo la parola dell’indizio, senza costi aggiuntivi',
+  hintForfeitsWinLabel:
+    'Rivela una parola: il tuo punteggio massimo possibile scenderebbe sotto la soglia di vittoria',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Troppi indizi: per vincere ${plural('it', winPoints, { one: 'serve', other: 'servono' })} ${winPoints} ${plural('it', winPoints, { one: 'punto', other: 'punti' })}, ` +
     `ma ne ${plural('it', reachablePoints, { one: 'resta raggiungibile', other: 'restano raggiungibili' })} solo ${reachablePoints}.`,
@@ -472,6 +547,17 @@ const PT: Messages = {
   newGameButton: 'Novo jogo',
   playAgainButton: 'Jogar de novo',
   restartButton: 'Recomeçar',
+  historyButton: 'Histórico',
+  historyTitle: 'Histórico',
+  historyEmpty:
+    'Nada aqui ainda — marque uma palavra para começar seu histórico.',
+  sortRecent: 'Recentes',
+  sortResult: 'Resultado',
+  sortRating: 'Nível',
+  statPlayed: 'Partidas',
+  statWon: 'Vencidas',
+  statStreak: 'Sequência',
+  statHints: 'Dicas',
   hintButton: 'Dica',
   hintsUsed: (count, lostPoints) =>
     `${count} dica${plural('pt', count, { one: '', other: 's' })} ` +
@@ -481,6 +567,8 @@ const PT: Messages = {
     `Revela uma palavra e reduz sua pontuação máxima em ${cost} ponto${plural('pt', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revelada com uma dica',
   hintAgainLabel: 'Mostra novamente a palavra da dica, sem custo extra',
+  hintForfeitsWinLabel:
+    'Revela uma palavra — sua pontuação máxima possível cairia abaixo da linha de vitória',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Dicas demais — vencer exige ${winPoints} pontos, ` +
     `mas só dá para alcançar ${reachablePoints}.`,
@@ -550,6 +638,17 @@ const NL: Messages = {
   newGameButton: 'Nieuw spel',
   playAgainButton: 'Opnieuw spelen',
   restartButton: 'Opnieuw beginnen',
+  historyButton: 'Geschiedenis',
+  historyTitle: 'Geschiedenis',
+  historyEmpty:
+    'Nog niets hier — scoor een woord om je geschiedenis te starten.',
+  sortRecent: 'Recent',
+  sortResult: 'Resultaat',
+  sortRating: 'Niveau',
+  statPlayed: 'Gespeeld',
+  statWon: 'Gewonnen',
+  statStreak: 'Reeks',
+  statHints: 'Hints',
   hintButton: 'Hint',
   hintsUsed: (count, lostPoints) =>
     `${count} hint${plural('nl', count, { one: '', other: 's' })} ` +
@@ -559,6 +658,8 @@ const NL: Messages = {
     `Onthult een woord en verlaagt je maximale score met ${cost} ${plural('nl', cost, { one: 'punt', other: 'punten' })}`,
   hintedLegend: '* onthuld met een hint',
   hintAgainLabel: 'Toont je hintwoord opnieuw — zonder extra kosten',
+  hintForfeitsWinLabel:
+    'Onthult een woord — je maximaal haalbare score zakt dan onder de winstgrens',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Te veel hints — winnen vergt ${winPoints} punten, ` +
     `maar er ${plural('nl', reachablePoints, { one: 'is', other: 'zijn' })} er nog maar ${reachablePoints} haalbaar.`,
@@ -629,12 +730,24 @@ const JA: Messages = {
   newGameButton: '新しいゲーム',
   playAgainButton: 'もう一度遊ぶ',
   restartButton: 'やり直す',
+  historyButton: '履歴',
+  historyTitle: '履歴',
+  historyEmpty: 'まだ何もありません — 単語を見つけて履歴を始めましょう。',
+  sortRecent: '新しい順',
+  sortResult: '結果',
+  sortRating: 'ランク',
+  statPlayed: 'プレイ数',
+  statWon: '勝利',
+  statStreak: '連続日数',
+  statHints: 'ヒント',
   hintButton: 'ヒント',
   hintsUsed: (count, lostPoints) => `ヒント${count}回（−${lostPoints}点）`,
   hintCostBadge: (cost) => `最大−${cost}`,
   hintCostLabel: (cost) => `単語を1つ表示し、最大スコアが${cost}点下がります`,
   hintedLegend: '* ヒントで表示',
   hintAgainLabel: 'ヒントで表示した単語をもう一度表示します（追加コストなし）',
+  hintForfeitsWinLabel:
+    '単語を1つ表示しますが、最大スコアが勝利ラインを下回ります',
   lockedOutNote: (reachablePoints, winPoints) =>
     `ヒントが多すぎます — 勝利には${winPoints}ポイント必要ですが、` +
     `あと最大${reachablePoints}ポイントしか獲得できません。`,
@@ -701,6 +814,16 @@ const KO: Messages = {
   newGameButton: '새 게임',
   playAgainButton: '다시 하기',
   restartButton: '다시 시작',
+  historyButton: '기록',
+  historyTitle: '기록',
+  historyEmpty: '아직 아무것도 없어요 — 단어를 찾아 기록을 시작하세요.',
+  sortRecent: '최신순',
+  sortResult: '결과',
+  sortRating: '등급',
+  statPlayed: '플레이',
+  statWon: '승리',
+  statStreak: '연속',
+  statHints: '힌트',
   hintButton: '힌트',
   hintsUsed: (count, lostPoints) => `힌트 ${count}개 (−${lostPoints}점)`,
   hintCostBadge: (cost) => `최대 −${cost}`,
@@ -708,6 +831,8 @@ const KO: Messages = {
     `단어 하나를 공개하고 최대 점수가 ${cost}점 낮아집니다`,
   hintedLegend: '* 힌트로 공개',
   hintAgainLabel: '힌트로 공개한 단어를 다시 보여줘요 (추가 비용 없음)',
+  hintForfeitsWinLabel:
+    '단어를 공개하지만 최대 점수가 승리 기준 아래로 떨어져요',
   lockedOutNote: (reachablePoints, winPoints) =>
     `힌트를 너무 많이 썼어요 — 승리에는 ${winPoints}점이 필요하지만 ` +
     `이제 최대 ${reachablePoints}점만 얻을 수 있어요.`,
@@ -774,12 +899,23 @@ const ZH: Messages = {
   newGameButton: '新游戏',
   playAgainButton: '再玩一局',
   restartButton: '重新开始',
+  historyButton: '历史',
+  historyTitle: '历史',
+  historyEmpty: '这里还没有记录——找到一个单词开始吧。',
+  sortRecent: '最近',
+  sortResult: '结果',
+  sortRating: '等级',
+  statPlayed: '局数',
+  statWon: '获胜',
+  statStreak: '连续天数',
+  statHints: '提示',
   hintButton: '提示',
   hintsUsed: (count, lostPoints) => `${count} 次提示（−${lostPoints} 分）`,
   hintCostBadge: (cost) => `上限−${cost}`,
   hintCostLabel: (cost) => `揭示一个单词，最高分降低 ${cost} 分`,
   hintedLegend: '* 用提示揭示',
   hintAgainLabel: '再次显示提示过的单词，无额外扣分',
+  hintForfeitsWinLabel: '揭示一个单词，但最高可得分将跌破获胜线',
   lockedOutNote: (reachablePoints, winPoints) =>
     `提示用得太多——获胜需要 ${winPoints} 分，` +
     `但最多只能拿到 ${reachablePoints} 分。`,
@@ -846,6 +982,16 @@ const RU: Messages = {
   newGameButton: 'Новая игра',
   playAgainButton: 'Сыграть ещё раз',
   restartButton: 'Начать заново',
+  historyButton: 'История',
+  historyTitle: 'История',
+  historyEmpty: 'Пока пусто — найдите слово, чтобы начать историю.',
+  sortRecent: 'Недавние',
+  sortResult: 'Результат',
+  sortRating: 'Звание',
+  statPlayed: 'Сыграно',
+  statWon: 'Побед',
+  statStreak: 'Серия',
+  statHints: 'Подсказки',
   hintButton: 'Подсказка',
   hintsUsed: (count, lostPoints) =>
     `${count} ${plural('ru', count, { one: 'подсказка', few: 'подсказки', other: 'подсказок' })} ` +
@@ -856,6 +1002,8 @@ const RU: Messages = {
   hintedLegend: '* открыто подсказкой',
   hintAgainLabel:
     'Снова показывает слово из подсказки — без дополнительной платы',
+  hintForfeitsWinLabel:
+    'Открывает слово — ваш максимально возможный счёт опустится ниже победной отметки',
   lockedOutNote: (reachablePoints, winPoints) =>
     `Слишком много подсказок — для победы нужно ${winPoints} ${plural('ru', winPoints, { one: 'очко', few: 'очка', other: 'очков' })}, ` +
     `но достижимо не больше ${reachablePoints}.`,

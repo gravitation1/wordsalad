@@ -455,6 +455,28 @@ body {
   }
 }
 
+/* History rows deal in with a stagger, like the board's tiles. */
+@keyframes row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.row-enter {
+  animation: row-enter 250ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-enter {
+    animation: none;
+  }
+}
+
 /* A fresh game deals in quickly; the letters then cascade on their own. */
 @keyframes game-enter {
   from {

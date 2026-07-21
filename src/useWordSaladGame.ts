@@ -14,6 +14,7 @@ import {
   loadHintedWords,
   loadSavedWords,
   saveHintedWords,
+  saveSummary,
   saveWords,
 } from './progressStore';
 
@@ -22,7 +23,8 @@ export type { WordPreview } from './game/wordSalad';
 // The level is won when earned points reach this fraction of the maximum.
 // Hinted words score nothing, so their points are permanently unreachable;
 // hint too much and the ceiling on earned points drops below this line.
-const WIN_THRESHOLD = 0.75;
+// Exported so the history view judges past games by the same line.
+export const WIN_THRESHOLD = 0.75;
 
 export type GameFeedback =
   | { kind: 'letter-rejected'; letter: string }
@@ -134,6 +136,10 @@ export interface PlayingGame {
   lockedOut: boolean;
   canHint: boolean;
   hintCost: number;
+  // Taking the offered hint would drop the reachable maximum below the win
+  // line — the one irreversible, game-forfeiting choice. Only meaningful
+  // while a win is still genuinely at stake.
+  hintForfeitsWin: boolean;
   hintCount: number;
   tossId: number;
   deleteId: number;
@@ -260,16 +266,26 @@ function generateGameInit(dictionary: readonly string[]): GameInit {
   }
 }
 
-// Generate a new game if we have no game data; otherwise load the game
-// encoded in the URL hash (restoring any saved progress for it). New games
-// are started explicitly via startNewGame, so a refresh resumes the game.
+// Generate a new game if the URL carries no game params; otherwise load the
+// puzzle they describe (?letters=AZIMUTH&required=I&min=4 — min defaults
+// to 4), restoring any saved progress for it. New games are started
+// explicitly via startNewGame, so a refresh resumes the game; pasting a
+// different puzzle URL is a real navigation and boots through here.
 function createWordSalad(dictionary: readonly string[]): GameInit {
-  if (window.location.hash.length === 0) {
+  const params = new URLSearchParams(window.location.search);
+  const letters = params.get('letters');
+  const required = params.get('required');
+  const minimumLength = params.get('min');
+
+  if (letters === null && required === null && minimumLength === null) {
     return generateGameInit(dictionary);
   }
 
   try {
-    const wordSalad = loadWordSalad(dictionary, window.location.hash);
+    const wordSalad = loadWordSalad(
+      dictionary,
+      `${letters ?? ''}.${required ?? ''}.${minimumLength ?? '4'}`,
+    );
     restoreProgress(wordSalad);
     return { wordSalad };
   } catch (_error) {
@@ -319,10 +335,26 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   const [tossId, setTossId] = useState(0);
   const [deleteId, setDeleteId] = useState(0);
 
+  // Keep the URL shareable: reflect the current puzzle into the query
+  // string (min stays implicit at its default of 4). replaceState neither
+  // reloads nor grows history — real navigation, like pasting a different
+  // puzzle URL, reloads the app and boots from the new params.
   useEffect(() => {
-    if (wordSalad !== null) {
-      window.location.hash = storeWordSalad(wordSalad);
+    if (wordSalad === null) {
+      return;
     }
+    const [letters, required, minimumLength] =
+      storeWordSalad(wordSalad).split('.');
+    const url = new URL(window.location.href);
+    url.searchParams.set('letters', letters);
+    url.searchParams.set('required', required);
+    if (minimumLength === '4') {
+      url.searchParams.delete('min');
+    } else {
+      url.searchParams.set('min', minimumLength);
+    }
+    url.hash = '';
+    window.history.replaceState(null, '', url.toString());
   }, [wordSalad]);
 
   // Blur on any click so that Enter submits the current word instead of
@@ -667,6 +699,28 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     return allWords.map((word) => ({ found: found.get(word) ?? null }));
   }, [allWords, foundWords]);
 
+  // Record a compact summary for the history view whenever progress
+  // changes. Zero-progress games stay out of history (browsing New game
+  // would otherwise litter it), and Restart clears the record.
+  useEffect(() => {
+    if (
+      wordSalad === null ||
+      (foundWords.length === 0 && hintedWords.size === 0)
+    ) {
+      return;
+    }
+    const points = tallyPoints(wordSalad, hintedWords);
+    saveSummary(storeWordSalad(wordSalad), {
+      earned: points.earnedPoints,
+      found: foundWords.length,
+      hints: hintedWords.size,
+      lost: points.lostPoints,
+      max: wordSalad.maxPoints,
+      playedAt: Date.now(),
+      total: allWords.length,
+    });
+  }, [allWords, foundWords, hintedWords, wordSalad]);
+
   if (wordSalad === null) {
     return {
       status: 'error',
@@ -699,6 +753,11 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   const nextHint = nextHintWord(wordSalad, hintedWords);
   const canHint = nextHint !== null;
   const hintCost = nextHint === null ? 0 : nextHint.cost;
+  const hintForfeitsWin =
+    !hasWon &&
+    !lockedOut &&
+    hintCost > 0 &&
+    wordSalad.maxPoints - lostPoints - hintCost < winPoints;
 
   return {
     status: 'playing',
@@ -738,6 +797,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     lockedOut,
     canHint,
     hintCost,
+    hintForfeitsWin,
     hintCount: hintedWords.size,
     tossId,
     deleteId,

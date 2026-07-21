@@ -14,6 +14,7 @@ interface WordInputProps {
   canHint: boolean;
   isComplete: boolean;
   hintCost: number;
+  hintForfeitsWin: boolean;
   hintReveal: HintReveal | null;
   spentHint: SpentHint | null;
   inputLetters: readonly string[];
@@ -27,6 +28,12 @@ interface WordInputProps {
 // before the purchase (once spent, the bar shows the loss in neutral gray).
 const HINT_BADGE_CLASS =
   'flex h-5 items-center whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2 text-[11px] font-semibold text-red-400 dark:border-red-400/25 dark:bg-red-400/10 dark:text-red-400/80';
+
+// Full alarm: this hint would drop the reachable maximum below the win
+// line. The routine faded chip goes solid so the same object reads as
+// "this one is different".
+const HINT_BADGE_DANGER_CLASS =
+  'flex h-5 items-center whitespace-nowrap rounded-full bg-red-500 px-2 text-[11px] font-semibold text-white';
 
 // Letters cascade in when they arrive from a hint; typed letters appear at
 // once. Position i is delayed proportionally so it reads as a reveal.
@@ -75,6 +82,7 @@ export function WordInput({
   canHint,
   isComplete,
   hintCost,
+  hintForfeitsWin,
   hintReveal,
   spentHint,
   inputLetters,
@@ -176,8 +184,15 @@ export function WordInput({
             // The button eases in; after a submission it waits out the exiting
             // word so the two never hard-cut in the same frame.
             className={`${wordExit === null ? 'hint-enter' : 'hint-enter-delayed'} flex h-10 touch-manipulation items-center gap-2 rounded-full bg-gray-100 px-4 text-sm font-medium text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200`}
+            data-forfeits-win={hintForfeitsWin ? 'true' : 'false'}
             onClick={handleHint}
-            title={hintCost > 0 ? t.hintCostLabel(hintCost) : t.hintAgainLabel}
+            title={
+              hintForfeitsWin
+                ? t.hintForfeitsWinLabel
+                : hintCost > 0
+                  ? t.hintCostLabel(hintCost)
+                  : t.hintAgainLabel
+            }
             type="button"
           >
             {t.hintButton}
@@ -186,7 +201,9 @@ export function WordInput({
             {hintCost > 0 ? (
               <span
                 aria-hidden="true"
-                className={HINT_BADGE_CLASS}
+                className={
+                  hintForfeitsWin ? HINT_BADGE_DANGER_CLASS : HINT_BADGE_CLASS
+                }
                 ref={costBadgeRef}
               >
                 {t.hintCostBadge(hintCost)}

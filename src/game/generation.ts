@@ -77,8 +77,12 @@ export function generateWordSalad(validWordList: readonly string[]): WordSalad {
 }
 
 export function storeWordSalad(wordSalad: WordSalad): string {
+  // The letters sort so every ordering of the same charset produces one
+  // canonical encoding — shared URLs, storage keys, and history entries all
+  // agree on game identity (and a hand-typed URL no longer spells out the
+  // pangram it was built from).
   return (
-    Array.from(wordSalad.characterSet).join('') +
+    Array.from(wordSalad.characterSet).sort().join('') +
     '.' +
     wordSalad.requiredCharacter +
     '.' +
@@ -86,17 +90,18 @@ export function storeWordSalad(wordSalad: WordSalad): string {
   );
 }
 
+// Parses the exact encoding storeWordSalad produces (CHARACTERS.REQUIRED.MIN).
 export function loadWordSalad(
   validWordList: readonly string[],
-  locationHash: string,
+  encodedGame: string,
 ): WordSalad {
-  const pieces = locationHash.split('.');
+  const pieces = encodedGame.split('.');
 
   if (pieces.length !== 3) {
     throw new WordSaladError('InvalidGameData', 'Invalid game data!');
   }
 
-  const validCharacters = pieces[0].slice(1).toUpperCase();
+  const validCharacters = pieces[0].toUpperCase();
   const requiredCharacter = pieces[1].toUpperCase();
   const minimumWordLength = Number(pieces[2]);
 

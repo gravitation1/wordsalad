@@ -38,7 +38,7 @@ function currentWord(): string {
 describe('App', () => {
   beforeEach(() => {
     window.localStorage.clear();
-    window.history.replaceState(null, '', '#WORDTES.T.4');
+    window.history.replaceState(null, '', '?letters=WORDTES&required=T');
   });
 
   afterEach(() => {
@@ -63,9 +63,124 @@ describe('App', () => {
     expect(screen.getByText('Found 0 words')).toBeInTheDocument();
   });
 
-  it('stores the game in the location hash', () => {
+  it('reflects the game in the query string', () => {
     render(<App dictionary={DICTIONARY} />);
-    expect(window.location.hash).toBe('#WORDTES.T.4');
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get('letters')).toBe('DEORSTW');
+    expect(params.get('required')).toBe('T');
+    // The default minimum length stays implicit.
+    expect(params.get('min')).toBeNull();
+    expect(window.location.hash).toBe('');
+  });
+
+  it('honors an explicit minimum length param', () => {
+    window.history.replaceState(null, '', '?letters=WORDTES&required=T&min=5');
+    render(<App dictionary={DICTIONARY} />);
+
+    submitWord('test');
+    expect(screen.getByRole('status')).toHaveTextContent('TEST is too short!');
+    // The non-default min survives the URL rewrite.
+    expect(new URLSearchParams(window.location.search).get('min')).toBe('5');
+  });
+
+  it('rejects an incomplete puzzle query', () => {
+    window.history.replaceState(null, '', '?letters=WORDTES');
+    render(<App dictionary={DICTIONARY} />);
+    expect(screen.getByText('INVALID GAME DATA!')).toBeInTheDocument();
+  });
+
+  it('records a game summary once there is progress', () => {
+    render(<App dictionary={DICTIONARY} />);
+    expect(
+      window.localStorage.getItem('wordsalad:meta:DEORSTW.T.4'),
+    ).toBeNull();
+
+    submitWord('test');
+    const meta: unknown = JSON.parse(
+      window.localStorage.getItem('wordsalad:meta:DEORSTW.T.4') ?? 'null',
+    );
+    expect(meta).toMatchObject({
+      earned: 1,
+      found: 1,
+      hints: 0,
+      lost: 0,
+      max: 15,
+      total: 3,
+    });
+
+    // Restart wipes the record along with the rest of the progress.
+    fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
+    expect(
+      window.localStorage.getItem('wordsalad:meta:DEORSTW.T.4'),
+    ).toBeNull();
+  });
+
+  it('lists, sorts, and links historical games', () => {
+    // A second, older, won game (AZIMUTH at 11/14 crosses its win line).
+    window.localStorage.setItem(
+      'wordsalad:meta:AZIMUTH.I.4',
+      JSON.stringify({
+        earned: 11,
+        found: 1,
+        hints: 0,
+        lost: 0,
+        max: 14,
+        playedAt: 1000,
+        total: 4,
+      }),
+    );
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test'); // records the current game with a fresh timestamp
+
+    fireEvent.click(screen.getByRole('button', { name: 'History' }));
+    const dialog = screen.getByRole('dialog');
+
+    // Aggregates: 2 played, 1 won, 12 lifetime points, 2 words.
+    expect(within(dialog).getByTestId('stat-played')).toHaveTextContent('2');
+    expect(within(dialog).getByTestId('stat-won')).toHaveTextContent('1');
+    expect(within(dialog).getByTestId('stat-points')).toHaveTextContent('12');
+    expect(within(dialog).getByTestId('stat-words')).toHaveTextContent('2');
+
+    // Date sort (default): the just-played game first; entries resume via
+    // plain puzzle links.
+    let links = within(dialog).getAllByRole('link');
+    expect(links[0]).toHaveAttribute('href', '?letters=DEORSTW&required=T');
+    expect(links[1]).toHaveAttribute('href', '?letters=AZIMUTH&required=I');
+    expect(links[0]).toHaveAttribute('data-status', 'playing');
+    expect(links[1]).toHaveAttribute('data-status', 'won');
+
+    // Result sort: the won game leads.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Result' }));
+    links = within(dialog).getAllByRole('link');
+    expect(links[0]).toHaveAttribute('href', '?letters=AZIMUTH&required=I');
+
+    // Tapping the active sort again reverses the direction.
+    fireEvent.click(within(dialog).getByRole('button', { name: /Result/ }));
+    links = within(dialog).getAllByRole('link');
+    expect(links[0]).toHaveAttribute('href', '?letters=DEORSTW&required=T');
+    expect(
+      within(dialog).getByRole('button', { name: /Result/ }),
+    ).toHaveAttribute('data-direction', 'reversed');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('blurs the History trigger on close so Enter cannot re-open it', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const historyButton = screen.getByRole('button', { name: 'History' });
+
+    fireEvent.click(historyButton);
+    // Browsers hand focus back to the trigger when a modal dialog closes.
+    historyButton.focus();
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Close',
+      }),
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(historyButton).not.toHaveFocus();
   });
 
   it('shows typed letters uppercased in the current word', () => {
@@ -209,7 +324,7 @@ describe('App', () => {
 
   it('does not celebrate a restored, already-won game', () => {
     window.localStorage.setItem(
-      'wordsalad:WORDTES.T.4',
+      'wordsalad:DEORSTW.T.4',
       JSON.stringify(['TEST', 'ROTTED', 'WORSTED']),
     );
     render(<App dictionary={DICTIONARY} />);
@@ -224,13 +339,13 @@ describe('App', () => {
     submitWord('rotted');
 
     expect(
-      JSON.parse(window.localStorage.getItem('wordsalad:WORDTES.T.4') ?? '[]'),
+      JSON.parse(window.localStorage.getItem('wordsalad:DEORSTW.T.4') ?? '[]'),
     ).toEqual(['TEST', 'ROTTED']);
   });
 
   it('restores saved progress for a game loaded from the hash', () => {
     window.localStorage.setItem(
-      'wordsalad:WORDTES.T.4',
+      'wordsalad:DEORSTW.T.4',
       JSON.stringify(['TEST', 'ROTTED']),
     );
     render(<App dictionary={DICTIONARY} />);
@@ -246,7 +361,7 @@ describe('App', () => {
 
   it('shows the victory state when a completed game is restored', () => {
     window.localStorage.setItem(
-      'wordsalad:WORDTES.T.4',
+      'wordsalad:DEORSTW.T.4',
       JSON.stringify(['TEST', 'ROTTED', 'WORSTED']),
     );
     render(<App dictionary={DICTIONARY} />);
@@ -259,7 +374,7 @@ describe('App', () => {
 
   it('drops corrupt or stale saved entries on restore', () => {
     window.localStorage.setItem(
-      'wordsalad:WORDTES.T.4',
+      'wordsalad:DEORSTW.T.4',
       JSON.stringify(['TEST', 'NOTAWORD', 42, 'TAXI']),
     );
     render(<App dictionary={DICTIONARY} />);
@@ -392,18 +507,18 @@ describe('App', () => {
     // The hinted mark persists per puzzle (committed when revealed).
     expect(
       JSON.parse(
-        window.localStorage.getItem('wordsalad:hinted:WORDTES.T.4') ?? '[]',
+        window.localStorage.getItem('wordsalad:hinted:DEORSTW.T.4') ?? '[]',
       ),
     ).toEqual(['TEST']);
   });
 
   it('restores hinted marks for a resumed game', () => {
     window.localStorage.setItem(
-      'wordsalad:WORDTES.T.4',
+      'wordsalad:DEORSTW.T.4',
       JSON.stringify(['TEST', 'ROTTED']),
     );
     window.localStorage.setItem(
-      'wordsalad:hinted:WORDTES.T.4',
+      'wordsalad:hinted:DEORSTW.T.4',
       JSON.stringify(['TEST']),
     );
     render(<App dictionary={DICTIONARY} />);
@@ -444,6 +559,30 @@ describe('App', () => {
     expect(hint()).toHaveTextContent('−3 max');
   });
 
+  it('marks the hint that would forfeit the win', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const hint = () => screen.getByRole('button', { name: 'Hint' });
+
+    // TEST (1 pt) is affordable: 14 of 15 stays reachable, win needs 12.
+    expect(hint()).toHaveAttribute('data-forfeits-win', 'false');
+
+    fireEvent.click(hint()); // commit TEST
+    pressKey('Enter'); // submit it
+
+    // ROTTED (3 pts) would leave only 11 reachable — below the win line.
+    expect(hint()).toHaveAttribute('data-forfeits-win', 'true');
+    expect(hint()).toHaveAttribute(
+      'title',
+      'Reveals a word — your best possible score would drop below the win line',
+    );
+
+    // Once actually locked out, the standing note tells the story instead;
+    // the next hint offer is no longer a special warning.
+    fireEvent.click(hint()); // commit ROTTED — locked out now
+    pressKey('Enter');
+    expect(hint()).toHaveAttribute('data-forfeits-win', 'false');
+  });
+
   it('re-reveals a deleted hint instead of charging for a new word', () => {
     render(<App dictionary={DICTIONARY} />);
     const hint = () => screen.getByRole('button', { name: 'Hint' });
@@ -458,7 +597,7 @@ describe('App', () => {
     // Still only one committed word and one point lost.
     expect(
       JSON.parse(
-        window.localStorage.getItem('wordsalad:hinted:WORDTES.T.4') ?? '[]',
+        window.localStorage.getItem('wordsalad:hinted:DEORSTW.T.4') ?? '[]',
       ),
     ).toEqual(['TEST']);
     expect(screen.getByText('· 1 hint (−1 pt)')).toBeInTheDocument();
@@ -519,14 +658,14 @@ describe('App', () => {
     // Each hint commits its word the moment it is revealed.
     expect(
       JSON.parse(
-        window.localStorage.getItem('wordsalad:hinted:WORDTES.T.4') ?? '[]',
+        window.localStorage.getItem('wordsalad:hinted:DEORSTW.T.4') ?? '[]',
       ),
     ).toEqual(['TEST', 'ROTTED']);
   });
 
   it('restores the hint count for a resumed game', () => {
     window.localStorage.setItem(
-      'wordsalad:hinted:WORDTES.T.4',
+      'wordsalad:hinted:DEORSTW.T.4',
       JSON.stringify(['TEST', 'ROTTED', 'WORSTED']),
     );
     render(<App dictionary={DICTIONARY} />);
@@ -542,7 +681,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
     expect(screen.queryByText('· 1 hint (−1 pt)')).not.toBeInTheDocument();
     expect(
-      window.localStorage.getItem('wordsalad:hinted:WORDTES.T.4'),
+      window.localStorage.getItem('wordsalad:hinted:DEORSTW.T.4'),
     ).toBeNull();
   });
 
@@ -605,7 +744,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
 
     expect(screen.getByText('Found 0 words')).toBeInTheDocument();
-    expect(window.localStorage.getItem('wordsalad:WORDTES.T.4')).toBeNull();
+    expect(window.localStorage.getItem('wordsalad:DEORSTW.T.4')).toBeNull();
 
     // Same puzzle: the letters are unchanged and TEST scores again.
     expect(screen.getByRole('button', { name: 'T' })).toHaveAttribute(
@@ -651,8 +790,8 @@ describe('App', () => {
     );
   });
 
-  it('reports invalid game data in the hash', () => {
-    window.history.replaceState(null, '', '#NONSENSE');
+  it('reports invalid game data in the query params', () => {
+    window.history.replaceState(null, '', '?letters=WOR5TES&required=T');
     render(<App dictionary={DICTIONARY} />);
     expect(screen.getByRole('alert')).toHaveTextContent('INVALID GAME DATA!');
   });
