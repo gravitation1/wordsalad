@@ -82,6 +82,14 @@ export interface Celebration {
   tossId: number;
 }
 
+// A submission that climbed the ratings ladder. Fires only during play —
+// never on restore — and yields to the win celebration when both happen on
+// the same submission.
+export interface RankUp {
+  id: number;
+  level: string;
+}
+
 // A keyboard action that landed on an unavailable control (Backspace or
 // Enter with an empty word). The control acknowledges it with a press dip
 // but fires nothing — the same feedback a tap on it gives via CSS :active.
@@ -118,6 +126,7 @@ export interface PlayingGame {
   wordExit: WordExit | null;
   deniedControl: DeniedControl | null;
   celebration: Celebration | null;
+  rankUp: RankUp | null;
   feedback: GameFeedback | null;
   foundWords: readonly FoundWord[];
   wordSlots: readonly WordSlot[];
@@ -335,6 +344,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     null,
   );
   const [celebration, setCelebration] = useState<Celebration | null>(null);
+  const [rankUp, setRankUp] = useState<RankUp | null>(null);
   // Read once at boot; the URL-write effect strips it so re-sharing never
   // carries a stale challenge along.
   const [challengeScore, setChallengeScore] = useState<number | null>(() => {
@@ -519,6 +529,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setWordExit(null);
     setDeniedControl(null);
     setCelebration(null);
+    setRankUp(null);
     // A shared challenge belongs to the puzzle it arrived with.
     setChallengeScore(null);
     // Reset the press counters so the control buttons don't replay a ripple
@@ -557,6 +568,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setWordExit(null);
     setDeniedControl(null);
     setCelebration(null);
+    setRankUp(null);
     setTossId(0);
     setDeleteId(0);
     setHintedWords(new Set());
@@ -618,6 +630,16 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     const earnedAfter = tallyPoints(wordSalad, hintedWords).earnedPoints;
     if (earnedBefore < winPoints && earnedAfter >= winPoints) {
       setCelebration((previous) => ({ id: (previous?.id ?? 0) + 1, tossId }));
+    } else {
+      // Climbing a rung gets its own (smaller) moment — but the win
+      // celebration owns the submission when both land at once.
+      const levelAfter = getLevel(earnedAfter / wordSalad.maxPoints);
+      if (levelAfter !== getLevel(earnedBefore / wordSalad.maxPoints)) {
+        setRankUp((previous) => ({
+          id: (previous?.id ?? 0) + 1,
+          level: levelAfter,
+        }));
+      }
     }
 
     const gameKey = storeWordSalad(wordSalad);
@@ -795,6 +817,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     wordExit,
     deniedControl,
     celebration,
+    rankUp,
     feedback,
     foundWords,
     wordSlots,

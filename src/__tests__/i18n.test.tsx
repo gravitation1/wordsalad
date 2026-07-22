@@ -60,21 +60,15 @@ describe('plural forms', () => {
     expect(CATALOGS.ru.foundSummary(5)).toBe('Найдено 5 слов');
     expect(CATALOGS.ru.foundSummary(11)).toBe('Найдено 11 слов');
     // The points word inflects with the max: 21 -> one, 3 -> few, 100 -> many.
-    expect(CATALOGS.ru.progressLabel(1, 21, 'Idiot')).toBe(
-      '1 / 21 очко · Балда',
-    );
-    expect(CATALOGS.ru.progressLabel(1, 3, 'Idiot')).toBe('1 / 3 очка · Балда');
-    expect(CATALOGS.ru.progressLabel(3, 100, 'Idiot')).toBe(
-      '3 / 100 очков · Балда',
-    );
+    expect(CATALOGS.ru.scoreLabel(1, 21)).toBe('1 / 21 очко');
+    expect(CATALOGS.ru.scoreLabel(1, 3)).toBe('1 / 3 очка');
+    expect(CATALOGS.ru.scoreLabel(3, 100)).toBe('3 / 100 очков');
   });
 
   it('handles German full-word plurals', () => {
     expect(CATALOGS.de.foundSummary(1)).toBe('1 Wort gefunden');
     expect(CATALOGS.de.foundSummary(3)).toBe('3 Wörter gefunden');
-    expect(CATALOGS.de.progressLabel(3, 15, 'Idiot')).toBe(
-      '3 / 15 Punkte · Dussel',
-    );
+    expect(CATALOGS.de.scoreLabel(3, 15)).toBe('3 / 15 Punkte');
   });
 });
 
@@ -108,7 +102,9 @@ describe('French UI', () => {
       'TEST vous a rapporté 1 point !',
     );
     expect(screen.getByText('1 mot trouvé')).toBeInTheDocument();
-    expect(screen.getByText('1 / 15 points · Bof')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '1 / 15 points · Bof' }),
+    ).toBeInTheDocument();
   });
 
   it('announces letter rejections in French', () => {
@@ -154,6 +150,8 @@ describe('Japanese UI', () => {
       'TEST で1ポイント獲得！',
     );
     expect(screen.getByText('1個の単語')).toBeInTheDocument();
-    expect(screen.getByText('1 / 15ポイント · いまいち')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '1 / 15ポイント · いまいち' }),
+    ).toBeInTheDocument();
   });
 });

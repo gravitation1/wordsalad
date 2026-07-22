@@ -265,7 +265,9 @@ describe('App', () => {
       'TEST earned you 1 point!',
     );
     expect(screen.getByText('Found 1 word')).toBeInTheDocument();
-    expect(screen.getByText('1 / 15 points · Meh')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '1 / 15 points · Meh' }),
+    ).toBeInTheDocument();
     expect(currentWord()).toBe('');
 
     const link = screen.getByRole('link', { name: 'TEST' });
@@ -336,8 +338,28 @@ describe('App', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Found 3 words')).toBeInTheDocument();
     expect(
-      screen.getByText('15 / 15 points · Super-Duper-Genius'),
+      screen.getByRole('button', {
+        name: '15 / 15 points · Super-Duper-Genius',
+      }),
     ).toBeInTheDocument();
+  });
+
+  it('fires a rank-up flourish when the rating climbs', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const rating = () => screen.getByTestId('rating-name');
+    expect(rating()).toHaveAttribute('data-rank-id', '0');
+    expect(screen.queryByTestId('rank-burst')).not.toBeInTheDocument();
+
+    submitWord('test'); // 1 of 15: Idiot -> Meh
+    expect(rating()).toHaveAttribute('data-rank-id', '1');
+    expect(rating()).toHaveTextContent('Meh');
+    expect(screen.getByTestId('rank-burst')).toBeInTheDocument();
+
+    // Winning yields the submission to the full celebration: no rank-up
+    // even though the rating also climbed to Genius.
+    submitWord('worsted'); // 12 of 15: the win
+    expect(screen.getByTestId('confetti')).toBeInTheDocument();
+    expect(rating()).toHaveAttribute('data-rank-id', '1');
   });
 
   it('celebrates only at the moment the win line is crossed', () => {
@@ -410,7 +432,9 @@ describe('App', () => {
 
     expect(screen.getByText('YOU WIN!')).toBeInTheDocument();
     expect(
-      screen.getByText('15 / 15 points · Super-Duper-Genius'),
+      screen.getByRole('button', {
+        name: '15 / 15 points · Super-Duper-Genius',
+      }),
     ).toBeInTheDocument();
   });
 

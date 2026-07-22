@@ -150,6 +150,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           maxPoints={game.maxPoints}
           onPlayAgain={game.startNewGame}
           onRestart={game.restartGame}
+          rankUp={game.rankUp}
           winPoints={game.winPoints}
           winThreshold={game.winThreshold}
           wordSlots={game.wordSlots}

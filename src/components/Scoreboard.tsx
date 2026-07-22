@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { useMessages } from '../i18n';
-import type { Celebration, WordSlot } from '../useWordSaladGame';
+import type { Celebration, RankUp, WordSlot } from '../useWordSaladGame';
 import { WinBurst } from './Confetti';
 import { RatingsDialog } from './RatingsDialog';
 import { WordDrum } from './WordDrum';
@@ -25,6 +25,7 @@ interface ScoreboardProps {
   lockedOut: boolean;
   hintCount: number;
   challengeScore: number | null;
+  rankUp: RankUp | null;
   onPlayAgain: () => void;
   onRestart: () => void;
 }
@@ -63,6 +64,7 @@ export function Scoreboard({
   lockedOut,
   hintCount,
   challengeScore,
+  rankUp,
   onPlayAgain,
   onRestart,
 }: ScoreboardProps) {
@@ -300,17 +302,39 @@ export function Scoreboard({
           title={t.winThresholdLabel(winPoints)}
         />
       </div>
-      <button
-        aria-haspopup="dialog"
-        className="-mx-2 -my-1 touch-manipulation rounded px-2 py-1 text-left text-sm text-gray-600 underline decoration-gray-400/60 decoration-dotted underline-offset-4 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-        onClick={() => {
-          setIsRatingsOpen(true);
-        }}
-        ref={ratingsButtonRef}
-        type="button"
-      >
-        {t.progressLabel(earnedPoints, maxPoints, level)}
-      </button>
+      {/* relative + inline-block anchor the rank-up burst on the score. */}
+      <div className="relative inline-block">
+        <button
+          aria-haspopup="dialog"
+          className="-mx-2 -my-1 touch-manipulation rounded px-2 py-1 text-left text-sm text-gray-600 underline decoration-gray-400/60 decoration-dotted underline-offset-4 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          onClick={() => {
+            setIsRatingsOpen(true);
+          }}
+          ref={ratingsButtonRef}
+          type="button"
+        >
+          {t.scoreLabel(earnedPoints, maxPoints)}
+          {' · '}
+          {/* Split-flaps in on a rank-up (keyed remount replays it). */}
+          <span
+            className={rankUp === null ? undefined : 'rank-flip inline-block'}
+            data-rank-id={rankUp?.id ?? 0}
+            data-testid="rating-name"
+            key={`rank-${rankUp?.id ?? 0}`}
+          >
+            {t.levelName(level)}
+          </span>
+        </button>
+        {rankUp === null ? null : (
+          <span data-testid="rank-burst" key={`burst-${rankUp.id}`}>
+            <WinBurst
+              letters={saladLetters}
+              mini
+              requiredCharacter={requiredCharacter}
+            />
+          </span>
+        )}
+      </div>
       {isRatingsOpen ? (
         <RatingsDialog
           earnedPoints={earnedPoints}

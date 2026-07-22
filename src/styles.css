@@ -382,6 +382,34 @@ body {
   animation: tile-cheer 500ms ease-in-out both;
 }
 
+/* The rating name split-flaps in when a submission climbs the ladder,
+   with a brief accent glow that fades as it lands. */
+@keyframes rank-flip {
+  0% {
+    opacity: 0;
+    transform: perspective(400px) rotateX(-90deg);
+    text-shadow: 0 0 10px
+      color-mix(in srgb, var(--color-accent) 80%, transparent);
+  }
+  60% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    text-shadow: 0 0 0 transparent;
+  }
+}
+
+.rank-flip {
+  animation: rank-flip 700ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rank-flip {
+    animation: none;
+  }
+}
+
 /* Pieces exploding radially out of the win banner's center. */
 @keyframes burst-fly {
   from {

@@ -67,11 +67,7 @@ export interface Messages {
   thresholdFrom: (points: number) => string;
   feedbackText: (feedback: GameFeedback) => string;
   foundSummary: (words: number) => string;
-  progressLabel: (
-    earnedPoints: number,
-    maxPoints: number,
-    level: string,
-  ) => string;
+  scoreLabel: (earnedPoints: number, maxPoints: number) => string;
 }
 
 // CLDR plural category -> form, with 'other' as the required fallback.
@@ -160,8 +156,8 @@ const EN: Messages = {
   },
   foundSummary: (words) =>
     `Found ${words} word${plural('en', words, { one: '', other: 's' })}`,
-  progressLabel: (earnedPoints, maxPoints, level) =>
-    `${earnedPoints} / ${maxPoints} point${plural('en', maxPoints, { one: '', other: 's' })} · ${level}`,
+  scoreLabel: (earnedPoints, maxPoints) =>
+    `${earnedPoints} / ${maxPoints} point${plural('en', maxPoints, { one: '', other: 's' })}`,
 };
 
 const LEVELS_FR: Record<string, string> = {
@@ -256,8 +252,8 @@ const FR: Messages = {
   },
   foundSummary: (words) =>
     `${words} mot${plural('fr', words, { one: '', other: 's' })} trouvé${plural('fr', words, { one: '', other: 's' })}`,
-  progressLabel: (earnedPoints, maxPoints, level) =>
-    `${earnedPoints} / ${maxPoints} point${plural('fr', maxPoints, { one: '', other: 's' })} · ${LEVELS_FR[level] ?? level}`,
+  scoreLabel: (earnedPoints, maxPoints) =>
+    `${earnedPoints} / ${maxPoints} point${plural('fr', maxPoints, { one: '', other: 's' })}`,
 };
 
 const LEVELS_ES: Record<string, string> = {
@@ -352,8 +348,8 @@ const ES: Messages = {
   },
   foundSummary: (words) =>
     `${words} palabra${plural('es', words, { one: '', other: 's' })} encontrada${plural('es', words, { one: '', other: 's' })}`,
-  progressLabel: (earnedPoints, maxPoints, level) =>
-    `${earnedPoints} / ${maxPoints} punto${plural('es', maxPoints, { one: '', other: 's' })} · ${LEVELS_ES[level] ?? level}`,
+  scoreLabel: (earnedPoints, maxPoints) =>
+    `${earnedPoints} / ${maxPoints} punto${plural('es', maxPoints, { one: '', other: 's' })}`,
 };
 
 const LEVELS_DE: Record<string, string> = {
@@ -449,8 +445,8 @@ const DE: Messages = {
   },
   foundSummary: (words) =>
     `${words} ${plural('de', words, { one: 'Wort', other: 'Wörter' })} gefunden`,
-  progressLabel: (earnedPoints, maxPoints, level) =>
-    `${earnedPoints} / ${maxPoints} ${plural('de', maxPoints, { one: 'Punkt', other: 'Punkte' })} · ${LEVELS_DE[level] ?? level}`,
+  scoreLabel: (earnedPoints, maxPoints) =>
+    `${earnedPoints} / ${maxPoints} ${plural('de', maxPoints, { one: 'Punkt', other: 'Punkte' })}`,
 };
 
 const LEVELS_IT: Record<string, string> = {
@@ -546,8 +542,8 @@ const IT: Messages = {
   },
   foundSummary: (words) =>
     `${words} ${plural('it', words, { one: 'parola trovata', other: 'parole trovate' })}`,
-  progressLabel: (earnedPoints, maxPoints, level) =>
-    `${earnedPoints} / ${maxPoints} ${plural('it', maxPoints, { one: 'punto', other: 'punti' })} · ${LEVELS_IT[level] ?? level}`,
+  scoreLabel: (earnedPoints, maxPoints) =>
+    `${earnedPoints} / ${maxPoints} ${plural('it', maxPoints, { one: 'punto', other: 'punti' })}`,
 };
 
 const LEVELS_PT: Record<string, string> = {
@@ -642,8 +638,8 @@ const PT: Messages = {
   },
   foundSummary: (words) =>
     `${words} palavra${plural('pt', words, { one: '', other: 's' })} encontrada${plural('pt', words, { one: '', other: 's' })}`,
-  progressLabel: (earnedPoints, maxPoints, level) =>
-    `${earnedPoints} / ${maxPoints} ponto${plural('pt', maxPoints, { one: '', other: 's' })} · ${LEVELS_PT[level] ?? level}`,
+  scoreLabel: (earnedPoints, maxPoints) =>
+    `${earnedPoints} / ${maxPoints} ponto${plural('pt', maxPoints, { one: '', other: 's' })}`,
 };
 
 const LEVELS_NL: Record<string, string> = {
@@ -739,8 +735,8 @@ const NL: Messages = {
   },
   foundSummary: (words) =>
     `${words} ${plural('nl', words, { one: 'woord', other: 'woorden' })} gevonden`,
-  progressLabel: (earnedPoints, maxPoints, level) =>
-    `${earnedPoints} / ${maxPoints} ${plural('nl', maxPoints, { one: 'punt', other: 'punten' })} · ${LEVELS_NL[level] ?? level}`,
+  scoreLabel: (earnedPoints, maxPoints) =>
+    `${earnedPoints} / ${maxPoints} ${plural('nl', maxPoints, { one: 'punt', other: 'punten' })}`,
 };
 
 const LEVELS_JA: Record<string, string> = {
@@ -827,8 +823,8 @@ const JA: Messages = {
     }
   },
   foundSummary: (words) => `${words}個の単語`,
-  progressLabel: (earnedPoints, maxPoints, level) =>
-    `${earnedPoints} / ${maxPoints}ポイント · ${LEVELS_JA[level] ?? level}`,
+  scoreLabel: (earnedPoints, maxPoints) =>
+    `${earnedPoints} / ${maxPoints}ポイント`,
 };
 
 const LEVELS_KO: Record<string, string> = {
@@ -916,8 +912,7 @@ const KO: Messages = {
     }
   },
   foundSummary: (words) => `단어 ${words}개`,
-  progressLabel: (earnedPoints, maxPoints, level) =>
-    `${earnedPoints} / ${maxPoints}점 · ${LEVELS_KO[level] ?? level}`,
+  scoreLabel: (earnedPoints, maxPoints) => `${earnedPoints} / ${maxPoints}점`,
 };
 
 const LEVELS_ZH: Record<string, string> = {
@@ -1003,8 +998,7 @@ const ZH: Messages = {
     }
   },
   foundSummary: (words) => `已找到 ${words} 个单词`,
-  progressLabel: (earnedPoints, maxPoints, level) =>
-    `${earnedPoints} / ${maxPoints} 分 · ${LEVELS_ZH[level] ?? level}`,
+  scoreLabel: (earnedPoints, maxPoints) => `${earnedPoints} / ${maxPoints} 分`,
 };
 
 const LEVELS_RU: Record<string, string> = {
@@ -1097,8 +1091,8 @@ const RU: Messages = {
   },
   foundSummary: (words) =>
     `Найдено ${words} ${plural('ru', words, { one: 'слово', few: 'слова', other: 'слов' })}`,
-  progressLabel: (earnedPoints, maxPoints, level) =>
-    `${earnedPoints} / ${maxPoints} ${plural('ru', maxPoints, { one: 'очко', few: 'очка', other: 'очков' })} · ${LEVELS_RU[level] ?? level}`,
+  scoreLabel: (earnedPoints, maxPoints) =>
+    `${earnedPoints} / ${maxPoints} ${plural('ru', maxPoints, { one: 'очко', few: 'очка', other: 'очков' })}`,
 };
 
 export const CATALOGS: Record<Locale, Messages> = {

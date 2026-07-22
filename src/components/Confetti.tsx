@@ -69,30 +69,37 @@ export function Confetti({ letters, requiredCharacter }: ConfettiProps) {
   );
 }
 
-const BURST_COUNT = 22;
-const BURST_TILE_PX = 17;
+function burstLayouts(count: number, tilePx: number, reach: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    letterSlot: jitter(index + 900),
+    style: {
+      '--burst-angle': `${((index / count) * 360 + jitter(index + 40) * 24).toFixed(0)}deg`,
+      '--burst-distance': `${(reach + jitter(index + 80) * reach * 1.25).toFixed(0)}px`,
+      animationDelay: `${(jitter(index + 120) * 120).toFixed(0)}ms`,
+      fontSize: Math.round(tilePx * 0.58),
+      height: tilePx,
+      width: tilePx,
+    },
+  }));
+}
 
-const BURST_LAYOUTS = Array.from({ length: BURST_COUNT }, (_, index) => ({
-  letterSlot: jitter(index + 900),
-  style: {
-    '--burst-angle': `${((index / BURST_COUNT) * 360 + jitter(index + 40) * 24).toFixed(0)}deg`,
-    '--burst-distance': `${(75 + jitter(index + 80) * 95).toFixed(0)}px`,
-    animationDelay: `${(jitter(index + 120) * 120).toFixed(0)}ms`,
-    fontSize: Math.round(BURST_TILE_PX * 0.58),
-    height: BURST_TILE_PX,
-    width: BURST_TILE_PX,
-  },
-}));
+// The win banner's burst, and a pocket-sized cousin for rank-ups.
+const BURST_LAYOUTS = burstLayouts(22, 17, 75);
+const MINI_BURST_LAYOUTS = burstLayouts(10, 14, 36);
 
-// A radial pop of letter tiles flying out of the win banner's center — the
+interface WinBurstProps extends ConfettiProps {
+  mini?: boolean;
+}
+
+// A radial pop of letter tiles flying out of the anchor's center — the
 // close-range companion to the overhead rain.
-export function WinBurst({ letters, requiredCharacter }: ConfettiProps) {
+export function WinBurst({ letters, mini, requiredCharacter }: WinBurstProps) {
   return (
     <span
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 flex items-center justify-center"
     >
-      {BURST_LAYOUTS.map((piece, index) => {
+      {(mini ? MINI_BURST_LAYOUTS : BURST_LAYOUTS).map((piece, index) => {
         const letter = letterFor(letters, piece.letterSlot);
         return (
           <span
