@@ -362,6 +362,44 @@ describe('App', () => {
     expect(rating()).toHaveAttribute('data-rank-id', '1');
   });
 
+  it('throws the grand show for a perfect score', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    submitWord('worsted'); // 11 of 15
+    submitWord('test'); // 12: the ordinary win celebration
+    expect(screen.getByTestId('confetti')).toHaveAttribute(
+      'data-perfect',
+      'false',
+    );
+
+    // Reaching every point fires a second, gold celebration even though
+    // the win already happened.
+    submitWord('rotted'); // 15 of 15
+    expect(screen.getByTestId('confetti')).toHaveAttribute(
+      'data-perfect',
+      'true',
+    );
+    expect(screen.getByTestId('win-banner')).toHaveAttribute(
+      'data-perfect',
+      'true',
+    );
+  });
+
+  it('keeps the gold banner for a restored perfect game', () => {
+    window.localStorage.setItem(
+      'wordsalad:DEORSTW.T.4',
+      JSON.stringify(['TEST', 'ROTTED', 'WORSTED']),
+    );
+    render(<App dictionary={DICTIONARY} />);
+
+    // Calm on restore — no fanfare — but the state remembers perfection.
+    expect(screen.queryByTestId('confetti')).not.toBeInTheDocument();
+    expect(screen.getByTestId('win-banner')).toHaveAttribute(
+      'data-perfect',
+      'true',
+    );
+  });
+
   it('celebrates only at the moment the win line is crossed', () => {
     render(<App dictionary={DICTIONARY} />);
     expect(screen.queryByTestId('confetti')).not.toBeInTheDocument();

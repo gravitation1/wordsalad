@@ -74,11 +74,13 @@ export interface SpentHint {
   cost: number;
 }
 
-// The moment a submission pushes earned points across the win line. Fires
-// exactly once per game, at the crossing — never for a restored win. The
+// The moment a submission pushes earned points across the win line — or all
+// the way to a perfect score, which gets the grand (gold) show even when
+// the win itself happened earlier. Never fires for a restored game. The
 // tossId lets the tile wave skip replaying after a post-win toss remount.
 export interface Celebration {
   id: number;
+  perfect: boolean;
   tossId: number;
 }
 
@@ -142,6 +144,9 @@ export interface PlayingGame {
   hasWon: boolean;
   // Every word found: nothing is left to type.
   isComplete: boolean;
+  // Every point earned — the perfect game. Steady state, unlike the
+  // celebration one-shot, so a restored perfect game still shows gold.
+  isPerfect: boolean;
   lockedOut: boolean;
   canHint: boolean;
   hintCost: number;
@@ -628,8 +633,14 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setFeedback({ kind: 'scored', word, points: isHinted ? 0 : awarded });
 
     const earnedAfter = tallyPoints(wordSalad, hintedWords).earnedPoints;
-    if (earnedBefore < winPoints && earnedAfter >= winPoints) {
-      setCelebration((previous) => ({ id: (previous?.id ?? 0) + 1, tossId }));
+    const crossedWin = earnedBefore < winPoints && earnedAfter >= winPoints;
+    const perfect = earnedAfter === wordSalad.maxPoints;
+    if (crossedWin || perfect) {
+      setCelebration((previous) => ({
+        id: (previous?.id ?? 0) + 1,
+        perfect,
+        tossId,
+      }));
     } else {
       // Climbing a rung gets its own (smaller) moment — but the win
       // celebration owns the submission when both land at once.
@@ -832,6 +843,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     level: getLevel(earnedPercent),
     hasWon,
     isComplete: wordSlots.every((slot) => slot.found !== null),
+    isPerfect: earnedPoints === wordSalad.maxPoints,
     lockedOut,
     canHint,
     hintCost,

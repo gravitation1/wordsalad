@@ -79,7 +79,15 @@ export function SaladLetters({
           // button remounts per activation (key) to replay the press —
           // whether the letter was tapped, typed, or revealed as a hint.
           <span
-            className={`${cheering ? 'tile-cheer' : 'letter-toss'} inline-block`}
+            // Alternating cheer names so a second celebration (the perfect
+            // score after an earlier win) replays the wave without remount.
+            className={`${
+              cheering
+                ? (celebration?.id ?? 0) % 2 === 1
+                  ? 'tile-cheer'
+                  : 'tile-cheer-alt'
+                : 'letter-toss'
+            } inline-block`}
             key={`${letter}${index}`}
             style={{ animationDelay: `${index * 45}ms` }}
           >

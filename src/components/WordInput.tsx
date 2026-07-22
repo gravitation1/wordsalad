@@ -13,6 +13,7 @@ interface WordInputProps {
   wordExit: WordExit | null;
   canHint: boolean;
   isComplete: boolean;
+  isPerfect: boolean;
   hintCost: number;
   hintForfeitsWin: boolean;
   hintReveal: HintReveal | null;
@@ -81,6 +82,7 @@ export function WordInput({
   wordExit,
   canHint,
   isComplete,
+  isPerfect,
   hintCost,
   hintForfeitsWin,
   hintReveal,
@@ -223,9 +225,12 @@ export function WordInput({
         ) : isComplete ? (
           // The board is cleared: a tile-styled check where the typing
           // cursor would otherwise beckon for words that don't exist.
+          // Gold for a perfect clear.
           <span
             aria-hidden="true"
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-base font-bold text-white"
+            className={`flex h-8 w-8 items-center justify-center rounded-lg text-base font-bold text-white ${
+              isPerfect ? 'bg-amber-400' : 'bg-accent'
+            }`}
             data-testid="complete-mark"
           >
             ✓

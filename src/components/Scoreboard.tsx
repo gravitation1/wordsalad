@@ -128,6 +128,9 @@ export function Scoreboard({
 
   const foundCount = wordSlots.filter((slot) => slot.found !== null).length;
   const anyHinted = wordSlots.some((slot) => slot.found?.hinted ?? false);
+  // The gold treatment is state, not event: a restored perfect game keeps
+  // it (only the animations are reserved for the moment itself).
+  const isPerfect = earnedPoints === maxPoints;
 
   // The victory phrase as per-word tile groups, with a running index so the
   // vault stagger flows across word boundaries.
@@ -155,35 +158,56 @@ export function Scoreboard({
     <section className="w-full space-y-3">
       {hasWon ? (
         // Springs in only at the moment of winning; a restored win is calm.
+        // A perfect score fires a second, grander (gold) pass even though
+        // the banner is already up — the class change replays the pop.
         <div
-          className={`relative space-y-2 rounded-xl bg-accent-soft p-4 text-center dark:bg-accent/15 ${
-            celebration === null ? '' : 'win-pop'
+          className={`relative space-y-2 rounded-xl p-4 text-center ${
+            isPerfect
+              ? 'bg-amber-50 dark:bg-amber-400/10'
+              : 'bg-accent-soft dark:bg-accent/15'
+          } ${
+            celebration === null
+              ? ''
+              : celebration.perfect
+                ? 'win-pop-perfect'
+                : 'win-pop'
           }`}
+          data-perfect={isPerfect ? 'true' : 'false'}
+          data-testid="win-banner"
         >
           {celebration === null ? null : (
             <WinBurst
+              key={`burst-${celebration.id}`}
               letters={saladLetters}
+              perfect={celebration.perfect}
               requiredCharacter={requiredCharacter}
             />
           )}
           <p>
             {/* Real text for readers and tests; the visible tiles — the
                 victory phrase spelled in the game's own letter tiles, with
-                punctuation in accent — vault in one by one on the win.
-                Tiles group per word so wrapping never splits a word. */}
+                punctuation in accent (gold across the board for a perfect
+                score) — vault in one by one. Keyed per celebration so the
+                perfect pass re-vaults; grouped per word so wrapping never
+                splits one. */}
             <span className="sr-only">{t.victory}</span>
             <span
               aria-hidden="true"
               className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5"
+              key={celebration?.id ?? 0}
             >
               {victoryTiles.map((word, wordIndex) => (
                 <span className="flex gap-1.5" key={wordIndex}>
                   {word.map(({ character, delayIndex }) => (
                     <span
                       className={`flex h-8 w-8 items-center justify-center rounded-lg text-base font-bold ${
-                        /[\p{L}\p{N}]/u.test(character)
-                          ? 'border border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
-                          : 'bg-accent text-white'
+                        isPerfect
+                          ? /[\p{L}\p{N}]/u.test(character)
+                            ? 'border border-amber-400 bg-amber-300 text-amber-900'
+                            : 'bg-amber-400 text-white'
+                          : /[\p{L}\p{N}]/u.test(character)
+                            ? 'border border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
+                            : 'bg-accent text-white'
                       } ${celebration === null ? '' : 'win-letter'}`}
                       key={delayIndex}
                       style={
@@ -277,7 +301,11 @@ export function Scoreboard({
           aria-valuemin={0}
           aria-valuenow={earnedPoints}
           className={`relative h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800 ${
-            celebration === null ? '' : 'bar-shine'
+            celebration === null
+              ? ''
+              : celebration.perfect
+                ? 'bar-shine-perfect'
+                : 'bar-shine'
           }`}
           role="progressbar"
         >

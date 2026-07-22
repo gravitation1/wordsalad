@@ -100,6 +100,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           wordExit={game.wordExit}
           canHint={game.canHint}
           isComplete={game.isComplete}
+          isPerfect={game.isPerfect}
           hintCost={game.hintCost}
           hintForfeitsWin={game.hintForfeitsWin}
           hintReveal={game.hintReveal}
@@ -161,6 +162,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
         <Confetti
           key={game.celebration.id}
           letters={game.saladLetters}
+          perfect={game.celebration.perfect}
           requiredCharacter={game.requiredCharacter}
         />
       )}
