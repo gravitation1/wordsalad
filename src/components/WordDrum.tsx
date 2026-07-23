@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
 import type { WordSlot } from '../useWordSaladGame';
+import { miniTileClass } from './tiles';
 
 interface WordDrumProps {
   lastFoundWord: string | null;
+  requiredCharacter: string;
   slots: readonly WordSlot[];
 }
 
@@ -21,7 +23,11 @@ const INTERACTION_GRACE_MS = 1500;
 // How deep the edge fade grows once content is scrolled out behind it.
 const FADE_PX = 56;
 
-export function WordDrum({ lastFoundWord, slots }: WordDrumProps) {
+export function WordDrum({
+  lastFoundWord,
+  requiredCharacter,
+  slots,
+}: WordDrumProps) {
   const containerRef = useRef<HTMLUListElement>(null);
   const interactedAt = useRef(0);
   const frame = useRef(0);
@@ -95,47 +101,75 @@ export function WordDrum({ lastFoundWord, slots }: WordDrumProps) {
       ref={containerRef}
       style={{ height: DRUM_HEIGHT }}
     >
-      {slots.map((slot, index) => (
-        <li
-          // Placeholders are visual scaffolding; screen readers hear only
-          // the found words, as with the old flat table.
-          aria-hidden={slot.found === null ? true : undefined}
-          className="snap-center"
-          data-found={slot.found === null ? 'false' : 'true'}
-          data-testid="word-slot"
-          key={index}
-          style={{ height: ROW_HEIGHT }}
-        >
-          {slot.found === null ? (
-            <div className="flex h-full items-center justify-between gap-4 text-sm text-gray-300 dark:text-gray-700">
-              <span>—</span>
-              <span className="w-16 text-right">?</span>
-            </div>
-          ) : (
-            <div
-              className={`flex h-full items-center justify-between gap-4 text-sm ${
-                slot.found.word === lastFoundWord ? 'slot-reveal' : ''
-              }`}
-            >
-              <a
-                className={`italic hover:underline ${
-                  slot.found.hinted
-                    ? 'text-gray-500 dark:text-gray-400'
-                    : 'text-accent'
-                } ${slot.found.word === lastFoundWord ? 'font-bold' : ''}`}
-                data-hinted={slot.found.hinted}
-                href={`https://www.merriam-webster.com/dictionary/${slot.found.word}`}
-                rel="noreferrer"
-                target="_blank"
+      {slots.map((slot, index) => {
+        const found = slot.found;
+        return (
+          <li
+            // Placeholders are visual scaffolding; screen readers hear only
+            // the found words, as with the old flat table.
+            aria-hidden={found === null ? true : undefined}
+            className="snap-center"
+            data-found={found === null ? 'false' : 'true'}
+            data-testid="word-slot"
+            key={index}
+            style={{ height: ROW_HEIGHT }}
+          >
+            {found === null ? (
+              <div className="flex h-full items-center justify-between gap-4 text-sm text-gray-300 dark:text-gray-700">
+                <span>—</span>
+                <span className="w-16 text-right">?</span>
+              </div>
+            ) : (
+              <div
+                className={`flex h-full items-center justify-between gap-2 text-sm ${
+                  found.word === lastFoundWord ? 'slot-reveal' : ''
+                }`}
               >
-                {slot.found.word}
-                {slot.found.hinted ? '*' : ''}
-              </a>
-              <span className="w-16 text-right">{slot.found.points}</span>
-            </div>
-          )}
-        </li>
-      ))}
+                {/* The word spelled in the game's miniature tiles, as in the
+                    history rows (long words in the compact cut, so even the
+                    dictionary's deepest reach fits a phone); the plain text
+                    stays for screen readers. */}
+                <a
+                  className="touch-manipulation transition hover:opacity-70"
+                  data-hinted={found.hinted}
+                  href={`https://www.merriam-webster.com/dictionary/${found.word}`}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <span className="sr-only">
+                    {found.word}
+                    {found.hinted ? '*' : ''}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={`flex items-center ${
+                      found.word.length > 9 ? 'gap-0.5' : 'gap-1'
+                    }`}
+                  >
+                    {Array.from(found.word).map((letter, tileIndex) => (
+                      <span
+                        className={miniTileClass(letter, requiredCharacter, {
+                          compact: found.word.length > 9,
+                          muted: found.hinted,
+                        })}
+                        key={tileIndex}
+                      >
+                        {letter}
+                      </span>
+                    ))}
+                    {found.hinted ? (
+                      <span className="text-gray-500 dark:text-gray-400">
+                        *
+                      </span>
+                    ) : null}
+                  </span>
+                </a>
+                <span className="w-16 text-right">{found.points}</span>
+              </div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }

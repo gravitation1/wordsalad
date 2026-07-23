@@ -3,6 +3,8 @@
 // above the viewport and burst from the banner. Mount for a win, remount
 // (key) to replay. Reduced-motion users see none of it.
 
+import { TILE_FACE } from './tiles';
+
 interface ConfettiProps {
   letters: readonly string[];
   // The perfect-score variant: denser, longer, and gilded.
@@ -55,12 +57,9 @@ function tileClass(
   gold: boolean,
 ): string {
   if (letter === requiredCharacter) {
-    return 'bg-accent text-white';
+    return TILE_FACE.accent;
   }
-  if (gold) {
-    return 'border border-amber-400 bg-amber-300 text-amber-900';
-  }
-  return 'border border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100';
+  return gold ? TILE_FACE.gold : TILE_FACE.plain;
 }
 
 function letterFor(letters: readonly string[], slot: number): string {

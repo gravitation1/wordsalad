@@ -4,6 +4,7 @@ import { completionToPoints, getLevel } from '../game/levels';
 import { useMessages } from '../i18n';
 import type { HistoryEntry } from '../progressStore';
 import { WIN_THRESHOLD } from '../useWordSaladGame';
+import { miniTileClass } from './tiles';
 
 // The history browser: aggregate statistics up top, then every recorded
 // game as a resumable link (navigation boots the puzzle and restores its
@@ -34,20 +35,6 @@ interface Row {
   ratio: number;
   requiredCharacter: string;
   status: GameStatus;
-}
-
-// Each row wears the game's own vocabulary: the charset as miniature salad
-// tiles (required letter in accent), mirroring the confetti and the victory
-// banner.
-const MINI_TILE_CLASS =
-  'flex h-5 w-5 items-center justify-center rounded text-[11px] font-bold';
-
-function miniTileClass(letter: string, requiredCharacter: string): string {
-  return `${MINI_TILE_CLASS} ${
-    letter === requiredCharacter
-      ? 'bg-accent text-white'
-      : 'border border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
-  }`;
 }
 
 // Won games first, then in progress, then locked out.

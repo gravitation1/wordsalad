@@ -133,7 +133,10 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           submitReadiness={game.submitReadiness}
           tossId={game.tossId}
         />
-        <FeedbackLine feedback={game.feedback} />
+        <FeedbackLine
+          feedback={game.feedback}
+          requiredCharacter={game.requiredCharacter}
+        />
         <Scoreboard
           celebration={game.celebration}
           challengeScore={game.challengeScore}

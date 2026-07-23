@@ -4,6 +4,7 @@ import { useMessages } from '../i18n';
 import type { Celebration, RankUp, WordSlot } from '../useWordSaladGame';
 import { WinBurst } from './Confetti';
 import { RatingsDialog } from './RatingsDialog';
+import { TILE_FACE } from './tiles';
 import { WordDrum } from './WordDrum';
 
 interface ScoreboardProps {
@@ -203,11 +204,11 @@ export function Scoreboard({
                       className={`flex h-8 w-8 items-center justify-center rounded-lg text-base font-bold ${
                         isPerfect
                           ? /[\p{L}\p{N}]/u.test(character)
-                            ? 'border border-amber-400 bg-amber-300 text-amber-900'
-                            : 'bg-amber-400 text-white'
+                            ? TILE_FACE.gold
+                            : TILE_FACE.goldSolid
                           : /[\p{L}\p{N}]/u.test(character)
-                            ? 'border border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
-                            : 'bg-accent text-white'
+                            ? TILE_FACE.plain
+                            : TILE_FACE.accent
                       } ${celebration === null ? '' : 'win-letter'}`}
                       key={delayIndex}
                       style={
@@ -378,7 +379,11 @@ export function Scoreboard({
         <span className="font-medium">{t.wordsHeader}</span>
         <span className="w-16 text-right font-medium">{t.pointsHeader}</span>
       </div>
-      <WordDrum lastFoundWord={lastFoundWord} slots={wordSlots} />
+      <WordDrum
+        lastFoundWord={lastFoundWord}
+        requiredCharacter={requiredCharacter}
+        slots={wordSlots}
+      />
       {anyHinted ? (
         <p className="text-xs text-gray-400 dark:text-gray-500">
           {t.hintedLegend}

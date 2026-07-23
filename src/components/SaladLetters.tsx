@@ -4,6 +4,7 @@ import type {
   HintReveal,
   LetterActivation,
 } from '../useWordSaladGame';
+import { TILE_FACE } from './tiles';
 
 interface SaladLettersProps {
   celebration: Celebration | null;
@@ -94,10 +95,10 @@ export function SaladLetters({
             <button
               // Touch devices get larger tiles: bigger targets and wider
               // tap-center spacing, the two levers against mis-taps.
-              className={`relative h-12 w-12 touch-manipulation rounded-xl border text-xl font-semibold transition active:scale-90 pointer-coarse:h-14 pointer-coarse:w-14 pointer-coarse:text-2xl ${
+              className={`relative h-12 w-12 touch-manipulation rounded-xl text-xl font-semibold transition active:scale-90 pointer-coarse:h-14 pointer-coarse:w-14 pointer-coarse:text-2xl ${
                 isRequired
-                  ? 'border-accent bg-accent text-white'
-                  : 'border-gray-300 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800'
+                  ? `border border-accent ${TILE_FACE.accent}`
+                  : `${TILE_FACE.plain} hover:bg-gray-50 dark:hover:bg-gray-800`
               } ${press === null ? '' : 'control-press'}`}
               data-letter={letter}
               data-pressed={lastAppended?.letter === letter ? 'true' : 'false'}
