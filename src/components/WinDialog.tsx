@@ -1,0 +1,196 @@
+import { useEffect, useRef } from 'react';
+
+import { useMessages } from '../i18n';
+import type { Celebration } from '../useWordSaladGame';
+import { Confetti, WinBurst } from './Confetti';
+import { TILE_FACE } from './tiles';
+
+// The win moment as a modal: the fanfare interrupts, then gets out of the
+// way — dismissing it returns the board to its normal playing view (the
+// score line keeps a small ✓). A perfect score reopens it in gold.
+interface WinDialogProps {
+  celebration: Celebration;
+  // Every word found: there is nothing left to keep playing for (reachable
+  // via hints + guesses at any rank, not only on a perfect score).
+  isComplete: boolean;
+  level: string;
+  letters: readonly string[];
+  onClose: () => void;
+  onPlayAgain: () => void;
+  onShare: () => void;
+  requiredCharacter: string;
+  shareCopied: boolean;
+}
+
+export function WinDialog({
+  celebration,
+  isComplete,
+  level,
+  letters,
+  onClose,
+  onPlayAgain,
+  onShare,
+  requiredCharacter,
+  shareCopied,
+}: WinDialogProps) {
+  const t = useMessages();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const { perfect } = celebration;
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+
+    if (dialog !== null && !dialog.open) {
+      // jsdom lacks showModal in some versions; fall back to plain open.
+      if (typeof dialog.showModal === 'function') {
+        dialog.showModal();
+        // showModal autofocuses the first focusable control (the close
+        // button). The Enter keypress that just won the game would then
+        // land on it and dismiss the modal the instant it appears — so
+        // move focus to the dialog itself, where a stray Enter does
+        // nothing. (Focus stays within the labelled dialog for readers.)
+        dialog.focus();
+      } else {
+        dialog.setAttribute('open', '');
+      }
+    }
+  }, []);
+
+  // The victory phrase as per-word tile groups, with a running index so the
+  // vault stagger flows across word boundaries.
+  const victoryTiles: { character: string; delayIndex: number }[][] = [];
+  let delayCounter = 0;
+  for (const word of t.victory.split(' ')) {
+    if (word.length > 0) {
+      victoryTiles.push(
+        Array.from(word).map((character) => ({
+          character,
+          delayIndex: delayCounter++,
+        })),
+      );
+    }
+  }
+
+  return (
+    <dialog
+      aria-labelledby="win-title"
+      // focus:outline-none: the dialog is a programmatic focus target (see
+      // effect), so the browser's default focus ring would otherwise show a
+      // blue border foreign to the app's palette.
+      className="m-auto w-96 max-w-[calc(100vw-2rem)] rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-xl backdrop:bg-black/40 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+      data-perfect={perfect ? 'true' : 'false'}
+      data-testid="win-banner"
+      onClick={(event) => {
+        // A click on the backdrop region targets the dialog element itself.
+        if (event.target === dialogRef.current) {
+          onClose();
+        }
+      }}
+      // Fires on native dismissals (Esc). Unmounting via onClose closes the
+      // element; calling dialog.close() here too would loop.
+      onClose={onClose}
+      ref={dialogRef}
+      // Focus target on open (see effect); -1 keeps it out of the tab order.
+      tabIndex={-1}
+    >
+      {/* Rains in the top layer, above the backdrop, while the dialog is
+          up; fixed positioning keeps it viewport-wide. */}
+      <Confetti
+        letters={letters}
+        perfect={perfect}
+        requiredCharacter={requiredCharacter}
+      />
+      <button
+        aria-label={t.closeButton}
+        className="absolute right-3 top-3 flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 active:scale-95 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+        onClick={onClose}
+        type="button"
+      >
+        <span aria-hidden="true">✕</span>
+      </button>
+      <div
+        className={`relative space-y-4 py-2 text-center ${
+          perfect ? 'win-pop-perfect' : 'win-pop'
+        }`}
+      >
+        <WinBurst
+          letters={letters}
+          perfect={perfect}
+          requiredCharacter={requiredCharacter}
+        />
+        <h2 className="sr-only" id="win-title">
+          {t.victory}
+        </h2>
+        {/* The victory phrase spelled in the game's own letter tiles, with
+            punctuation in accent (gold across the board for a perfect
+            score), vaulting in one by one; grouped per word so wrapping
+            never splits one. */}
+        <p
+          aria-hidden="true"
+          className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5"
+        >
+          {victoryTiles.map((word, wordIndex) => (
+            <span className="flex gap-1.5" key={wordIndex}>
+              {word.map(({ character, delayIndex }) => (
+                <span
+                  className={`win-letter flex h-8 w-8 items-center justify-center rounded-lg text-base font-bold ${
+                    perfect
+                      ? /[\p{L}\p{N}]/u.test(character)
+                        ? TILE_FACE.gold
+                        : TILE_FACE.goldSolid
+                      : /[\p{L}\p{N}]/u.test(character)
+                        ? TILE_FACE.plain
+                        : TILE_FACE.accent
+                  }`}
+                  key={delayIndex}
+                  style={{ animationDelay: `${delayIndex * 45}ms` }}
+                >
+                  {character}
+                </span>
+              ))}
+            </span>
+          ))}
+        </p>
+        <p
+          className={`text-sm font-semibold ${
+            perfect ? 'text-amber-500' : 'text-accent'
+          }`}
+        >
+          {t.levelName(level)}
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <button
+            className={`min-h-11 touch-manipulation rounded-full px-5 py-2 font-medium text-white transition active:scale-95 ${
+              perfect
+                ? 'bg-amber-400 hover:bg-amber-400/90'
+                : 'bg-accent hover:bg-accent/90'
+            }`}
+            onClick={onPlayAgain}
+            type="button"
+          >
+            {t.playAgainButton}
+          </button>
+          <button
+            className="min-h-11 touch-manipulation rounded-full border border-gray-300 px-5 py-2 font-medium transition hover:bg-gray-50 active:scale-95 dark:border-gray-700 dark:hover:bg-gray-800"
+            onClick={onShare}
+            type="button"
+          >
+            <span aria-hidden="true">↗ </span>
+            {shareCopied ? t.shareCopied : t.shareButton}
+          </button>
+        </div>
+        {/* Nothing left to find once every word is in — the ✕ (or Esc,
+            or the backdrop) still dismisses to review the final board. */}
+        {isComplete ? null : (
+          <button
+            className="touch-manipulation text-sm font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
+            onClick={onClose}
+            type="button"
+          >
+            {t.keepPlayingButton}
+          </button>
+        )}
+      </div>
+    </dialog>
+  );
+}

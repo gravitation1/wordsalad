@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 
-import { Confetti } from './components/Confetti';
 import { FeedbackLine } from './components/FeedbackLine';
 import { GameControls } from './components/GameControls';
 import { HistoryDialog } from './components/HistoryDialog';
@@ -149,6 +148,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           lastFoundWord={game.lastFoundWord}
           level={game.level}
           lockedOut={game.lockedOut}
+          lockout={game.lockout}
           lostPercent={game.lostPercent}
           lostPoints={game.lostPoints}
           maxPoints={game.maxPoints}
@@ -160,15 +160,6 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           wordSlots={game.wordSlots}
         />
       </div>
-      {/* Remounts per celebration (key) — though a game only wins once. */}
-      {game.celebration === null ? null : (
-        <Confetti
-          key={game.celebration.id}
-          letters={game.saladLetters}
-          perfect={game.celebration.perfect}
-          requiredCharacter={game.requiredCharacter}
-        />
-      )}
     </main>
   );
 }

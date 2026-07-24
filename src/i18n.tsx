@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext } from 'react';
 
-import type { GameFeedback } from './useWordSaladGame';
+import type { GameFeedback, WordPreview } from './useWordSaladGame';
 
 export type Locale =
   'de' | 'en' | 'es' | 'fr' | 'it' | 'ja' | 'ko' | 'nl' | 'pt' | 'ru' | 'zh';
@@ -30,6 +30,7 @@ export interface Messages {
   pointsHeader: string;
   newGameButton: string;
   playAgainButton: string;
+  keepPlayingButton: string;
   restartButton: string;
   historyButton: string;
   historyTitle: string;
@@ -53,6 +54,8 @@ export interface Messages {
   hintForfeitsWinLabel: string;
   hintedLegend: string;
   lockedOutNote: (reachablePoints: number, winPoints: number) => string;
+  lockedOutTitle: string;
+  lockedOutShort: string;
   winThresholdLabel: (winPoints: number) => string;
   victory: string;
   invalidGameData: string;
@@ -62,6 +65,11 @@ export interface Messages {
   completionLabel: string;
   requiredLetterTitle: string;
   ratingsTitle: string;
+  // Screen-reader annotations for the ratings ladder rungs.
+  ratingReachedLabel: string;
+  ratingNotReachedLabel: string;
+  // Screen-reader description of the Submit button's verdict badge.
+  submitPreviewLabel: (preview: WordPreview) => string;
   closeButton: string;
   levelName: (level: string) => string;
   thresholdFrom: (points: number) => string;
@@ -90,6 +98,7 @@ const EN: Messages = {
   pointsHeader: 'Points',
   newGameButton: 'New game',
   playAgainButton: 'Play again',
+  keepPlayingButton: 'Keep playing',
   restartButton: 'Restart',
   historyButton: 'History',
   historyTitle: 'History',
@@ -119,6 +128,8 @@ const EN: Messages = {
   lockedOutNote: (reachablePoints, winPoints) =>
     `Too many hints — winning takes ${winPoints} points, ` +
     `but only ${reachablePoints} can still be reached.`,
+  lockedOutTitle: 'Out of reach',
+  lockedOutShort: 'Winning is out of reach',
   winThresholdLabel: (winPoints) => `Win at ${winPoints} points`,
   victory: 'YOU WIN!',
   invalidGameData: 'INVALID GAME DATA!',
@@ -129,6 +140,26 @@ const EN: Messages = {
   completionLabel: 'Completion',
   requiredLetterTitle: 'Required letter',
   ratingsTitle: 'Ratings',
+  ratingReachedLabel: 'Reached',
+  ratingNotReachedLabel: 'Not yet reached',
+  submitPreviewLabel: (preview) => {
+    switch (preview.verdict) {
+      case 'already-found':
+        return 'Already found';
+      case 'invalid-letters':
+        return 'Uses letters not in the salad';
+      case 'missing-required':
+        return `Missing the required letter ${preview.requiredCharacter}`;
+      case 'not-a-word':
+        return 'Not in the word list';
+      case 'too-short':
+        return 'Too short';
+      case 'valid':
+        return preview.points > 0
+          ? `Worth ${preview.points} point${plural('en', preview.points, { one: '', other: 's' })}`
+          : 'Worth no points (revealed by a hint)';
+    }
+  },
   closeButton: 'Close',
   levelName: (level) => level,
   thresholdFrom: (points) =>
@@ -184,6 +215,7 @@ const FR: Messages = {
   pointsHeader: 'Points',
   newGameButton: 'Nouvelle partie',
   playAgainButton: 'Rejouer',
+  keepPlayingButton: 'Continuer à jouer',
   restartButton: 'Recommencer',
   historyButton: 'Historique',
   historyTitle: 'Historique',
@@ -215,6 +247,8 @@ const FR: Messages = {
   lockedOutNote: (reachablePoints, winPoints) =>
     `Trop d’indices — il faut ${winPoints} points pour gagner, ` +
     `mais seulement ${reachablePoints} restent accessibles.`,
+  lockedOutTitle: 'Hors de portée',
+  lockedOutShort: 'La victoire est hors de portée',
   winThresholdLabel: (winPoints) => `Victoire à ${winPoints} points`,
   victory: 'VOUS AVEZ GAGNÉ !',
   invalidGameData: 'DONNÉES DE PARTIE INVALIDES !',
@@ -225,6 +259,26 @@ const FR: Messages = {
   completionLabel: 'Progression',
   requiredLetterTitle: 'Lettre obligatoire',
   ratingsTitle: 'Niveaux',
+  ratingReachedLabel: 'Atteint',
+  ratingNotReachedLabel: 'Pas encore atteint',
+  submitPreviewLabel: (preview) => {
+    switch (preview.verdict) {
+      case 'already-found':
+        return 'Déjà trouvé';
+      case 'invalid-letters':
+        return 'Contient des lettres hors de la salade';
+      case 'missing-required':
+        return `Il manque la lettre obligatoire ${preview.requiredCharacter}`;
+      case 'not-a-word':
+        return 'Absent de la liste de mots';
+      case 'too-short':
+        return 'Trop court';
+      case 'valid':
+        return preview.points > 0
+          ? `Vaut ${preview.points} point${plural('fr', preview.points, { one: '', other: 's' })}`
+          : 'Ne vaut aucun point (mot révélé par un indice)';
+    }
+  },
   closeButton: 'Fermer',
   levelName: (level) => LEVELS_FR[level] ?? level,
   thresholdFrom: (points) =>
@@ -280,6 +334,7 @@ const ES: Messages = {
   pointsHeader: 'Puntos',
   newGameButton: 'Nueva partida',
   playAgainButton: 'Jugar otra vez',
+  keepPlayingButton: 'Seguir jugando',
   restartButton: 'Reiniciar',
   historyButton: 'Historial',
   historyTitle: 'Historial',
@@ -311,6 +366,8 @@ const ES: Messages = {
   lockedOutNote: (reachablePoints, winPoints) =>
     `Demasiadas pistas: para ganar se necesitan ${winPoints} puntos, ` +
     `pero solo quedan ${reachablePoints} alcanzables.`,
+  lockedOutTitle: 'Fuera de alcance',
+  lockedOutShort: 'La victoria está fuera de alcance',
   winThresholdLabel: (winPoints) => `Victoria con ${winPoints} puntos`,
   victory: '¡GANASTE!',
   invalidGameData: '¡DATOS DE PARTIDA NO VÁLIDOS!',
@@ -321,6 +378,26 @@ const ES: Messages = {
   completionLabel: 'Progreso',
   requiredLetterTitle: 'Letra obligatoria',
   ratingsTitle: 'Rangos',
+  ratingReachedLabel: 'Alcanzado',
+  ratingNotReachedLabel: 'Aún no alcanzado',
+  submitPreviewLabel: (preview) => {
+    switch (preview.verdict) {
+      case 'already-found':
+        return 'Ya encontrada';
+      case 'invalid-letters':
+        return 'Usa letras que no están en la ensalada';
+      case 'missing-required':
+        return `Falta la letra obligatoria ${preview.requiredCharacter}`;
+      case 'not-a-word':
+        return 'No está en la lista de palabras';
+      case 'too-short':
+        return 'Demasiado corta';
+      case 'valid':
+        return preview.points > 0
+          ? `Vale ${preview.points} punto${plural('es', preview.points, { one: '', other: 's' })}`
+          : 'No vale puntos (revelada con una pista)';
+    }
+  },
   closeButton: 'Cerrar',
   levelName: (level) => LEVELS_ES[level] ?? level,
   thresholdFrom: (points) =>
@@ -376,6 +453,7 @@ const DE: Messages = {
   pointsHeader: 'Punkte',
   newGameButton: 'Neues Spiel',
   playAgainButton: 'Nochmal spielen',
+  keepPlayingButton: 'Weiterspielen',
   restartButton: 'Neu starten',
   historyButton: 'Verlauf',
   historyTitle: 'Verlauf',
@@ -408,6 +486,8 @@ const DE: Messages = {
   lockedOutNote: (reachablePoints, winPoints) =>
     `Zu viele Tipps — zum Sieg sind ${winPoints} Punkte nötig, ` +
     `aber nur noch ${reachablePoints} ${plural('de', reachablePoints, { one: 'ist', other: 'sind' })} erreichbar.`,
+  lockedOutTitle: 'Nicht mehr erreichbar',
+  lockedOutShort: 'Gewinnen ist nicht mehr möglich',
   winThresholdLabel: (winPoints) =>
     `Sieg ab ${winPoints} ${plural('de', winPoints, { one: 'Punkt', other: 'Punkten' })}`,
   victory: 'DU GEWINNST!',
@@ -419,6 +499,26 @@ const DE: Messages = {
   completionLabel: 'Fortschritt',
   requiredLetterTitle: 'Pflichtbuchstabe',
   ratingsTitle: 'Ränge',
+  ratingReachedLabel: 'Erreicht',
+  ratingNotReachedLabel: 'Noch nicht erreicht',
+  submitPreviewLabel: (preview) => {
+    switch (preview.verdict) {
+      case 'already-found':
+        return 'Bereits gefunden';
+      case 'invalid-letters':
+        return 'Enthält Buchstaben außerhalb des Salats';
+      case 'missing-required':
+        return `Der Pflichtbuchstabe ${preview.requiredCharacter} fehlt`;
+      case 'not-a-word':
+        return 'Nicht in der Wortliste';
+      case 'too-short':
+        return 'Zu kurz';
+      case 'valid':
+        return preview.points > 0
+          ? `Bringt ${preview.points} ${plural('de', preview.points, { one: 'Punkt', other: 'Punkte' })}`
+          : 'Bringt keine Punkte (durch Hinweis aufgedeckt)';
+    }
+  },
   closeButton: 'Schließen',
   levelName: (level) => LEVELS_DE[level] ?? level,
   thresholdFrom: (points) => `ab ${points} Pkt.`,
@@ -473,6 +573,7 @@ const IT: Messages = {
   pointsHeader: 'Punti',
   newGameButton: 'Nuova partita',
   playAgainButton: 'Gioca ancora',
+  keepPlayingButton: 'Continua a giocare',
   restartButton: 'Ricomincia',
   historyButton: 'Cronologia',
   historyTitle: 'Cronologia',
@@ -505,6 +606,8 @@ const IT: Messages = {
   lockedOutNote: (reachablePoints, winPoints) =>
     `Troppi indizi: per vincere ${plural('it', winPoints, { one: 'serve', other: 'servono' })} ${winPoints} ${plural('it', winPoints, { one: 'punto', other: 'punti' })}, ` +
     `ma ne ${plural('it', reachablePoints, { one: 'resta raggiungibile', other: 'restano raggiungibili' })} solo ${reachablePoints}.`,
+  lockedOutTitle: 'Fuori portata',
+  lockedOutShort: 'La vittoria è fuori portata',
   winThresholdLabel: (winPoints) =>
     `Vittoria a ${winPoints} ${plural('it', winPoints, { one: 'punto', other: 'punti' })}`,
   victory: 'HAI VINTO!',
@@ -516,6 +619,26 @@ const IT: Messages = {
   completionLabel: 'Avanzamento',
   requiredLetterTitle: 'Lettera obbligatoria',
   ratingsTitle: 'Livelli',
+  ratingReachedLabel: 'Raggiunto',
+  ratingNotReachedLabel: 'Non ancora raggiunto',
+  submitPreviewLabel: (preview) => {
+    switch (preview.verdict) {
+      case 'already-found':
+        return 'Già trovata';
+      case 'invalid-letters':
+        return "Usa lettere fuori dall'insalata";
+      case 'missing-required':
+        return `Manca la lettera obbligatoria ${preview.requiredCharacter}`;
+      case 'not-a-word':
+        return "Non è nell'elenco delle parole";
+      case 'too-short':
+        return 'Troppo corta';
+      case 'valid':
+        return preview.points > 0
+          ? `Vale ${preview.points} ${plural('it', preview.points, { one: 'punto', other: 'punti' })}`
+          : 'Non vale punti (rivelata da un indizio)';
+    }
+  },
   closeButton: 'Chiudi',
   levelName: (level) => LEVELS_IT[level] ?? level,
   thresholdFrom: (points) => `da ${points} pt`,
@@ -570,6 +693,7 @@ const PT: Messages = {
   pointsHeader: 'Pontos',
   newGameButton: 'Novo jogo',
   playAgainButton: 'Jogar de novo',
+  keepPlayingButton: 'Continuar jogando',
   restartButton: 'Recomeçar',
   historyButton: 'Histórico',
   historyTitle: 'Histórico',
@@ -601,6 +725,8 @@ const PT: Messages = {
   lockedOutNote: (reachablePoints, winPoints) =>
     `Dicas demais — vencer exige ${winPoints} pontos, ` +
     `mas só dá para alcançar ${reachablePoints}.`,
+  lockedOutTitle: 'Fora de alcance',
+  lockedOutShort: 'A vitória está fora de alcance',
   winThresholdLabel: (winPoints) => `Vitória com ${winPoints} pontos`,
   victory: 'VOCÊ VENCEU!',
   invalidGameData: 'DADOS DE JOGO INVÁLIDOS!',
@@ -611,6 +737,26 @@ const PT: Messages = {
   completionLabel: 'Progresso',
   requiredLetterTitle: 'Letra obrigatória',
   ratingsTitle: 'Níveis',
+  ratingReachedLabel: 'Alcançado',
+  ratingNotReachedLabel: 'Ainda não alcançado',
+  submitPreviewLabel: (preview) => {
+    switch (preview.verdict) {
+      case 'already-found':
+        return 'Já encontrada';
+      case 'invalid-letters':
+        return 'Usa letras fora da salada';
+      case 'missing-required':
+        return `Falta a letra obrigatória ${preview.requiredCharacter}`;
+      case 'not-a-word':
+        return 'Não está na lista de palavras';
+      case 'too-short':
+        return 'Curta demais';
+      case 'valid':
+        return preview.points > 0
+          ? `Vale ${preview.points} ponto${plural('pt', preview.points, { one: '', other: 's' })}`
+          : 'Não vale pontos (revelada por uma dica)';
+    }
+  },
   closeButton: 'Fechar',
   levelName: (level) => LEVELS_PT[level] ?? level,
   thresholdFrom: (points) =>
@@ -666,6 +812,7 @@ const NL: Messages = {
   pointsHeader: 'Punten',
   newGameButton: 'Nieuw spel',
   playAgainButton: 'Opnieuw spelen',
+  keepPlayingButton: 'Verder spelen',
   restartButton: 'Opnieuw beginnen',
   historyButton: 'Geschiedenis',
   historyTitle: 'Geschiedenis',
@@ -697,6 +844,8 @@ const NL: Messages = {
   lockedOutNote: (reachablePoints, winPoints) =>
     `Te veel hints — winnen vergt ${winPoints} punten, ` +
     `maar er ${plural('nl', reachablePoints, { one: 'is', other: 'zijn' })} er nog maar ${reachablePoints} haalbaar.`,
+  lockedOutTitle: 'Buiten bereik',
+  lockedOutShort: 'Winnen is niet meer mogelijk',
   winThresholdLabel: (winPoints) =>
     `Winst bij ${winPoints} ${plural('nl', winPoints, { one: 'punt', other: 'punten' })}`,
   victory: 'JIJ WINT!',
@@ -708,6 +857,26 @@ const NL: Messages = {
   completionLabel: 'Voortgang',
   requiredLetterTitle: 'Verplichte letter',
   ratingsTitle: 'Niveaus',
+  ratingReachedLabel: 'Bereikt',
+  ratingNotReachedLabel: 'Nog niet bereikt',
+  submitPreviewLabel: (preview) => {
+    switch (preview.verdict) {
+      case 'already-found':
+        return 'Al gevonden';
+      case 'invalid-letters':
+        return 'Bevat letters buiten de salade';
+      case 'missing-required':
+        return `De verplichte letter ${preview.requiredCharacter} ontbreekt`;
+      case 'not-a-word':
+        return 'Staat niet in de woordenlijst';
+      case 'too-short':
+        return 'Te kort';
+      case 'valid':
+        return preview.points > 0
+          ? `Levert ${preview.points} ${plural('nl', preview.points, { one: 'punt', other: 'punten' })} op`
+          : 'Levert geen punten op (onthuld met een hint)';
+    }
+  },
   closeButton: 'Sluiten',
   levelName: (level) => LEVELS_NL[level] ?? level,
   thresholdFrom: (points) =>
@@ -763,6 +932,7 @@ const JA: Messages = {
   pointsHeader: 'ポイント',
   newGameButton: '新しいゲーム',
   playAgainButton: 'もう一度遊ぶ',
+  keepPlayingButton: 'プレイを続ける',
   restartButton: 'やり直す',
   historyButton: '履歴',
   historyTitle: '履歴',
@@ -789,6 +959,8 @@ const JA: Messages = {
   lockedOutNote: (reachablePoints, winPoints) =>
     `ヒントが多すぎます — 勝利には${winPoints}ポイント必要ですが、` +
     `あと最大${reachablePoints}ポイントしか獲得できません。`,
+  lockedOutTitle: '勝利は不可能に',
+  lockedOutShort: '勝利には届きません',
   winThresholdLabel: (winPoints) => `${winPoints}ポイントで勝利`,
   victory: 'あなたの勝ち！',
   invalidGameData: '無効なゲームデータ！',
@@ -798,6 +970,26 @@ const JA: Messages = {
   completionLabel: '達成度',
   requiredLetterTitle: '必須の文字',
   ratingsTitle: 'ランク',
+  ratingReachedLabel: '達成済み',
+  ratingNotReachedLabel: '未達成',
+  submitPreviewLabel: (preview) => {
+    switch (preview.verdict) {
+      case 'already-found':
+        return 'すでに見つけた単語です';
+      case 'invalid-letters':
+        return 'サラダにない文字が含まれています';
+      case 'missing-required':
+        return `必須文字 ${preview.requiredCharacter} がありません`;
+      case 'not-a-word':
+        return '単語リストにありません';
+      case 'too-short':
+        return '短すぎます';
+      case 'valid':
+        return preview.points > 0
+          ? `${preview.points}ポイント獲得できます`
+          : 'ポイントにはなりません（ヒントで判明した単語）';
+    }
+  },
   closeButton: '閉じる',
   levelName: (level) => LEVELS_JA[level] ?? level,
   thresholdFrom: (points) => `${points}ポイントから`,
@@ -851,6 +1043,7 @@ const KO: Messages = {
   pointsHeader: '점수',
   newGameButton: '새 게임',
   playAgainButton: '다시 하기',
+  keepPlayingButton: '계속 플레이하기',
   restartButton: '다시 시작',
   historyButton: '기록',
   historyTitle: '기록',
@@ -878,6 +1071,8 @@ const KO: Messages = {
   lockedOutNote: (reachablePoints, winPoints) =>
     `힌트를 너무 많이 썼어요 — 승리에는 ${winPoints}점이 필요하지만 ` +
     `이제 최대 ${reachablePoints}점만 얻을 수 있어요.`,
+  lockedOutTitle: '승리 불가능',
+  lockedOutShort: '승리에 도달할 수 없습니다',
   winThresholdLabel: (winPoints) => `${winPoints}점에서 승리`,
   victory: '승리!',
   invalidGameData: '잘못된 게임 데이터!',
@@ -887,6 +1082,26 @@ const KO: Messages = {
   completionLabel: '진행도',
   requiredLetterTitle: '필수 글자',
   ratingsTitle: '등급',
+  ratingReachedLabel: '달성함',
+  ratingNotReachedLabel: '아직 미달성',
+  submitPreviewLabel: (preview) => {
+    switch (preview.verdict) {
+      case 'already-found':
+        return '이미 찾은 단어입니다';
+      case 'invalid-letters':
+        return '샐러드에 없는 글자가 있습니다';
+      case 'missing-required':
+        return `필수 글자 ${preview.requiredCharacter}이(가) 없습니다`;
+      case 'not-a-word':
+        return '단어 목록에 없습니다';
+      case 'too-short':
+        return '너무 짧습니다';
+      case 'valid':
+        return preview.points > 0
+          ? `${preview.points}점을 얻습니다`
+          : '점수가 없습니다 (힌트로 공개된 단어)';
+    }
+  },
   closeButton: '닫기',
   levelName: (level) => LEVELS_KO[level] ?? level,
   thresholdFrom: (points) => `${points}점부터`,
@@ -939,6 +1154,7 @@ const ZH: Messages = {
   pointsHeader: '分数',
   newGameButton: '新游戏',
   playAgainButton: '再玩一局',
+  keepPlayingButton: '继续游戏',
   restartButton: '重新开始',
   historyButton: '历史',
   historyTitle: '历史',
@@ -964,6 +1180,8 @@ const ZH: Messages = {
   lockedOutNote: (reachablePoints, winPoints) =>
     `提示用得太多——获胜需要 ${winPoints} 分，` +
     `但最多只能拿到 ${reachablePoints} 分。`,
+  lockedOutTitle: '无法获胜',
+  lockedOutShort: '无法达到获胜线',
   winThresholdLabel: (winPoints) => `${winPoints} 分获胜`,
   victory: '你赢了！',
   invalidGameData: '无效的游戏数据！',
@@ -973,6 +1191,26 @@ const ZH: Messages = {
   completionLabel: '完成度',
   requiredLetterTitle: '必用字母',
   ratingsTitle: '等级',
+  ratingReachedLabel: '已达到',
+  ratingNotReachedLabel: '尚未达到',
+  submitPreviewLabel: (preview) => {
+    switch (preview.verdict) {
+      case 'already-found':
+        return '已找到过';
+      case 'invalid-letters':
+        return '包含沙拉之外的字母';
+      case 'missing-required':
+        return `缺少必需字母 ${preview.requiredCharacter}`;
+      case 'not-a-word':
+        return '不在单词表中';
+      case 'too-short':
+        return '太短';
+      case 'valid':
+        return preview.points > 0
+          ? `可得 ${preview.points} 分`
+          : '不得分（由提示揭示的单词）';
+    }
+  },
   closeButton: '关闭',
   levelName: (level) => LEVELS_ZH[level] ?? level,
   thresholdFrom: (points) => `${points} 分起`,
@@ -1025,6 +1263,7 @@ const RU: Messages = {
   pointsHeader: 'Очки',
   newGameButton: 'Новая игра',
   playAgainButton: 'Сыграть ещё раз',
+  keepPlayingButton: 'Продолжить игру',
   restartButton: 'Начать заново',
   historyButton: 'История',
   historyTitle: 'История',
@@ -1055,6 +1294,8 @@ const RU: Messages = {
   lockedOutNote: (reachablePoints, winPoints) =>
     `Слишком много подсказок — для победы нужно ${winPoints} ${plural('ru', winPoints, { one: 'очко', few: 'очка', other: 'очков' })}, ` +
     `но достижимо не больше ${reachablePoints}.`,
+  lockedOutTitle: 'Победа недостижима',
+  lockedOutShort: 'Победа недостижима',
   winThresholdLabel: (winPoints) =>
     `Победа при ${winPoints} ${plural('ru', winPoints, { one: 'очке', other: 'очках' })}`,
   victory: 'ПОБЕДА!',
@@ -1065,6 +1306,26 @@ const RU: Messages = {
   completionLabel: 'Прогресс',
   requiredLetterTitle: 'Обязательная буква',
   ratingsTitle: 'Звания',
+  ratingReachedLabel: 'Достигнуто',
+  ratingNotReachedLabel: 'Ещё не достигнуто',
+  submitPreviewLabel: (preview) => {
+    switch (preview.verdict) {
+      case 'already-found':
+        return 'Уже найдено';
+      case 'invalid-letters':
+        return 'Содержит буквы не из салата';
+      case 'missing-required':
+        return `Не хватает обязательной буквы ${preview.requiredCharacter}`;
+      case 'not-a-word':
+        return 'Нет в списке слов';
+      case 'too-short':
+        return 'Слишком короткое';
+      case 'valid':
+        return preview.points > 0
+          ? `Принесёт ${preview.points} ${plural('ru', preview.points, { one: 'очко', few: 'очка', other: 'очков' })}`
+          : 'Не принесёт очков (открыто подсказкой)';
+    }
+  },
   closeButton: 'Закрыть',
   levelName: (level) => LEVELS_RU[level] ?? level,
   thresholdFrom: (points) => `от ${points} очк.`,

@@ -92,6 +92,13 @@ export interface RankUp {
   level: string;
 }
 
+// The hint that spent the win out of reach — the reachable maximum just fell
+// below the win line. Fires once, on that crossing, during play only (never
+// on restore of an already-locked game).
+export interface Lockout {
+  id: number;
+}
+
 // A keyboard action that landed on an unavailable control (Backspace or
 // Enter with an empty word). The control acknowledges it with a press dip
 // but fires nothing — the same feedback a tap on it gives via CSS :active.
@@ -129,6 +136,7 @@ export interface PlayingGame {
   deniedControl: DeniedControl | null;
   celebration: Celebration | null;
   rankUp: RankUp | null;
+  lockout: Lockout | null;
   feedback: GameFeedback | null;
   foundWords: readonly FoundWord[];
   wordSlots: readonly WordSlot[];
@@ -350,6 +358,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   );
   const [celebration, setCelebration] = useState<Celebration | null>(null);
   const [rankUp, setRankUp] = useState<RankUp | null>(null);
+  const [lockout, setLockout] = useState<Lockout | null>(null);
   // Read once at boot; the URL-write effect strips it so re-sharing never
   // carries a stale challenge along.
   const [challengeScore, setChallengeScore] = useState<number | null>(() => {
@@ -498,6 +507,22 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
         cost: hint.cost,
       }));
 
+      // Detect the hint that spends the win out of reach: the reachable
+      // maximum falls below the win line for the first time. Fires only
+      // here (during play), so a restored already-locked game stays calm.
+      const winPoints = completionToPoints(WIN_THRESHOLD, wordSalad.maxPoints);
+      const { earnedPoints, lostPoints } = tallyPoints(wordSalad, hintedWords);
+      const reachableBefore = wordSalad.maxPoints - lostPoints;
+      const reachableAfter = reachableBefore - hint.cost;
+      const hasWon = earnedPoints >= winPoints;
+      if (
+        !hasWon &&
+        reachableBefore >= winPoints &&
+        reachableAfter < winPoints
+      ) {
+        setLockout((previous) => ({ id: (previous?.id ?? 0) + 1 }));
+      }
+
       const committed = new Set(hintedWords).add(hint.word);
       setHintedWords(committed);
       saveHintedWords(storeWordSalad(wordSalad), Array.from(committed));
@@ -535,6 +560,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setDeniedControl(null);
     setCelebration(null);
     setRankUp(null);
+    setLockout(null);
     // A shared challenge belongs to the puzzle it arrived with.
     setChallengeScore(null);
     // Reset the press counters so the control buttons don't replay a ripple
@@ -574,6 +600,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setDeniedControl(null);
     setCelebration(null);
     setRankUp(null);
+    setLockout(null);
     setTossId(0);
     setDeleteId(0);
     setHintedWords(new Set());
@@ -829,6 +856,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     deniedControl,
     celebration,
     rankUp,
+    lockout,
     feedback,
     foundWords,
     wordSlots,

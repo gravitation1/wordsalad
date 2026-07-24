@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { useMessages } from '../i18n';
-import type { Celebration, RankUp, WordSlot } from '../useWordSaladGame';
+import type {
+  Celebration,
+  Lockout,
+  RankUp,
+  WordSlot,
+} from '../useWordSaladGame';
 import { WinBurst } from './Confetti';
+import { LockoutDialog } from './LockoutDialog';
 import { RatingsDialog } from './RatingsDialog';
-import { TILE_FACE } from './tiles';
+import { WinDialog } from './WinDialog';
 import { WordDrum } from './WordDrum';
 
 interface ScoreboardProps {
@@ -24,6 +30,7 @@ interface ScoreboardProps {
   level: string;
   hasWon: boolean;
   lockedOut: boolean;
+  lockout: Lockout | null;
   hintCount: number;
   challengeScore: number | null;
   rankUp: RankUp | null;
@@ -63,6 +70,7 @@ export function Scoreboard({
   level,
   hasWon,
   lockedOut,
+  lockout,
   hintCount,
   challengeScore,
   rankUp,
@@ -72,6 +80,18 @@ export function Scoreboard({
   const t = useMessages();
   const [isRatingsOpen, setIsRatingsOpen] = useState(false);
   const ratingsButtonRef = useRef<HTMLButtonElement>(null);
+
+  // The win modal opens on each celebration (the win, and again — gold —
+  // for a perfect clear) and stays dismissed by id, so closing it returns
+  // the board to its normal playing view. Restored wins never open it:
+  // a restore carries no celebration.
+  const [dismissedWinId, setDismissedWinId] = useState(0);
+
+  // The lockout modal mirrors the win: it opens once on the crossing event
+  // and stays dismissed by id, so the board returns to normal (a slim
+  // reminder stays on the score line). A restored locked game carries no
+  // event, so it shows only the reminder — never the modal.
+  const [dismissedLockoutId, setDismissedLockoutId] = useState(0);
 
   // "Copied!" flashes on the Share button after a clipboard fallback.
   const [shareCopied, setShareCopied] = useState(false);
@@ -128,25 +148,11 @@ export function Scoreboard({
   };
 
   const foundCount = wordSlots.filter((slot) => slot.found !== null).length;
+  const isComplete = foundCount === wordSlots.length;
   const anyHinted = wordSlots.some((slot) => slot.found?.hinted ?? false);
   // The gold treatment is state, not event: a restored perfect game keeps
   // it (only the animations are reserved for the moment itself).
   const isPerfect = earnedPoints === maxPoints;
-
-  // The victory phrase as per-word tile groups, with a running index so the
-  // vault stagger flows across word boundaries.
-  const victoryTiles: { character: string; delayIndex: number }[][] = [];
-  let delayCounter = 0;
-  for (const word of t.victory.split(' ')) {
-    if (word.length > 0) {
-      victoryTiles.push(
-        Array.from(word).map((character) => ({
-          character,
-          delayIndex: delayCounter++,
-        })),
-      );
-    }
-  }
 
   // Closing the dialog restores focus to this trigger; blur it so a
   // subsequent Enter submits a word instead of re-opening the dialog.
@@ -157,92 +163,40 @@ export function Scoreboard({
 
   return (
     <section className="w-full space-y-3">
-      {hasWon ? (
-        // Springs in only at the moment of winning; a restored win is calm.
-        // A perfect score fires a second, grander (gold) pass even though
-        // the banner is already up — the class change replays the pop.
-        <div
-          className={`relative space-y-2 rounded-xl p-4 text-center ${
-            isPerfect
-              ? 'bg-amber-50 dark:bg-amber-400/10'
-              : 'bg-accent-soft dark:bg-accent/15'
-          } ${
-            celebration === null
-              ? ''
-              : celebration.perfect
-                ? 'win-pop-perfect'
-                : 'win-pop'
-          }`}
-          data-perfect={isPerfect ? 'true' : 'false'}
-          data-testid="win-banner"
-        >
-          {celebration === null ? null : (
-            <WinBurst
-              key={`burst-${celebration.id}`}
-              letters={saladLetters}
-              perfect={celebration.perfect}
-              requiredCharacter={requiredCharacter}
-            />
-          )}
-          <p>
-            {/* Real text for readers and tests; the visible tiles — the
-                victory phrase spelled in the game's own letter tiles, with
-                punctuation in accent (gold across the board for a perfect
-                score) — vault in one by one. Keyed per celebration so the
-                perfect pass re-vaults; grouped per word so wrapping never
-                splits one. */}
-            <span className="sr-only">{t.victory}</span>
-            <span
-              aria-hidden="true"
-              className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5"
-              key={celebration?.id ?? 0}
-            >
-              {victoryTiles.map((word, wordIndex) => (
-                <span className="flex gap-1.5" key={wordIndex}>
-                  {word.map(({ character, delayIndex }) => (
-                    <span
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg text-base font-bold ${
-                        isPerfect
-                          ? /[\p{L}\p{N}]/u.test(character)
-                            ? TILE_FACE.gold
-                            : TILE_FACE.goldSolid
-                          : /[\p{L}\p{N}]/u.test(character)
-                            ? TILE_FACE.plain
-                            : TILE_FACE.accent
-                      } ${celebration === null ? '' : 'win-letter'}`}
-                      key={delayIndex}
-                      style={
-                        celebration === null
-                          ? undefined
-                          : { animationDelay: `${delayIndex * 45}ms` }
-                      }
-                    >
-                      {character}
-                    </span>
-                  ))}
-                </span>
-              ))}
-            </span>
-          </p>
-          <p className="text-sm font-semibold text-accent">
-            {t.levelName(level)}
-          </p>
-          <button
-            className="min-h-11 touch-manipulation rounded-full bg-accent px-5 py-2 font-medium text-white transition hover:bg-accent/90 active:scale-95"
-            onClick={onPlayAgain}
-            type="button"
-          >
-            {t.playAgainButton}
-          </button>
-        </div>
+      {/* The fanfare interrupts, then gets out of the way: dismissing the
+          modal returns the board to its normal view. Keyed per celebration
+          so the perfect (gold) pass remounts and replays the show. */}
+      {celebration !== null && celebration.id !== dismissedWinId ? (
+        <WinDialog
+          celebration={celebration}
+          isComplete={isComplete}
+          key={`win-${celebration.id}`}
+          letters={saladLetters}
+          level={level}
+          onClose={() => {
+            setDismissedWinId(celebration.id);
+          }}
+          onPlayAgain={onPlayAgain}
+          onShare={() => {
+            void handleShare();
+          }}
+          requiredCharacter={requiredCharacter}
+          shareCopied={shareCopied}
+        />
       ) : null}
-      {lockedOut ? (
-        <p
-          className="rounded-xl bg-red-50 p-3 text-center text-sm font-medium text-red-600 dark:bg-red-500/10 dark:text-red-400"
-          role="status"
-        >
-          {t.lockedOutNote(maxPoints - lostPoints, winPoints)}
-        </p>
+      {/* The loss counterpart to the win modal: fired once on the crossing,
+          then dismissible so play can continue for rank. */}
+      {lockout !== null && lockout.id !== dismissedLockoutId ? (
+        <LockoutDialog
+          isComplete={isComplete}
+          key={`lockout-${lockout.id}`}
+          onClose={() => {
+            setDismissedLockoutId(lockout.id);
+          }}
+          onRestart={onRestart}
+          reachablePoints={maxPoints - lostPoints}
+          winPoints={winPoints}
+        />
       ) : null}
       {/* A score that arrived via a shared link: the duel banner. */}
       {challengeScore === null ? null : earnedPoints > challengeScore ? (
@@ -333,6 +287,22 @@ export function Scoreboard({
       </div>
       {/* relative + inline-block anchor the rank-up burst on the score. */}
       <div className="relative inline-block">
+        {/* The win's quiet residue once the modal is gone (and the only
+            marker a restored won game shows): gold for a perfect score.
+            Outside the ratings button so its accessible name stays the
+            plain score. */}
+        {hasWon ? (
+          <span
+            className={`mr-1 text-sm font-semibold ${
+              isPerfect ? 'text-amber-500' : 'text-accent'
+            }`}
+            data-perfect={isPerfect ? 'true' : 'false'}
+            data-testid="won-mark"
+          >
+            <span aria-hidden="true">✓</span>
+            <span className="sr-only">{t.statWon}</span>
+          </span>
+        ) : null}
         <button
           aria-haspopup="dialog"
           className="-mx-2 -my-1 touch-manipulation rounded px-2 py-1 text-left text-sm text-gray-600 underline decoration-gray-400/60 decoration-dotted underline-offset-4 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
@@ -364,6 +334,17 @@ export function Scoreboard({
           </span>
         )}
       </div>
+      {/* The lockout modal's quiet residue once dismissed — and the only
+          cue a restored locked game shows (it carries no event, so the
+          modal never opens). A slim line, not the old padded banner. */}
+      {lockedOut ? (
+        <p
+          className="text-xs font-medium text-red-500 dark:text-red-400"
+          data-testid="lockout-note"
+        >
+          {t.lockedOutShort}
+        </p>
+      ) : null}
       {isRatingsOpen ? (
         <RatingsDialog
           earnedPoints={earnedPoints}

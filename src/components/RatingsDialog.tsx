@@ -91,6 +91,7 @@ export function RatingsDialog({
                 </li>
               ) : null}
               <li
+                aria-current={isCurrent ? 'true' : undefined}
                 className={`flex items-baseline justify-between gap-4 text-sm ${
                   isCurrent
                     ? 'font-semibold text-accent'
@@ -104,6 +105,10 @@ export function RatingsDialog({
                 <span className="flex items-center gap-1.5">
                   <span aria-hidden="true">{isAchieved ? '✓' : '○'}</span>
                   {t.levelName(step.level)}
+                  {/* The ✓/○ mark in words for screen readers. */}
+                  <span className="sr-only">
+                    {isAchieved ? t.ratingReachedLabel : t.ratingNotReachedLabel}
+                  </span>
                 </span>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
                   {t.thresholdFrom(step.points)}

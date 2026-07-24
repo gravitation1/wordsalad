@@ -199,6 +199,7 @@ export function GameControls({
         ) : null}
       </button>
       <button
+        aria-describedby={preview === null ? undefined : 'submit-preview-note'}
         aria-disabled={submitReadiness === 'empty'}
         className={`relative ${SUBMIT_CLASS[submitReadiness]} ${denyClass(denied, 'submit')}`}
         data-denied-id={denied?.control === 'submit' ? denied.id : 0}
@@ -229,6 +230,13 @@ export function GameControls({
           </span>
         )}
       </button>
+      {/* The verdict badge in words, as Submit's accessible description —
+          outside the button so it doesn't join the accessible name. */}
+      {preview === null ? null : (
+        <span className="sr-only" id="submit-preview-note">
+          {t.submitPreviewLabel(preview)}
+        </span>
+      )}
     </div>
   );
 }

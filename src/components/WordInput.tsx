@@ -99,6 +99,14 @@ export function WordInput({
   // When nothing is typed, the word area offers a hint instead of a cursor.
   const showHint = inputLetters.length === 0 && canHint;
 
+  // Doubles as the tooltip and the button's accessible description (via
+  // aria-describedby, so the accessible name stays a plain "Hint").
+  const hintNote = hintForfeitsWin
+    ? t.hintForfeitsWinLabel
+    : hintCost > 0
+      ? t.hintCostLabel(hintCost)
+      : t.hintAgainLabel;
+
   // The word span is gone by the time its exit ghost mounts, and the word
   // area re-centers around the returning hint button — so the ghost is
   // fixed-positioned at the word's last on-screen spot, captured while the
@@ -162,6 +170,8 @@ export function WordInput({
       >
         <span
           aria-label={t.currentWordLabel}
+          // Echoes letters as they arrive — typed, tapped, or hint-revealed.
+          aria-live="polite"
           data-revealing={isRevealing}
           ref={wordRef}
         >
@@ -182,46 +192,49 @@ export function WordInput({
           ))}
         </span>
         {showHint ? (
-          <button
-            // The button eases in; after a submission it waits out the exiting
-            // word so the two never hard-cut in the same frame.
-            className={`${wordExit === null ? 'hint-enter' : 'hint-enter-delayed'} flex h-10 touch-manipulation items-center gap-2 rounded-full bg-gray-100 px-4 text-sm font-medium text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200`}
-            data-forfeits-win={hintForfeitsWin ? 'true' : 'false'}
-            onClick={handleHint}
-            title={
-              hintForfeitsWin
-                ? t.hintForfeitsWinLabel
-                : hintCost > 0
-                  ? t.hintCostLabel(hintCost)
-                  : t.hintAgainLabel
-            }
-            type="button"
-          >
-            {t.hintButton}
-            {/* Taking a hint lowers your reachable max score by this much.
-                Re-revealing an already-paid word is free: no cost chip. */}
-            {hintCost > 0 ? (
+          <>
+            <button
+              aria-describedby="hint-note"
+              // The button eases in; after a submission it waits out the
+              // exiting word so the two never hard-cut in the same frame.
+              className={`${wordExit === null ? 'hint-enter' : 'hint-enter-delayed'} flex h-10 touch-manipulation items-center gap-2 rounded-full bg-gray-100 px-4 text-sm font-medium text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200`}
+              data-forfeits-win={hintForfeitsWin ? 'true' : 'false'}
+              onClick={handleHint}
+              title={hintNote}
+              type="button"
+            >
+              {t.hintButton}
+              {/* Taking a hint lowers your reachable max score by this much.
+                  Re-revealing an already-paid word is free: no cost chip. */}
+              {hintCost > 0 ? (
+                <span
+                  aria-hidden="true"
+                  className={
+                    hintForfeitsWin ? HINT_BADGE_DANGER_CLASS : HINT_BADGE_CLASS
+                  }
+                  ref={costBadgeRef}
+                >
+                  {t.hintCostBadge(hintCost)}
+                </span>
+              ) : null}
+              {/* Keyboard shortcut, shown only where there is a real
+                  keyboard. */}
               <span
                 aria-hidden="true"
-                className={
-                  hintForfeitsWin ? HINT_BADGE_DANGER_CLASS : HINT_BADGE_CLASS
-                }
-                ref={costBadgeRef}
+                className="hidden h-4 w-4 items-center justify-center rounded border border-gray-300 text-[10px] font-normal leading-none tracking-normal text-gray-400 pointer-fine:inline-flex dark:border-gray-600 dark:text-gray-500"
               >
-                {t.hintCostBadge(hintCost)}
+                {/* tracking-normal above: inherited letter-spacing trails the
+                  glyph and skews it off-center. The half-pixel lift moves the
+                  ink to its measured optical center. */}
+                <span className="inline-block -translate-y-[0.5px]">?</span>
               </span>
-            ) : null}
-            {/* Keyboard shortcut, shown only where there is a real keyboard. */}
-            <span
-              aria-hidden="true"
-              className="hidden h-4 w-4 items-center justify-center rounded border border-gray-300 text-[10px] font-normal leading-none tracking-normal text-gray-400 pointer-fine:inline-flex dark:border-gray-600 dark:text-gray-500"
-            >
-              {/* tracking-normal above: inherited letter-spacing trails the
-                glyph and skews it off-center. The half-pixel lift moves the
-                ink to its measured optical center. */}
-              <span className="inline-block -translate-y-[0.5px]">?</span>
+            </button>
+            {/* Outside the button: describes it without joining its
+                accessible name (which stays a plain "Hint"). */}
+            <span className="sr-only" id="hint-note">
+              {hintNote}
             </span>
-          </button>
+          </>
         ) : isComplete ? (
           // The board is cleared: a tile-styled check where the typing
           // cursor would otherwise beckon for words that don't exist.

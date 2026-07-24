@@ -93,6 +93,9 @@ export function SaladLetters({
             style={{ animationDelay: `${index * 45}ms` }}
           >
             <button
+              // Describes rather than renames: the accessible name stays
+              // the bare letter, matching the visible tile.
+              aria-describedby={isRequired ? 'required-letter-note' : undefined}
               // Touch devices get larger tiles: bigger targets and wider
               // tap-center spacing, the two levers against mis-taps.
               className={`relative h-12 w-12 touch-manipulation rounded-xl text-xl font-semibold transition active:scale-90 pointer-coarse:h-14 pointer-coarse:w-14 pointer-coarse:text-2xl ${
@@ -127,6 +130,9 @@ export function SaladLetters({
           </span>
         );
       })}
+      <span className="sr-only" id="required-letter-note">
+        {t.requiredLetterTitle}
+      </span>
     </div>
   );
 }

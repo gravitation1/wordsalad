@@ -31,6 +31,17 @@ function submitWord(word: string): void {
   pressKey('Enter');
 }
 
+// The win modal captures the keyboard while open; dismissing it returns the
+// board to its normal playing view. "Keep playing" only shows while words
+// remain; the ✕ always dismisses.
+function keepPlaying(): void {
+  fireEvent.click(screen.getByRole('button', { name: 'Keep playing' }));
+}
+
+function closeWin(): void {
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+}
+
 function currentWord(): string {
   return screen.getByLabelText('Current word').textContent ?? '';
 }
@@ -372,8 +383,9 @@ describe('App', () => {
       'false',
     );
 
-    // Reaching every point fires a second, gold celebration even though
-    // the win already happened.
+    // Dismiss the win modal and keep going; reaching every point fires a
+    // second, gold celebration even though the win already happened.
+    keepPlaying();
     submitWord('rotted'); // 15 of 15
     expect(screen.getByTestId('confetti')).toHaveAttribute(
       'data-perfect',
@@ -385,7 +397,7 @@ describe('App', () => {
     );
   });
 
-  it('keeps the gold banner for a restored perfect game', () => {
+  it('keeps the gold mark for a restored perfect game', () => {
     window.localStorage.setItem(
       'wordsalad:DEORSTW.T.4',
       JSON.stringify(['TEST', 'ROTTED', 'WORSTED']),
@@ -394,7 +406,8 @@ describe('App', () => {
 
     // Calm on restore — no fanfare — but the state remembers perfection.
     expect(screen.queryByTestId('confetti')).not.toBeInTheDocument();
-    expect(screen.getByTestId('win-banner')).toHaveAttribute(
+    expect(screen.queryByTestId('win-banner')).not.toBeInTheDocument();
+    expect(screen.getByTestId('won-mark')).toHaveAttribute(
       'data-perfect',
       'true',
     );
@@ -418,10 +431,35 @@ describe('App', () => {
 
     submitWord('worsted');
     submitWord('test'); // won at 12 of 15, but ROTTED is still out there
+    keepPlaying();
     expect(screen.queryByTestId('complete-mark')).not.toBeInTheDocument();
 
-    submitWord('rotted'); // board cleared
+    // Board cleared — the perfect modal opens with no "Keep playing" (there
+    // is nothing left to find); the ✕ dismisses to the completed board.
+    submitWord('rotted');
+    expect(
+      screen.queryByRole('button', { name: 'Keep playing' }),
+    ).not.toBeInTheDocument();
+    closeWin();
     expect(screen.getByTestId('complete-mark')).toBeInTheDocument();
+  });
+
+  it('hides "Keep playing" when a win also clears the board', () => {
+    render(<App dictionary={DICTIONARY} />);
+    // TEST and ROTTED by hand; the last word, WORSTED, both wins and
+    // exhausts the board on the same submission.
+    submitWord('test');
+    submitWord('rotted');
+    submitWord('worsted'); // 15/15: win + board cleared at once
+
+    expect(screen.getByTestId('win-banner')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Keep playing' }),
+    ).not.toBeInTheDocument();
+    // The ✕ still dismisses to the finished board.
+    closeWin();
+    expect(screen.queryByTestId('win-banner')).not.toBeInTheDocument();
+    expect(screen.getByTestId('won-mark')).toBeInTheDocument();
   });
 
   it('does not celebrate a restored, already-won game', () => {
@@ -431,8 +469,35 @@ describe('App', () => {
     );
     render(<App dictionary={DICTIONARY} />);
 
-    expect(screen.getByText('YOU WIN!')).toBeInTheDocument();
+    // No modal and no confetti — just the quiet mark on the score line.
+    expect(screen.queryByText('YOU WIN!')).not.toBeInTheDocument();
     expect(screen.queryByTestId('confetti')).not.toBeInTheDocument();
+    expect(screen.getByTestId('won-mark')).toBeInTheDocument();
+  });
+
+  it('returns to a normal view when the win dialog is dismissed', () => {
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted');
+    submitWord('test'); // 12 of 15: the win modal opens
+
+    expect(screen.getByTestId('win-banner')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep playing' }));
+
+    // The board is back to its playing view, marked won but unobstructed.
+    expect(screen.queryByTestId('win-banner')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('confetti')).not.toBeInTheDocument();
+    expect(screen.getByTestId('won-mark')).toHaveAttribute(
+      'data-perfect',
+      'false',
+    );
+
+    // The perfect clear reopens the modal for its grander, gold pass.
+    submitWord('rotted'); // 15 of 15
+    expect(screen.getByTestId('win-banner')).toHaveAttribute(
+      'data-perfect',
+      'true',
+    );
+    expect(screen.getByTestId('confetti')).toBeInTheDocument();
   });
 
   it('persists found words as they are scored', () => {
@@ -468,7 +533,9 @@ describe('App', () => {
     );
     render(<App dictionary={DICTIONARY} />);
 
-    expect(screen.getByText('YOU WIN!')).toBeInTheDocument();
+    // The restored win shows as the quiet mark on the score line — no modal.
+    expect(screen.queryByTestId('win-banner')).not.toBeInTheDocument();
+    expect(screen.getByTestId('won-mark')).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
         name: '15 / 15 points · Super-Duper-Genius',
@@ -682,8 +749,9 @@ describe('App', () => {
 
     // Once actually locked out, the standing note tells the story instead;
     // the next hint offer is no longer a special warning.
-    fireEvent.click(hint()); // commit ROTTED — locked out now
-    pressKey('Enter');
+    fireEvent.click(hint()); // commit ROTTED — locked out; the modal opens
+    keepPlaying(); // dismiss it, returning to the board
+    pressKey('Enter'); // submit the revealed ROTTED, clearing the word area
     expect(hint()).toHaveAttribute('data-forfeits-win', 'false');
   });
 
@@ -793,12 +861,13 @@ describe('App', () => {
     render(<App dictionary={DICTIONARY} />);
     // Max is 15 points; the win line is 12 (75% rounded up).
     submitWord('worsted'); // 11/15 = 73.3% — just below the line
-    expect(screen.queryByText('YOU WIN!')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('win-banner')).not.toBeInTheDocument();
 
     submitWord('test'); // +1 -> 12/15 = 80% — win
-    expect(screen.getByText('YOU WIN!')).toBeInTheDocument();
+    expect(screen.getByTestId('win-banner')).toBeInTheDocument();
 
-    // The game continues: a further word still scores.
+    // Dismissing the modal returns to the board; a further word still scores.
+    keepPlaying();
     submitWord('rotted');
     expect(screen.getByText('Found 3 words')).toBeInTheDocument();
   });
@@ -809,14 +878,40 @@ describe('App', () => {
       'Too many hints — winning takes 12 points, but only 11 can still be reached.';
 
     fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // commit TEST (1)
-    expect(screen.queryByText(note)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('lockout-dialog')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('lockout-note')).not.toBeInTheDocument();
 
     pressKey('Enter'); // submit TEST so the next hint is a fresh word
     fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // commit ROTTED (3)
 
-    // 4 of 15 points lost — the earned ceiling (11/15) drops below 75%.
+    // 4 of 15 points lost — the earned ceiling (11/15) drops below 75%. The
+    // lockout modal announces it with the full note, then a slim reminder
+    // stays behind once dismissed.
+    expect(screen.getByTestId('lockout-dialog')).toBeInTheDocument();
     expect(screen.getByText(note)).toBeInTheDocument();
     expect(screen.queryByText('YOU WIN!')).not.toBeInTheDocument();
+
+    keepPlaying();
+    expect(screen.queryByTestId('lockout-dialog')).not.toBeInTheDocument();
+    expect(screen.getByTestId('lockout-note')).toBeInTheDocument();
+  });
+
+  it('shows the lockout reminder without a modal on restore', () => {
+    // A locked game restored from storage: TEST + ROTTED both hinted (0 pts
+    // earned, 4 lost) leaves only 11 of 15 reachable, below the win line.
+    window.localStorage.setItem(
+      'wordsalad:DEORSTW.T.4',
+      JSON.stringify(['TEST', 'ROTTED']),
+    );
+    window.localStorage.setItem(
+      'wordsalad:hinted:DEORSTW.T.4',
+      JSON.stringify(['TEST', 'ROTTED']),
+    );
+    render(<App dictionary={DICTIONARY} />);
+
+    // Calm on restore: the reminder shows, the modal never opens.
+    expect(screen.queryByTestId('lockout-dialog')).not.toBeInTheDocument();
+    expect(screen.getByTestId('lockout-note')).toBeInTheDocument();
   });
 
   it('hides the hint once every word is found', () => {
