@@ -33,7 +33,7 @@ interface Row {
   max: number;
   playedAt: number;
   ratio: number;
-  requiredCharacter: string;
+  requiredCharacters: string;
   status: GameStatus;
 }
 
@@ -50,7 +50,7 @@ function toRow(
   formatDate: (timestamp: number) => string,
 ): Row {
   const { gameKey, summary } = entry;
-  const [letters, requiredCharacter, minimumLength] = gameKey.split('.');
+  const [letters, requiredCharacters, minimumLength] = gameKey.split('.');
   const winPoints = completionToPoints(WIN_THRESHOLD, summary.max);
   const won = summary.earned >= winPoints;
   const locked = !won && summary.max - summary.lost < winPoints;
@@ -60,7 +60,7 @@ function toRow(
     params.set('lang', langParam);
   }
   params.set('letters', letters);
-  params.set('required', requiredCharacter);
+  params.set('required', requiredCharacters);
   if (minimumLength !== '4') {
     params.set('min', minimumLength);
   }
@@ -76,7 +76,7 @@ function toRow(
     max: summary.max,
     playedAt: summary.playedAt,
     ratio: summary.earned / summary.max,
-    requiredCharacter,
+    requiredCharacters,
     status: won ? 'won' : locked ? 'locked' : 'playing',
   };
 }
@@ -293,7 +293,7 @@ export function HistoryDialog({
                         <span
                           className={miniTileClass(
                             letter,
-                            row.requiredCharacter,
+                            row.requiredCharacters,
                           )}
                           key={tileIndex}
                         >

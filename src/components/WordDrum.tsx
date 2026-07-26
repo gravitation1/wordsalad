@@ -5,7 +5,7 @@ import { miniTileClass } from './tiles';
 
 interface WordDrumProps {
   lastFoundWord: string | null;
-  requiredCharacter: string;
+  requiredCharacters: string;
   slots: readonly WordSlot[];
 }
 
@@ -25,7 +25,7 @@ const FADE_PX = 56;
 
 export function WordDrum({
   lastFoundWord,
-  requiredCharacter,
+  requiredCharacters,
   slots,
 }: WordDrumProps) {
   const containerRef = useRef<HTMLUListElement>(null);
@@ -148,7 +148,7 @@ export function WordDrum({
                   >
                     {Array.from(found.word).map((letter, tileIndex) => (
                       <span
-                        className={miniTileClass(letter, requiredCharacter, {
+                        className={miniTileClass(letter, requiredCharacters, {
                           compact: found.word.length > 9,
                           muted: found.hinted,
                         })}

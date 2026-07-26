@@ -9,7 +9,7 @@ interface ConfettiProps {
   letters: readonly string[];
   // The perfect-score variant: denser, longer, and gilded.
   perfect?: boolean;
-  requiredCharacter: string;
+  requiredCharacters: string;
 }
 
 // Deterministic jitter (a classic sine hash) keeps render pure — the same
@@ -53,10 +53,10 @@ const PERFECT_RAIN_LAYOUTS = rainLayouts(210, 2800, 1700, 1900, 15);
 // The perfect show gilds most tiles; the required letter keeps its accent.
 function tileClass(
   letter: string,
-  requiredCharacter: string,
+  requiredCharacters: string,
   gold: boolean,
 ): string {
-  if (letter === requiredCharacter) {
+  if (requiredCharacters.includes(letter)) {
     return TILE_FACE.accent;
   }
   return gold ? TILE_FACE.gold : TILE_FACE.plain;
@@ -69,7 +69,7 @@ function letterFor(letters: readonly string[], slot: number): string {
 export function Confetti({
   letters,
   perfect,
-  requiredCharacter,
+  requiredCharacters,
 }: ConfettiProps) {
   return (
     <div
@@ -82,7 +82,7 @@ export function Confetti({
         const letter = letterFor(letters, piece.letterSlot);
         return (
           <span
-            className={`confetti-piece absolute top-0 flex items-center justify-center rounded font-semibold ${tileClass(letter, requiredCharacter, (perfect ?? false) && piece.goldSlot < 0.65)}`}
+            className={`confetti-piece absolute top-0 flex items-center justify-center rounded font-semibold ${tileClass(letter, requiredCharacters, (perfect ?? false) && piece.goldSlot < 0.65)}`}
             key={index}
             style={piece.style}
           >
@@ -122,7 +122,7 @@ export function WinBurst({
   letters,
   mini,
   perfect,
-  requiredCharacter,
+  requiredCharacters,
 }: WinBurstProps) {
   return (
     <span
@@ -133,7 +133,7 @@ export function WinBurst({
         const letter = letterFor(letters, piece.letterSlot);
         return (
           <span
-            className={`burst-piece absolute flex items-center justify-center rounded font-semibold ${tileClass(letter, requiredCharacter, (perfect ?? false) && piece.letterSlot < 0.65)}`}
+            className={`burst-piece absolute flex items-center justify-center rounded font-semibold ${tileClass(letter, requiredCharacters, (perfect ?? false) && piece.letterSlot < 0.65)}`}
             key={index}
             style={piece.style}
           >

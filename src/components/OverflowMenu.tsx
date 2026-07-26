@@ -1,0 +1,143 @@
+import type { KeyboardEvent, RefObject } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+import { useMessages } from '../i18n';
+
+// The header's ⋯ menu: the home for everything that is not the play loop
+// (the custom-game builder, history — and future meta actions). Sits at the
+// header's edge so it cannot be misread as belonging to a neighboring
+// control. Keyboard-navigable (arrows/Home/End/Esc), closes on outside click.
+interface OverflowMenuProps {
+  onCustomGame: () => void;
+  onHistory: () => void;
+  // Owned by the parent so it can restore focus here after a dialog opened
+  // from the menu closes (the menu items themselves unmount on close).
+  triggerRef: RefObject<HTMLButtonElement | null>;
+}
+
+export function OverflowMenu({
+  onCustomGame,
+  onHistory,
+  triggerRef,
+}: OverflowMenuProps) {
+  const t = useMessages();
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Glyph icons in the same vocabulary as the header's ↻ (and the
+  // scoreboard's ↗/⟲): ✎ for authoring a puzzle, ↺ for looking back.
+  const items = [
+    { action: onCustomGame, icon: '✎', label: t.customGameButton },
+    { action: onHistory, icon: '↺', label: t.historyButton },
+  ];
+
+  // Dismiss on a click outside the menu.
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const onPointerDown = (event: MouseEvent) => {
+      if (
+        containerRef.current !== null &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+    };
+  }, [open]);
+
+  // Move focus into the menu when it opens.
+  useEffect(() => {
+    if (open) {
+      itemRefs.current[0]?.focus();
+    }
+  }, [open]);
+
+  const closeToTrigger = () => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+
+  const onMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const count = items.length;
+    const active = itemRefs.current.findIndex(
+      (element) => element === document.activeElement,
+    );
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeToTrigger();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      itemRefs.current[(active + 1) % count]?.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      itemRefs.current[(active - 1 + count) % count]?.focus();
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      itemRefs.current[0]?.focus();
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      itemRefs.current[count - 1]?.focus();
+    }
+  };
+
+  return (
+    <div className="relative flex items-center" ref={containerRef}>
+      <button
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={t.moreMenuLabel}
+        className="-m-2 flex touch-manipulation items-center p-2 text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
+        onClick={() => {
+          setOpen((previous) => !previous);
+        }}
+        ref={triggerRef}
+        type="button"
+      >
+        {/* Full-size glyph (the header's text-xs would render it tiny). */}
+        <span aria-hidden="true" className="text-base leading-none">
+          ⋯
+        </span>
+      </button>
+      {open ? (
+        // Anchored to the right edge: the trigger sits at the header's end,
+        // so a left-anchored panel could overflow narrow screens.
+        <div
+          className="absolute right-0 top-full z-10 mt-2 min-w-44 rounded-lg border border-gray-200 bg-white py-1 text-left shadow-lg dark:border-gray-700 dark:bg-gray-900"
+          onKeyDown={onMenuKeyDown}
+          role="menu"
+        >
+          {items.map((item, index) => (
+            <button
+              className="flex w-full touch-manipulation items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50 focus:bg-gray-50 focus:outline-none dark:text-gray-300 dark:hover:bg-gray-800 dark:focus:bg-gray-800"
+              key={item.label}
+              onClick={() => {
+                setOpen(false);
+                item.action();
+              }}
+              ref={(element) => {
+                itemRefs.current[index] = element;
+              }}
+              role="menuitem"
+              type="button"
+            >
+              {/* Fixed-width icon column keeps the labels aligned. */}
+              <span
+                aria-hidden="true"
+                className="w-4 text-center text-gray-400 dark:text-gray-500"
+              >
+                {item.icon}
+              </span>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}

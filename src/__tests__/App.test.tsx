@@ -94,10 +94,343 @@ describe('App', () => {
     expect(new URLSearchParams(window.location.search).get('min')).toBe('5');
   });
 
-  it('rejects an incomplete puzzle query', () => {
+  it('derives a required letter when the URL gives only letters', () => {
     window.history.replaceState(null, '', '?letters=WORDTES');
     render(<App dictionary={DICTIONARY} />);
+
+    // O makes the most words within WORDTES, so it becomes the required
+    // letter — and the URL is canonicalized to include it.
+    expect(screen.getByRole('button', { name: 'O' })).toHaveAttribute(
+      'data-required',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'T' })).toHaveAttribute(
+      'data-required',
+      'false',
+    );
+    expect(new URLSearchParams(window.location.search).get('required')).toBe(
+      'O',
+    );
+
+    // Playable: WORD contains the required O.
+    submitWord('word');
+    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+  });
+
+  it('derives the required letter under a custom minimum length', () => {
+    window.history.replaceState(null, '', '?letters=WORDTES&min=6');
+    render(<App dictionary={DICTIONARY} />);
+
+    // Only ROTTED and WORSTED are long enough now; TEST is too short.
+    submitWord('test');
+    expect(screen.getByRole('status')).toHaveTextContent('TEST is too short!');
+    submitWord('rotted');
+    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+  });
+
+  const letterTiles = () =>
+    screen
+      .getAllByRole('button')
+      .filter((button) => button.hasAttribute('data-letter'));
+
+  it('generates a puzzle around a required letter with no letters given', () => {
+    window.history.replaceState(null, '', '?required=A');
+    render(<App dictionary={REAL_DICTIONARY} />);
+
+    // A full seven-tile board generates with A pinned as the required letter.
+    expect(letterTiles()).toHaveLength(7);
+    expect(screen.getByRole('button', { name: 'A' })).toHaveAttribute(
+      'data-required',
+      'true',
+    );
+  });
+
+  it('generates a puzzle from only a minimum-length param', () => {
+    window.history.replaceState(null, '', '?min=5');
+    render(<App dictionary={REAL_DICTIONARY} />);
+
+    // A board generates and the custom min survives canonicalization.
+    expect(letterTiles()).toHaveLength(7);
+    expect(new URLSearchParams(window.location.search).get('min')).toBe('5');
+  });
+
+  it('rejects a malformed required param', () => {
+    window.history.replaceState(null, '', '?required=A1');
+    render(<App dictionary={DICTIONARY} />);
     expect(screen.getByText('INVALID GAME DATA!')).toBeInTheDocument();
+  });
+
+  it('supports multiple required letters via the URL', () => {
+    window.history.replaceState(null, '', '?letters=WORDTES&required=RT');
+    render(<App dictionary={DICTIONARY} />);
+
+    // Both R and T are marked required; only words with both letters score.
+    expect(screen.getByRole('button', { name: 'R' })).toHaveAttribute(
+      'data-required',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'T' })).toHaveAttribute(
+      'data-required',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'W' })).toHaveAttribute(
+      'data-required',
+      'false',
+    );
+
+    submitWord('test'); // has T, lacks R
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'TEST is missing required character!',
+    );
+    submitWord('rotted'); // has both R and T
+    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+    // The required set is canonicalized in the URL.
+    expect(new URLSearchParams(window.location.search).get('required')).toBe(
+      'RT',
+    );
+  });
+
+  const openCustomGame = (): void => {
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Custom game' }));
+  };
+
+  it('offers the custom game and history from the ⋯ menu', () => {
+    render(<App dictionary={DICTIONARY} />);
+    expect(
+      screen.queryByRole('menuitem', { name: 'Custom game' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+    expect(
+      screen.getByRole('menuitem', { name: 'Custom game' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: 'History' }),
+    ).toBeInTheDocument();
+
+    // New game stays a plain one-tap button outside the menu.
+    expect(
+      screen.getByRole('button', { name: 'New game' }),
+    ).toBeInTheDocument();
+  });
+
+  // The builder opens on "Surprise me"; choosing letters is the other mode.
+  const chooseLetters = (value: string): void => {
+    fireEvent.click(screen.getByRole('radio', { name: 'Choose letters' }));
+    fireEvent.change(screen.getByLabelText('Letters'), {
+      target: { value },
+    });
+  };
+
+  // Required letters are picked by tapping the board tiles.
+  const requireTile = (letter: string): void => {
+    fireEvent.click(
+      within(screen.getByTestId('custom-dialog')).getByRole('button', {
+        name: letter,
+      }),
+    );
+  };
+
+  it('keeps focus in custom-game inputs despite the blur-on-click rule', () => {
+    render(<App dictionary={DICTIONARY} />);
+    openCustomGame();
+    fireEvent.click(screen.getByRole('radio', { name: 'Choose letters' }));
+
+    // The document-level blur-on-click (Enter must submit words, not
+    // re-press buttons) must not deselect a form field the user just
+    // clicked, nor anything inside an open modal.
+    const letters = screen.getByLabelText('Letters');
+    letters.focus();
+    fireEvent.click(letters);
+    expect(letters).toHaveFocus();
+
+    // Outside a dialog the rule still applies: a clicked button blurs.
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    const toss = screen.getByRole('button', { name: 'Toss' });
+    toss.focus();
+    fireEvent.click(toss);
+    expect(toss).not.toHaveFocus();
+  });
+
+  it('describes what the generator will build in Surprise me mode', () => {
+    render(<App dictionary={DICTIONARY} />);
+    openCustomGame();
+
+    // No misleading letters field: the mode says a board will be generated.
+    expect(screen.queryByLabelText('Letters')).not.toBeInTheDocument();
+    expect(screen.getByTestId('custom-preview')).toHaveTextContent(
+      'A board with 15–60 words will be generated',
+    );
+  });
+
+  it('carries the word-count bounds rather than rejecting them', () => {
+    render(<App dictionary={DICTIONARY} />);
+    openCustomGame();
+    const min = screen.getByLabelText('min');
+    const max = screen.getByLabelText('max');
+
+    // Pushing min past max takes max along instead of flagging an error.
+    fireEvent.change(min, { target: { value: '99' } });
+    expect(max).toHaveValue(99);
+    expect(screen.getByTestId('custom-preview')).toHaveTextContent(
+      'A board with 99–99 words will be generated',
+    );
+    expect(screen.getByRole('button', { name: 'Create game' })).toBeEnabled();
+
+    // And pulling max below min drags min down with it.
+    fireEvent.change(max, { target: { value: '5' } });
+    expect(min).toHaveValue(5);
+    expect(screen.getByTestId('custom-preview')).toHaveTextContent(
+      'A board with 5–5 words will be generated',
+    );
+  });
+
+  it('starts with no required letter and shows the full board', () => {
+    render(<App dictionary={DICTIONARY} />);
+    openCustomGame();
+    chooseLetters('WORDTES');
+
+    // Nothing lit means exactly that — every word from these letters counts.
+    const dialog = screen.getByTestId('custom-dialog');
+    for (const letter of 'WORDTES') {
+      expect(
+        within(dialog).getByRole('button', { name: letter }),
+      ).toHaveAttribute('data-required', 'false');
+    }
+    expect(screen.getByTestId('custom-preview')).toHaveTextContent('5 words');
+  });
+
+  it('picks required letters by tapping the board tiles', () => {
+    render(<App dictionary={DICTIONARY} />);
+    openCustomGame();
+    chooseLetters('WORDTES');
+
+    const dialog = screen.getByTestId('custom-dialog');
+    const tile = (letter: string) =>
+      within(dialog).getByRole('button', { name: letter });
+
+    requireTile('T'); // TEST, ROTTED, WORSTED
+    expect(tile('T')).toHaveAttribute('data-required', 'true');
+    expect(screen.getByTestId('custom-preview')).toHaveTextContent('3 words');
+
+    requireTile('R'); // both R and T: ROTTED, WORSTED
+    expect(screen.getByTestId('custom-preview')).toHaveTextContent('2 words');
+
+    // Tapping releases a letter, all the way back to none required.
+    requireTile('R');
+    requireTile('T');
+    expect(tile('T')).toHaveAttribute('data-required', 'false');
+    expect(screen.getByTestId('custom-preview')).toHaveTextContent('5 words');
+  });
+
+  it('drops a required letter that leaves the board', () => {
+    render(<App dictionary={DICTIONARY} />);
+    openCustomGame();
+    chooseLetters('WORDTES');
+    requireTile('S'); // TEST, WORSTED
+    expect(screen.getByTestId('custom-preview')).toHaveTextContent('2 words');
+
+    // Backspace takes the last letter back. S must not stay required behind
+    // the scenes — that would be an impossible board — so the selection is
+    // dropped, leaving the remaining letters unconstrained.
+    fireEvent.keyDown(screen.getByLabelText('Letters'), { key: 'Backspace' });
+    expect(
+      within(screen.getByTestId('custom-dialog')).queryByRole('button', {
+        name: 'S',
+      }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('custom-preview')).toHaveTextContent(
+      '3 words · 5 points',
+    );
+  });
+
+  it('builds the game with exactly the minimum word length shown', () => {
+    render(<App dictionary={DICTIONARY} />);
+    openCustomGame();
+    chooseLetters('WORDTES');
+
+    // The field, the preview and the created game must all agree.
+    const minLength = screen.getByLabelText('Minimum word length');
+    fireEvent.change(minLength, { target: { value: '2' } });
+    expect(minLength).toHaveValue(2);
+    expect(screen.getByRole('button', { name: 'Create game' })).toBeEnabled();
+
+    const assign = vi.fn();
+    vi.stubGlobal('location', { assign, href: 'http://localhost/wordsalad/' });
+    fireEvent.click(screen.getByRole('button', { name: 'Create game' }));
+    vi.unstubAllGlobals();
+    expect(String(assign.mock.calls[0]?.[0])).toContain('min=2');
+  });
+
+  it('clamps an out-of-range minimum word length as it is typed', () => {
+    render(<App dictionary={DICTIONARY} />);
+    openCustomGame();
+    chooseLetters('WORDTES');
+
+    // Never display a value the game would not use: the correction happens
+    // immediately, not on blur or (worse) silently at create time. The
+    // dictionary has no one-letter words, so 2 is the floor.
+    const minLength = screen.getByLabelText('Minimum word length');
+    fireEvent.change(minLength, { target: { value: '1' } });
+    expect(minLength).toHaveValue(2);
+    fireEvent.change(minLength, { target: { value: '0' } });
+    expect(minLength).toHaveValue(2);
+    fireEvent.change(minLength, { target: { value: '42' } });
+    expect(minLength).toHaveValue(9);
+  });
+
+  it('creates the game when Enter is pressed in the dialog', () => {
+    render(<App dictionary={DICTIONARY} />);
+    openCustomGame();
+    chooseLetters('WORDTES');
+
+    const assign = vi.fn();
+    vi.stubGlobal('location', {
+      assign,
+      href: 'http://localhost/wordsalad/',
+    });
+    // Enter from a field submits, as the primary action of a dialog should.
+    fireEvent.submit(screen.getByLabelText('Letters'));
+    vi.unstubAllGlobals();
+
+    expect(String(assign.mock.calls[0]?.[0])).toContain('letters=DEORSTW');
+  });
+
+  it('does not create the game on Enter while the settings are invalid', () => {
+    render(<App dictionary={DICTIONARY} />);
+    openCustomGame();
+    fireEvent.click(screen.getByRole('radio', { name: 'Choose letters' }));
+
+    const assign = vi.fn();
+    vi.stubGlobal('location', { assign, href: 'http://localhost/wordsalad/' });
+    // No letters chosen yet, so there is nothing to create.
+    fireEvent.submit(screen.getByLabelText('Letters'));
+    vi.unstubAllGlobals();
+
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('creates a fixed custom game by navigating to its canonical URL', () => {
+    render(<App dictionary={DICTIONARY} />);
+    openCustomGame();
+    chooseLetters('WORDTES');
+    requireTile('R');
+    requireTile('T');
+
+    // jsdom's location.assign is not spyable; swap the whole location so the
+    // navigation target can be inspected.
+    const assign = vi.fn();
+    vi.stubGlobal('location', {
+      assign,
+      href: 'http://localhost/wordsalad/?letters=WORDTES&required=T',
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create game' }));
+    vi.unstubAllGlobals();
+
+    const target = String(assign.mock.calls[0]?.[0]);
+    expect(target).toContain('letters=DEORSTW');
+    expect(target).toContain('required=RT');
   });
 
   it('records a game summary once there is progress', () => {
@@ -143,7 +476,8 @@ describe('App', () => {
     render(<App dictionary={DICTIONARY} />);
     submitWord('test'); // records the current game with a fresh timestamp
 
-    fireEvent.click(screen.getByRole('button', { name: 'History' }));
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'History' }));
     const dialog = screen.getByRole('dialog');
 
     // Aggregates: 2 played, 1 won, 12 lifetime points, 2 words.
@@ -219,13 +553,12 @@ describe('App', () => {
     expect(text).toContain('letters=DEORSTW&required=T&score=1&hints=0');
   });
 
-  it('blurs the History trigger on close so Enter cannot re-open it', () => {
+  it('blurs the menu trigger when History closes so Enter cannot re-open it', () => {
     render(<App dictionary={DICTIONARY} />);
-    const historyButton = screen.getByRole('button', { name: 'History' });
+    const menuTrigger = screen.getByRole('button', { name: 'More options' });
 
-    fireEvent.click(historyButton);
-    // Browsers hand focus back to the trigger when a modal dialog closes.
-    historyButton.focus();
+    fireEvent.click(menuTrigger);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'History' }));
     fireEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', {
         name: 'Close',
@@ -233,7 +566,7 @@ describe('App', () => {
     );
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(historyButton).not.toHaveFocus();
+    expect(menuTrigger).not.toHaveFocus();
   });
 
   it('shows typed letters uppercased in the current word', () => {
@@ -460,6 +793,23 @@ describe('App', () => {
     closeWin();
     expect(screen.queryByTestId('win-banner')).not.toBeInTheDocument();
     expect(screen.getByTestId('won-mark')).toBeInTheDocument();
+  });
+
+  it('opens the custom game builder from the win modal', () => {
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted');
+    submitWord('test'); // 12 of 15: the win modal opens
+
+    fireEvent.click(
+      within(screen.getByTestId('win-banner')).getByRole('button', {
+        name: 'Custom game',
+      }),
+    );
+
+    // The win modal yields to the builder; dismissing the builder returns
+    // to the (already-dismissed) normal board.
+    expect(screen.queryByTestId('win-banner')).not.toBeInTheDocument();
+    expect(screen.getByTestId('custom-dialog')).toBeInTheDocument();
   });
 
   it('does not celebrate a restored, already-won game', () => {

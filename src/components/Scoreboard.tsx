@@ -17,7 +17,7 @@ interface ScoreboardProps {
   celebration: Celebration | null;
   // For the celebration burst's letter tiles.
   saladLetters: readonly string[];
-  requiredCharacter: string;
+  requiredCharacters: string;
   wordSlots: readonly WordSlot[];
   lastFoundWord: string | null;
   earnedPoints: number;
@@ -34,6 +34,7 @@ interface ScoreboardProps {
   hintCount: number;
   challengeScore: number | null;
   rankUp: RankUp | null;
+  onCustomGame: () => void;
   onPlayAgain: () => void;
   onRestart: () => void;
 }
@@ -57,7 +58,7 @@ function shareBar(earned: number, lost: number, max: number): string {
 export function Scoreboard({
   celebration,
   saladLetters,
-  requiredCharacter,
+  requiredCharacters,
   wordSlots,
   lastFoundWord,
   earnedPoints,
@@ -74,6 +75,7 @@ export function Scoreboard({
   hintCount,
   challengeScore,
   rankUp,
+  onCustomGame,
   onPlayAgain,
   onRestart,
 }: ScoreboardProps) {
@@ -119,7 +121,8 @@ export function Scoreboard({
       (hasWon ? ' ✓' : '') +
       (hintCount > 0 ? ` · ${t.hintsUsed(hintCount, lostPoints)}` : '');
     const text = [
-      `${t.appTitle} · ${letters} (${requiredCharacter})`,
+      `${t.appTitle} · ${letters}` +
+        (requiredCharacters.length > 0 ? ` (${requiredCharacters})` : ''),
       summary,
       shareBar(earnedPoints, lostPoints, maxPoints),
       url.toString(),
@@ -176,11 +179,15 @@ export function Scoreboard({
           onClose={() => {
             setDismissedWinId(celebration.id);
           }}
+          onCustomGame={() => {
+            setDismissedWinId(celebration.id);
+            onCustomGame();
+          }}
           onPlayAgain={onPlayAgain}
           onShare={() => {
             void handleShare();
           }}
-          requiredCharacter={requiredCharacter}
+          requiredCharacters={requiredCharacters}
           shareCopied={shareCopied}
         />
       ) : null}
@@ -192,6 +199,10 @@ export function Scoreboard({
           key={`lockout-${lockout.id}`}
           onClose={() => {
             setDismissedLockoutId(lockout.id);
+          }}
+          onCustomGame={() => {
+            setDismissedLockoutId(lockout.id);
+            onCustomGame();
           }}
           onRestart={onRestart}
           reachablePoints={maxPoints - lostPoints}
@@ -329,7 +340,7 @@ export function Scoreboard({
             <WinBurst
               letters={saladLetters}
               mini
-              requiredCharacter={requiredCharacter}
+              requiredCharacters={requiredCharacters}
             />
           </span>
         )}
@@ -362,7 +373,7 @@ export function Scoreboard({
       </div>
       <WordDrum
         lastFoundWord={lastFoundWord}
-        requiredCharacter={requiredCharacter}
+        requiredCharacters={requiredCharacters}
         slots={wordSlots}
       />
       {anyHinted ? (

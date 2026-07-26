@@ -15,7 +15,7 @@ function isSuperset(
 export type WordPreview =
   | { verdict: 'already-found' }
   | { verdict: 'invalid-letters' }
-  | { verdict: 'missing-required'; requiredCharacter: string }
+  | { verdict: 'missing-required'; requiredCharacters: string }
   | { verdict: 'not-a-word' }
   | { verdict: 'too-short' }
   | { verdict: 'valid'; points: number };
@@ -28,18 +28,24 @@ interface WordSearchResult {
 function getWords(
   referenceDictionary: readonly string[],
   characterSet: ReadonlySet<string>,
-  requiredCharacter: string,
+  requiredCharacters: string,
   minimumLength: number,
 ): WordSearchResult {
   const characterSetClass = Array.from(characterSet).join('');
-  const regex = new RegExp(
-    `^[${characterSetClass}]*${requiredCharacter}+[${characterSetClass}]*$`,
-  );
+  // A valid word is drawn entirely from the character set and contains every
+  // required letter (all of them — a multi-letter requirement is a harder
+  // constraint, not a choice among letters).
+  const charsetRegex = new RegExp(`^[${characterSetClass}]+$`);
+  const required = Array.from(requiredCharacters);
   const validWords = new Set<string>();
   const pangramWords = new Set<string>();
 
   for (const word of referenceDictionary) {
-    if (regex.test(word) && word.length >= minimumLength) {
+    if (
+      word.length >= minimumLength &&
+      charsetRegex.test(word) &&
+      required.every((character) => word.includes(character))
+    ) {
       validWords.add(word);
 
       if (new Set(word).size === characterSet.size) {
@@ -57,7 +63,10 @@ function getWords(
 
 export class WordSalad {
   readonly characterSet: ReadonlySet<string>;
-  readonly requiredCharacter: string;
+  // The distinct letters every valid word must contain. May be empty: a
+  // puzzle with no required letter — any word from the set counts — is a
+  // legitimate (easier) game, not a broken one.
+  readonly requiredCharacters: string;
   readonly minimumLength: number;
   readonly pangramBonusPoints: number;
   readonly remainingWords: Set<string>;
@@ -68,15 +77,20 @@ export class WordSalad {
 
   constructor(
     characterSet: ReadonlySet<string>,
-    requiredCharacter: string,
+    requiredCharacters: string,
     minimumLength: number,
     referenceDictionary: readonly string[],
   ) {
+    // Canonicalize the required letters (distinct, sorted) so "TT" and "IA"
+    // collapse to the one set they describe — encodings and keys stay stable.
+    const canonicalRequired = Array.from(new Set(requiredCharacters))
+      .sort()
+      .join('');
     this.characterSet = characterSet;
-    this.requiredCharacter = requiredCharacter;
+    this.requiredCharacters = canonicalRequired;
     this.minimumLength = minimumLength;
 
-    if (!characterSet.has(requiredCharacter)) {
+    if (!isSuperset(characterSet, new Set(canonicalRequired))) {
       throw new WordSaladError(
         'MissingRequiredCharacter',
         'Missing required character!',
@@ -87,7 +101,7 @@ export class WordSalad {
     const { validWords, pangramWords } = getWords(
       referenceDictionary,
       characterSet,
-      requiredCharacter,
+      canonicalRequired,
       minimumLength,
     );
     this.remainingWords = validWords;
@@ -104,10 +118,14 @@ export class WordSalad {
       return { verdict: 'already-found' };
     } else if (word.length < this.minimumLength) {
       return { verdict: 'too-short' };
-    } else if (!word.includes(this.requiredCharacter)) {
+    } else if (
+      !Array.from(this.requiredCharacters).every((character) =>
+        word.includes(character),
+      )
+    ) {
       return {
         verdict: 'missing-required',
-        requiredCharacter: this.requiredCharacter,
+        requiredCharacters: this.requiredCharacters,
       };
     } else if (!isSuperset(this.characterSet, new Set(word))) {
       return { verdict: 'invalid-letters' };

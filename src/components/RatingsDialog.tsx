@@ -107,7 +107,9 @@ export function RatingsDialog({
                   {t.levelName(step.level)}
                   {/* The ✓/○ mark in words for screen readers. */}
                   <span className="sr-only">
-                    {isAchieved ? t.ratingReachedLabel : t.ratingNotReachedLabel}
+                    {isAchieved
+                      ? t.ratingReachedLabel
+                      : t.ratingNotReachedLabel}
                   </span>
                 </span>
                 <span className="text-xs text-gray-500 dark:text-gray-400">

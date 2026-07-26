@@ -12,7 +12,7 @@ interface SaladLettersProps {
   lastAppended: LetterActivation | null;
   letters: readonly string[];
   onLetter: (letter: string) => void;
-  requiredCharacter: string;
+  requiredCharacters: string;
   tossId: number;
 }
 
@@ -51,7 +51,7 @@ export function SaladLetters({
   lastAppended,
   letters,
   onLetter,
-  requiredCharacter,
+  requiredCharacters,
   tossId,
 }: SaladLettersProps) {
   const t = useMessages();
@@ -73,7 +73,7 @@ export function SaladLetters({
       key={tossId}
     >
       {letters.map((letter, index) => {
-        const isRequired = letter === requiredCharacter;
+        const isRequired = requiredCharacters.includes(letter);
         const press = tilePress(letter, lastAppended, hintReveal);
         return (
           // The stable outer span owns the toss-in entrance; the inner

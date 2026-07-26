@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
 
+import { CustomGameModal } from './components/CustomGameModal';
 import { FeedbackLine } from './components/FeedbackLine';
 import { GameControls } from './components/GameControls';
 import { HistoryDialog } from './components/HistoryDialog';
+import { OverflowMenu } from './components/OverflowMenu';
 import { SaladLetters } from './components/SaladLetters';
 import { Scoreboard } from './components/Scoreboard';
 import { WordInput } from './components/WordInput';
@@ -23,7 +25,8 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
   const t = useMessages();
   const game = useWordSaladGame(dictionary);
   const [history, setHistory] = useState<HistorySnapshot | null>(null);
-  const historyButtonRef = useRef<HTMLButtonElement>(null);
+  const [customOpen, setCustomOpen] = useState(false);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
 
   const openHistory = () => {
     setHistory({
@@ -33,11 +36,23 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
     });
   };
 
-  // Closing the dialog restores focus to this trigger; blur it so a
-  // subsequent Enter submits a word instead of re-opening the dialog.
+  const openCustom = () => {
+    setCustomOpen(true);
+  };
+
+  // Both dialogs open from the ⋯ menu, whose items unmount on close — so
+  // restore focus to the menu trigger, then blur it (Enter should submit a
+  // word, not re-open the menu).
   const closeHistory = () => {
     setHistory(null);
-    historyButtonRef.current?.blur();
+    menuTriggerRef.current?.focus();
+    menuTriggerRef.current?.blur();
+  };
+
+  const closeCustom = () => {
+    setCustomOpen(false);
+    menuTriggerRef.current?.focus();
+    menuTriggerRef.current?.blur();
   };
 
   if (game.status === 'error') {
@@ -72,14 +87,11 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           </span>
           {t.newGameButton}
         </button>
-        <button
-          className="-m-2 touch-manipulation p-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
-          onClick={openHistory}
-          ref={historyButtonRef}
-          type="button"
-        >
-          {t.historyButton}
-        </button>
+        <OverflowMenu
+          onCustomGame={openCustom}
+          onHistory={openHistory}
+          triggerRef={menuTriggerRef}
+        />
       </header>
       {history === null ? null : (
         <HistoryDialog
@@ -89,6 +101,9 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           onClose={closeHistory}
         />
       )}
+      {customOpen ? (
+        <CustomGameModal dictionary={dictionary} onClose={closeCustom} />
+      ) : null}
       {/* Remounts on every new game (key) so the board deals in fresh. */}
       <div
         className="game-enter flex w-full flex-col items-center gap-5"
@@ -108,7 +123,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           isValidCharacter={game.isValidCharacter}
           onHint={game.revealHint}
           rejection={game.lastRejection}
-          requiredCharacter={game.requiredCharacter}
+          requiredCharacters={game.requiredCharacters}
         />
         <SaladLetters
           celebration={game.celebration}
@@ -116,7 +131,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           lastAppended={game.lastAppended}
           letters={game.saladLetters}
           onLetter={game.appendLetter}
-          requiredCharacter={game.requiredCharacter}
+          requiredCharacters={game.requiredCharacters}
           tossId={game.tossId}
         />
         <GameControls
@@ -134,13 +149,13 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
         />
         <FeedbackLine
           feedback={game.feedback}
-          requiredCharacter={game.requiredCharacter}
+          requiredCharacters={game.requiredCharacters}
         />
         <Scoreboard
           celebration={game.celebration}
           challengeScore={game.challengeScore}
           earnedPercent={game.earnedPercent}
-          requiredCharacter={game.requiredCharacter}
+          requiredCharacters={game.requiredCharacters}
           saladLetters={game.saladLetters}
           earnedPoints={game.earnedPoints}
           hasWon={game.hasWon}
@@ -152,6 +167,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           lostPercent={game.lostPercent}
           lostPoints={game.lostPoints}
           maxPoints={game.maxPoints}
+          onCustomGame={openCustom}
           onPlayAgain={game.startNewGame}
           onRestart={game.restartGame}
           rankUp={game.rankUp}

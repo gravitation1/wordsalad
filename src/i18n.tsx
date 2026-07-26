@@ -31,6 +31,23 @@ export interface Messages {
   newGameButton: string;
   playAgainButton: string;
   keepPlayingButton: string;
+  customGameButton: string;
+  moreMenuLabel: string;
+  customGameTitle: string;
+  customModeLegend: string;
+  customModeRandom: string;
+  customModeLetters: string;
+  customMinLabel: string;
+  customMaxLabel: string;
+  customLettersLabel: string;
+  customLettersHint: string;
+  customMinLengthLabel: string;
+  customWordCountLabel: string;
+  customPangramLabel: string;
+  customPreviewRandom: (minWords: number, maxWords: number) => string;
+  customCreateButton: string;
+  customPreview: (words: number, points: number, hasPangram: boolean) => string;
+  customError: (kind: 'no-words' | 'generate-failed') => string;
   restartButton: string;
   historyButton: string;
   historyTitle: string;
@@ -99,6 +116,28 @@ const EN: Messages = {
   newGameButton: 'New game',
   playAgainButton: 'Play again',
   keepPlayingButton: 'Keep playing',
+  customGameButton: 'Custom game',
+  moreMenuLabel: 'More options',
+  customGameTitle: 'Custom game',
+  customModeLegend: 'Board',
+  customModeRandom: 'Surprise me',
+  customModeLetters: 'Choose letters',
+  customMinLabel: 'min',
+  customMaxLabel: 'max',
+  customLettersLabel: 'Letters',
+  customLettersHint: 'Type up to 7 letters · tap one to require it in every word',
+  customMinLengthLabel: 'Minimum word length',
+  customWordCountLabel: 'Word count',
+  customPangramLabel: 'Require a pangram',
+  customPreviewRandom: (minWords, maxWords) =>
+    `A board with ${minWords}–${maxWords} words will be generated`,
+  customCreateButton: 'Create game',
+  customPreview: (words, points, hasPangram) =>
+    `${words} word${plural('en', words, { one: '', other: 's' })} · ` +
+    `${points} point${plural('en', points, { one: '', other: 's' })}` +
+    (hasPangram ? ' · pangram ✓' : ' · no pangram'),
+  customError: (kind) =>
+    kind === 'no-words' ? 'No valid words for these letters' : 'Could not build a game with these settings',
   restartButton: 'Restart',
   historyButton: 'History',
   historyTitle: 'History',
@@ -149,7 +188,7 @@ const EN: Messages = {
       case 'invalid-letters':
         return 'Uses letters not in the salad';
       case 'missing-required':
-        return `Missing the required letter ${preview.requiredCharacter}`;
+        return `Must contain ${Array.from(preview.requiredCharacters).join(', ')}`;
       case 'not-a-word':
         return 'Not in the word list';
       case 'too-short':
@@ -216,6 +255,28 @@ const FR: Messages = {
   newGameButton: 'Nouvelle partie',
   playAgainButton: 'Rejouer',
   keepPlayingButton: 'Continuer à jouer',
+  customGameButton: 'Partie personnalisée',
+  moreMenuLabel: 'Plus d’options',
+  customGameTitle: 'Partie personnalisée',
+  customModeLegend: 'Plateau',
+  customModeRandom: 'Surprise',
+  customModeLetters: 'Choisir les lettres',
+  customMinLabel: 'min',
+  customMaxLabel: 'max',
+  customLettersLabel: 'Lettres',
+  customLettersHint: 'Saisissez jusqu’à 7 lettres · touchez-en une pour l’exiger dans chaque mot',
+  customMinLengthLabel: 'Longueur minimale des mots',
+  customWordCountLabel: 'Nombre de mots',
+  customPangramLabel: 'Exiger un pangramme',
+  customPreviewRandom: (minWords, maxWords) =>
+    `Un plateau de ${minWords} à ${maxWords} mots sera généré`,
+  customCreateButton: 'Créer la partie',
+  customPreview: (words, points, hasPangram) =>
+    `${words} mot${plural('fr', words, { one: '', other: 's' })} · ` +
+    `${points} point${plural('fr', points, { one: '', other: 's' })}` +
+    (hasPangram ? ' · pangramme ✓' : ' · pas de pangramme'),
+  customError: (kind) =>
+    kind === 'no-words' ? 'Aucun mot valide pour ces lettres' : 'Impossible de créer une partie avec ces réglages',
   restartButton: 'Recommencer',
   historyButton: 'Historique',
   historyTitle: 'Historique',
@@ -268,7 +329,7 @@ const FR: Messages = {
       case 'invalid-letters':
         return 'Contient des lettres hors de la salade';
       case 'missing-required':
-        return `Il manque la lettre obligatoire ${preview.requiredCharacter}`;
+        return `Doit contenir ${Array.from(preview.requiredCharacters).join(', ')}`;
       case 'not-a-word':
         return 'Absent de la liste de mots';
       case 'too-short':
@@ -335,6 +396,28 @@ const ES: Messages = {
   newGameButton: 'Nueva partida',
   playAgainButton: 'Jugar otra vez',
   keepPlayingButton: 'Seguir jugando',
+  customGameButton: 'Partida personalizada',
+  moreMenuLabel: 'Más opciones',
+  customGameTitle: 'Partida personalizada',
+  customModeLegend: 'Tablero',
+  customModeRandom: 'Sorpréndeme',
+  customModeLetters: 'Elegir letras',
+  customMinLabel: 'mín',
+  customMaxLabel: 'máx',
+  customLettersLabel: 'Letras',
+  customLettersHint: 'Escribe hasta 7 letras · toca una para exigirla en cada palabra',
+  customMinLengthLabel: 'Longitud mínima de palabra',
+  customWordCountLabel: 'Número de palabras',
+  customPangramLabel: 'Exigir un pangrama',
+  customPreviewRandom: (minWords, maxWords) =>
+    `Se generará un tablero de ${minWords} a ${maxWords} palabras`,
+  customCreateButton: 'Crear partida',
+  customPreview: (words, points, hasPangram) =>
+    `${words} palabra${plural('es', words, { one: '', other: 's' })} · ` +
+    `${points} punto${plural('es', points, { one: '', other: 's' })}` +
+    (hasPangram ? ' · pangrama ✓' : ' · sin pangrama'),
+  customError: (kind) =>
+    kind === 'no-words' ? 'No hay palabras válidas para estas letras' : 'No se pudo crear una partida con estos ajustes',
   restartButton: 'Reiniciar',
   historyButton: 'Historial',
   historyTitle: 'Historial',
@@ -387,7 +470,7 @@ const ES: Messages = {
       case 'invalid-letters':
         return 'Usa letras que no están en la ensalada';
       case 'missing-required':
-        return `Falta la letra obligatoria ${preview.requiredCharacter}`;
+        return `Debe contener ${Array.from(preview.requiredCharacters).join(', ')}`;
       case 'not-a-word':
         return 'No está en la lista de palabras';
       case 'too-short':
@@ -454,6 +537,28 @@ const DE: Messages = {
   newGameButton: 'Neues Spiel',
   playAgainButton: 'Nochmal spielen',
   keepPlayingButton: 'Weiterspielen',
+  customGameButton: 'Eigenes Spiel',
+  moreMenuLabel: 'Weitere Optionen',
+  customGameTitle: 'Eigenes Spiel',
+  customModeLegend: 'Feld',
+  customModeRandom: 'Überrasch mich',
+  customModeLetters: 'Buchstaben wählen',
+  customMinLabel: 'min',
+  customMaxLabel: 'max',
+  customLettersLabel: 'Buchstaben',
+  customLettersHint: 'Bis zu 7 Buchstaben eingeben · einen antippen, um ihn in jedem Wort zu verlangen',
+  customMinLengthLabel: 'Mindestwortlänge',
+  customWordCountLabel: 'Wortanzahl',
+  customPangramLabel: 'Pangramm verlangen',
+  customPreviewRandom: (minWords, maxWords) =>
+    `Es wird ein Feld mit ${minWords}–${maxWords} Wörtern erzeugt`,
+  customCreateButton: 'Spiel erstellen',
+  customPreview: (words, points, hasPangram) =>
+    `${words} ${plural('de', words, { one: 'Wort', other: 'Wörter' })} · ` +
+    `${points} ${plural('de', points, { one: 'Punkt', other: 'Punkte' })}` +
+    (hasPangram ? ' · Pangramm ✓' : ' · kein Pangramm'),
+  customError: (kind) =>
+    kind === 'no-words' ? 'Keine gültigen Wörter für diese Buchstaben' : 'Mit diesen Einstellungen ließ sich kein Spiel erstellen',
   restartButton: 'Neu starten',
   historyButton: 'Verlauf',
   historyTitle: 'Verlauf',
@@ -508,7 +613,7 @@ const DE: Messages = {
       case 'invalid-letters':
         return 'Enthält Buchstaben außerhalb des Salats';
       case 'missing-required':
-        return `Der Pflichtbuchstabe ${preview.requiredCharacter} fehlt`;
+        return `Muss ${Array.from(preview.requiredCharacters).join(', ')} enthalten`;
       case 'not-a-word':
         return 'Nicht in der Wortliste';
       case 'too-short':
@@ -574,6 +679,28 @@ const IT: Messages = {
   newGameButton: 'Nuova partita',
   playAgainButton: 'Gioca ancora',
   keepPlayingButton: 'Continua a giocare',
+  customGameButton: 'Partita personalizzata',
+  moreMenuLabel: 'Altre opzioni',
+  customGameTitle: 'Partita personalizzata',
+  customModeLegend: 'Tabellone',
+  customModeRandom: 'Sorprendimi',
+  customModeLetters: 'Scegli le lettere',
+  customMinLabel: 'min',
+  customMaxLabel: 'max',
+  customLettersLabel: 'Lettere',
+  customLettersHint: 'Digita fino a 7 lettere · toccane una per richiederla in ogni parola',
+  customMinLengthLabel: 'Lunghezza minima delle parole',
+  customWordCountLabel: 'Numero di parole',
+  customPangramLabel: 'Richiedi un pangramma',
+  customPreviewRandom: (minWords, maxWords) =>
+    `Verrà generato un tabellone da ${minWords} a ${maxWords} parole`,
+  customCreateButton: 'Crea partita',
+  customPreview: (words, points, hasPangram) =>
+    `${words} ${plural('it', words, { one: 'parola', other: 'parole' })} · ` +
+    `${points} ${plural('it', points, { one: 'punto', other: 'punti' })}` +
+    (hasPangram ? ' · pangramma ✓' : ' · nessun pangramma'),
+  customError: (kind) =>
+    kind === 'no-words' ? 'Nessuna parola valida per queste lettere' : 'Impossibile creare una partita con queste impostazioni',
   restartButton: 'Ricomincia',
   historyButton: 'Cronologia',
   historyTitle: 'Cronologia',
@@ -628,7 +755,7 @@ const IT: Messages = {
       case 'invalid-letters':
         return "Usa lettere fuori dall'insalata";
       case 'missing-required':
-        return `Manca la lettera obbligatoria ${preview.requiredCharacter}`;
+        return `Deve contenere ${Array.from(preview.requiredCharacters).join(', ')}`;
       case 'not-a-word':
         return "Non è nell'elenco delle parole";
       case 'too-short':
@@ -694,6 +821,28 @@ const PT: Messages = {
   newGameButton: 'Novo jogo',
   playAgainButton: 'Jogar de novo',
   keepPlayingButton: 'Continuar jogando',
+  customGameButton: 'Jogo personalizado',
+  moreMenuLabel: 'Mais opções',
+  customGameTitle: 'Jogo personalizado',
+  customModeLegend: 'Tabuleiro',
+  customModeRandom: 'Surpreenda-me',
+  customModeLetters: 'Escolher letras',
+  customMinLabel: 'mín',
+  customMaxLabel: 'máx',
+  customLettersLabel: 'Letras',
+  customLettersHint: 'Digite até 7 letras · toque numa para exigi-la em cada palavra',
+  customMinLengthLabel: 'Comprimento mínimo da palavra',
+  customWordCountLabel: 'Número de palavras',
+  customPangramLabel: 'Exigir um pangrama',
+  customPreviewRandom: (minWords, maxWords) =>
+    `Será gerado um tabuleiro de ${minWords} a ${maxWords} palavras`,
+  customCreateButton: 'Criar jogo',
+  customPreview: (words, points, hasPangram) =>
+    `${words} palavra${plural('pt', words, { one: '', other: 's' })} · ` +
+    `${points} ponto${plural('pt', points, { one: '', other: 's' })}` +
+    (hasPangram ? ' · pangrama ✓' : ' · sem pangrama'),
+  customError: (kind) =>
+    kind === 'no-words' ? 'Nenhuma palavra válida para estas letras' : 'Não foi possível criar um jogo com estas definições',
   restartButton: 'Recomeçar',
   historyButton: 'Histórico',
   historyTitle: 'Histórico',
@@ -746,7 +895,7 @@ const PT: Messages = {
       case 'invalid-letters':
         return 'Usa letras fora da salada';
       case 'missing-required':
-        return `Falta a letra obrigatória ${preview.requiredCharacter}`;
+        return `Deve conter ${Array.from(preview.requiredCharacters).join(', ')}`;
       case 'not-a-word':
         return 'Não está na lista de palavras';
       case 'too-short':
@@ -813,6 +962,28 @@ const NL: Messages = {
   newGameButton: 'Nieuw spel',
   playAgainButton: 'Opnieuw spelen',
   keepPlayingButton: 'Verder spelen',
+  customGameButton: 'Eigen spel',
+  moreMenuLabel: 'Meer opties',
+  customGameTitle: 'Eigen spel',
+  customModeLegend: 'Bord',
+  customModeRandom: 'Verras me',
+  customModeLetters: 'Letters kiezen',
+  customMinLabel: 'min',
+  customMaxLabel: 'max',
+  customLettersLabel: 'Letters',
+  customLettersHint: 'Typ maximaal 7 letters · tik op één om die in elk woord te vereisen',
+  customMinLengthLabel: 'Minimale woordlengte',
+  customWordCountLabel: 'Aantal woorden',
+  customPangramLabel: 'Pangram vereisen',
+  customPreviewRandom: (minWords, maxWords) =>
+    `Er wordt een bord met ${minWords}–${maxWords} woorden gegenereerd`,
+  customCreateButton: 'Spel maken',
+  customPreview: (words, points, hasPangram) =>
+    `${words} ${plural('nl', words, { one: 'woord', other: 'woorden' })} · ` +
+    `${points} ${plural('nl', points, { one: 'punt', other: 'punten' })}` +
+    (hasPangram ? ' · pangram ✓' : ' · geen pangram'),
+  customError: (kind) =>
+    kind === 'no-words' ? 'Geen geldige woorden voor deze letters' : 'Kon geen spel maken met deze instellingen',
   restartButton: 'Opnieuw beginnen',
   historyButton: 'Geschiedenis',
   historyTitle: 'Geschiedenis',
@@ -866,7 +1037,7 @@ const NL: Messages = {
       case 'invalid-letters':
         return 'Bevat letters buiten de salade';
       case 'missing-required':
-        return `De verplichte letter ${preview.requiredCharacter} ontbreekt`;
+        return `Moet ${Array.from(preview.requiredCharacters).join(', ')} bevatten`;
       case 'not-a-word':
         return 'Staat niet in de woordenlijst';
       case 'too-short':
@@ -933,6 +1104,27 @@ const JA: Messages = {
   newGameButton: '新しいゲーム',
   playAgainButton: 'もう一度遊ぶ',
   keepPlayingButton: 'プレイを続ける',
+  customGameButton: 'カスタムゲーム',
+  moreMenuLabel: 'その他のオプション',
+  customGameTitle: 'カスタムゲーム',
+  customModeLegend: '盤面',
+  customModeRandom: 'おまかせ',
+  customModeLetters: '文字を選ぶ',
+  customMinLabel: '最小',
+  customMaxLabel: '最大',
+  customLettersLabel: '文字',
+  customLettersHint: '最大7文字まで入力 ・タップすると必須文字になります',
+  customMinLengthLabel: '単語の最小文字数',
+  customWordCountLabel: '単語数',
+  customPangramLabel: 'パングラムを必須にする',
+  customPreviewRandom: (minWords, maxWords) =>
+    `${minWords}〜${maxWords}語の盤面が生成されます`,
+  customCreateButton: 'ゲームを作成',
+  customPreview: (words, points, hasPangram) =>
+    `${words} 単語 · ${points} ポイント` +
+    (hasPangram ? ' ・パングラムあり ✓' : ' ・パングラムなし'),
+  customError: (kind) =>
+    kind === 'no-words' ? 'この文字では有効な単語がありません' : 'この設定ではゲームを作成できませんでした',
   restartButton: 'やり直す',
   historyButton: '履歴',
   historyTitle: '履歴',
@@ -979,7 +1171,7 @@ const JA: Messages = {
       case 'invalid-letters':
         return 'サラダにない文字が含まれています';
       case 'missing-required':
-        return `必須文字 ${preview.requiredCharacter} がありません`;
+        return `${Array.from(preview.requiredCharacters).join('、')} を含める必要があります`;
       case 'not-a-word':
         return '単語リストにありません';
       case 'too-short':
@@ -1044,6 +1236,27 @@ const KO: Messages = {
   newGameButton: '새 게임',
   playAgainButton: '다시 하기',
   keepPlayingButton: '계속 플레이하기',
+  customGameButton: '커스텀 게임',
+  moreMenuLabel: '더 보기',
+  customGameTitle: '커스텀 게임',
+  customModeLegend: '보드',
+  customModeRandom: '랜덤',
+  customModeLetters: '글자 선택',
+  customMinLabel: '최소',
+  customMaxLabel: '최대',
+  customLettersLabel: '글자',
+  customLettersHint: '최대 7글자까지 입력 · 탭하면 필수 글자가 됩니다',
+  customMinLengthLabel: '최소 단어 길이',
+  customWordCountLabel: '단어 수',
+  customPangramLabel: '팬그램 필수',
+  customPreviewRandom: (minWords, maxWords) =>
+    `${minWords}~${maxWords}개 단어의 보드가 생성됩니다`,
+  customCreateButton: '게임 만들기',
+  customPreview: (words, points, hasPangram) =>
+    `${words} 단어 · ${points} 점` +
+    (hasPangram ? ' · 팬그램 있음 ✓' : ' · 팬그램 없음'),
+  customError: (kind) =>
+    kind === 'no-words' ? '이 글자로는 유효한 단어가 없습니다' : '이 설정으로는 게임을 만들 수 없습니다',
   restartButton: '다시 시작',
   historyButton: '기록',
   historyTitle: '기록',
@@ -1091,7 +1304,7 @@ const KO: Messages = {
       case 'invalid-letters':
         return '샐러드에 없는 글자가 있습니다';
       case 'missing-required':
-        return `필수 글자 ${preview.requiredCharacter}이(가) 없습니다`;
+        return `${Array.from(preview.requiredCharacters).join(', ')}을(를) 포함해야 합니다`;
       case 'not-a-word':
         return '단어 목록에 없습니다';
       case 'too-short':
@@ -1155,6 +1368,27 @@ const ZH: Messages = {
   newGameButton: '新游戏',
   playAgainButton: '再玩一局',
   keepPlayingButton: '继续游戏',
+  customGameButton: '自定义游戏',
+  moreMenuLabel: '更多选项',
+  customGameTitle: '自定义游戏',
+  customModeLegend: '棋盘',
+  customModeRandom: '随机',
+  customModeLetters: '选择字母',
+  customMinLabel: '最少',
+  customMaxLabel: '最多',
+  customLettersLabel: '字母',
+  customLettersHint: '最多输入 7 个字母 · 点按可设为必需',
+  customMinLengthLabel: '最短单词长度',
+  customWordCountLabel: '单词数量',
+  customPangramLabel: '要求全字母词',
+  customPreviewRandom: (minWords, maxWords) =>
+    `将生成包含 ${minWords}–${maxWords} 个单词的棋盘`,
+  customCreateButton: '创建游戏',
+  customPreview: (words, points, hasPangram) =>
+    `${words} 个单词 · ${points} 分` +
+    (hasPangram ? ' · 有全字母词 ✓' : ' · 无全字母词'),
+  customError: (kind) =>
+    kind === 'no-words' ? '这些字母没有有效单词' : '无法用这些设置创建游戏',
   restartButton: '重新开始',
   historyButton: '历史',
   historyTitle: '历史',
@@ -1200,7 +1434,7 @@ const ZH: Messages = {
       case 'invalid-letters':
         return '包含沙拉之外的字母';
       case 'missing-required':
-        return `缺少必需字母 ${preview.requiredCharacter}`;
+        return `必须包含 ${Array.from(preview.requiredCharacters).join('、')}`;
       case 'not-a-word':
         return '不在单词表中';
       case 'too-short':
@@ -1264,6 +1498,28 @@ const RU: Messages = {
   newGameButton: 'Новая игра',
   playAgainButton: 'Сыграть ещё раз',
   keepPlayingButton: 'Продолжить игру',
+  customGameButton: 'Своя игра',
+  moreMenuLabel: 'Ещё',
+  customGameTitle: 'Своя игра',
+  customModeLegend: 'Поле',
+  customModeRandom: 'Наугад',
+  customModeLetters: 'Выбрать буквы',
+  customMinLabel: 'мин',
+  customMaxLabel: 'макс',
+  customLettersLabel: 'Буквы',
+  customLettersHint: 'Введите до 7 букв · нажмите на букву, чтобы требовать её в каждом слове',
+  customMinLengthLabel: 'Минимальная длина слова',
+  customWordCountLabel: 'Количество слов',
+  customPangramLabel: 'Требовать панграмму',
+  customPreviewRandom: (minWords, maxWords) =>
+    `Будет создано поле из ${minWords}–${maxWords} слов`,
+  customCreateButton: 'Создать игру',
+  customPreview: (words, points, hasPangram) =>
+    `${words} ${plural('ru', words, { one: 'слово', few: 'слова', other: 'слов' })} · ` +
+    `${points} ${plural('ru', points, { one: 'очко', few: 'очка', other: 'очков' })}` +
+    (hasPangram ? ' · есть панграмма ✓' : ' · нет панграммы'),
+  customError: (kind) =>
+    kind === 'no-words' ? 'Нет допустимых слов для этих букв' : 'Не удалось создать игру с этими настройками',
   restartButton: 'Начать заново',
   historyButton: 'История',
   historyTitle: 'История',
@@ -1315,7 +1571,7 @@ const RU: Messages = {
       case 'invalid-letters':
         return 'Содержит буквы не из салата';
       case 'missing-required':
-        return `Не хватает обязательной буквы ${preview.requiredCharacter}`;
+        return `Должно содержать ${Array.from(preview.requiredCharacters).join(', ')}`;
       case 'not-a-word':
         return 'Нет в списке слов';
       case 'too-short':

@@ -13,6 +13,7 @@ interface LockoutDialogProps {
   // Every word found: there is nothing left to keep playing for.
   isComplete: boolean;
   onClose: () => void;
+  onCustomGame: () => void;
   onRestart: () => void;
 }
 
@@ -21,6 +22,7 @@ export function LockoutDialog({
   winPoints,
   isComplete,
   onClose,
+  onCustomGame,
   onRestart,
 }: LockoutDialogProps) {
   const t = useMessages();
@@ -98,6 +100,14 @@ export function LockoutDialog({
             </button>
           )}
         </div>
+        {/* An escape hatch to friendlier letters, at the moment of defeat. */}
+        <button
+          className="touch-manipulation text-sm font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
+          onClick={onCustomGame}
+          type="button"
+        >
+          {t.customGameButton}
+        </button>
       </div>
     </dialog>
   );

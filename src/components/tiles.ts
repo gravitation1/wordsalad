@@ -28,14 +28,15 @@ interface MiniTileOptions {
 // found-word drum, and the feedback line.
 export function miniTileClass(
   letter: string,
-  requiredCharacter: string,
+  requiredCharacters: string,
   { compact = false, muted = false }: MiniTileOptions = {},
 ): string {
+  const isRequired = requiredCharacters.includes(letter);
   const face = muted
-    ? letter === requiredCharacter
+    ? isRequired
       ? TILE_FACE.mutedAccent
       : TILE_FACE.mutedPlain
-    : letter === requiredCharacter
+    : isRequired
       ? TILE_FACE.accent
       : TILE_FACE.plain;
   const size = compact ? 'h-4 w-4 text-[10px]' : 'h-5 w-5 text-[11px]';

@@ -4,12 +4,12 @@ import { miniTileClass } from './tiles';
 
 interface FeedbackLineProps {
   feedback: GameFeedback | null;
-  requiredCharacter: string;
+  requiredCharacters: string;
 }
 
 export function FeedbackLine({
   feedback,
-  requiredCharacter,
+  requiredCharacters,
 }: FeedbackLineProps) {
   const t = useMessages();
   const isSuccess = feedback?.kind === 'scored';
@@ -42,7 +42,7 @@ export function FeedbackLine({
           >
             {Array.from(feedback.word).map((letter, index) => (
               <span
-                className={miniTileClass(letter, requiredCharacter, {
+                className={miniTileClass(letter, requiredCharacters, {
                   compact,
                 })}
                 key={index}

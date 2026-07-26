@@ -88,7 +88,7 @@ function badgeText(preview: WordPreview): string {
     case 'invalid-letters':
       return '✕';
     case 'missing-required':
-      return preview.requiredCharacter;
+      return preview.requiredCharacters;
     case 'not-a-word':
       return '?';
     case 'too-short':

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import {
+  bestRequiredCharacter,
   generateWordSalad,
   loadWordSalad,
   newRandomWordSalad,
@@ -66,7 +67,7 @@ describe('storeWordSalad and loadWordSalad', () => {
 
     const loaded = loadWordSalad(DICTIONARY, stored);
     expect(loaded.characterSet).toEqual(original.characterSet);
-    expect(loaded.requiredCharacter).toBe('T');
+    expect(loaded.requiredCharacters).toBe('T');
     expect(loaded.minimumLength).toBe(4);
     expect(loaded.remainingWords).toEqual(original.remainingWords);
     expect(storeWordSalad(loaded)).toBe(stored);
@@ -92,7 +93,6 @@ describe('storeWordSalad and loadWordSalad', () => {
   it('rejects malformed encoding pieces', () => {
     const malformed = [
       'WOR^TES.T.4', // non-alphabetic character in the set
-      'WORDTES.TT.4', // multi-letter required character
       'WORDTES.7.4', // non-alphabetic required character
       'WORDTES.T.0', // minimum length below 1
       'WORDTES.T.-5', // negative minimum length
@@ -106,8 +106,24 @@ describe('storeWordSalad and loadWordSalad', () => {
     }
   });
 
+  it('round-trips a multi-letter required set, canonicalized', () => {
+    // Valid words must contain both R and T (ROTTED, WORSTED); the required
+    // set is stored distinct and sorted, so "TR" encodes as "RT".
+    const loaded = loadWordSalad(DICTIONARY, 'WORDTES.TR.4');
+    expect(loaded.requiredCharacters).toBe('RT');
+    expect(loaded.remainingWords).toEqual(new Set(['ROTTED', 'WORSTED']));
+    expect(storeWordSalad(loaded)).toBe('DEORSTW.RT.4');
+  });
+
   it('rejects an encoding whose required character is not in the set', () => {
     expect(() => loadWordSalad(DICTIONARY, 'WORDES.T.4')).toThrowError(
+      'Missing required character!',
+    );
+  });
+
+  it('rejects an encoding requiring a letter outside the set', () => {
+    // R is present but Z is not; every required letter must be in the set.
+    expect(() => loadWordSalad(DICTIONARY, 'WORDTES.RZ.4')).toThrowError(
       'Missing required character!',
     );
   });
@@ -132,10 +148,30 @@ describe('newRandomWordSalad', () => {
       try {
         const wordSalad = newRandomWordSalad(REAL_DICTIONARY);
         expect(wordSalad.characterSet.size).toBe(7);
-        expect(wordSalad.characterSet.has(wordSalad.requiredCharacter)).toBe(
+        expect(wordSalad.characterSet.has(wordSalad.requiredCharacters)).toBe(
           true,
         );
         expect(wordSalad.minimumLength).toBe(4);
+        return;
+      } catch (error) {
+        if (attempt > 100) {
+          throw error;
+        }
+      }
+    }
+  });
+
+  it('honors a pinned required letter and minimum length', () => {
+    for (let attempt = 0; ; ++attempt) {
+      try {
+        const wordSalad = newRandomWordSalad(REAL_DICTIONARY, {
+          minimumLength: 5,
+          requiredCharacters: 'A',
+        });
+        expect(wordSalad.characterSet.size).toBe(7);
+        expect(wordSalad.characterSet.has('A')).toBe(true);
+        expect(wordSalad.requiredCharacters).toBe('A');
+        expect(wordSalad.minimumLength).toBe(5);
         return;
       } catch (error) {
         if (attempt > 100) {
@@ -154,9 +190,85 @@ describe('generateWordSalad', () => {
     expect(wordSalad.remainingWords.size).toBeLessThanOrEqual(60);
   });
 
+  it('generates around a pinned required letter', () => {
+    const wordSalad = generateWordSalad(REAL_DICTIONARY, {
+      requiredCharacters: 'A',
+    });
+    expect(wordSalad.characterSet.has('A')).toBe(true);
+    expect(wordSalad.requiredCharacters).toBe('A');
+    expect(wordSalad.remainingWords.size).toBeGreaterThan(0);
+  });
+
+  it('accepts a small minimum length via best-effort fallback', () => {
+    // min=2 blows past the 60-word ceiling, so no puzzle meets the curated
+    // band; the best valid one is returned anyway.
+    const wordSalad = generateWordSalad(REAL_DICTIONARY, { minimumLength: 2 });
+    expect(wordSalad.minimumLength).toBe(2);
+    expect(wordSalad.remainingWords.size).toBeGreaterThan(0);
+  });
+
+  it('honors a custom word-count band', () => {
+    const wordSalad = generateWordSalad(REAL_DICTIONARY, {
+      minWords: 20,
+      maxWords: 25,
+    });
+    expect(wordSalad.remainingWords.size).toBeGreaterThanOrEqual(20);
+    expect(wordSalad.remainingWords.size).toBeLessThanOrEqual(25);
+    expect(wordSalad.pangramWords.size).toBeGreaterThan(0);
+  });
+
+  it('generates around multiple required letters (pangram-seeded)', () => {
+    const wordSalad = generateWordSalad(REAL_DICTIONARY, {
+      requiredCharacters: 'IN',
+    });
+    expect(wordSalad.characterSet.has('I')).toBe(true);
+    expect(wordSalad.characterSet.has('N')).toBe(true);
+    expect(wordSalad.requiredCharacters).toBe('IN');
+    // A pangram is present (this is the pangram-seeded path) and contains
+    // every required letter, so all required letters are in the set.
+    expect(wordSalad.pangramWords.size).toBeGreaterThan(0);
+    for (const word of wordSalad.remainingWords) {
+      expect(word.includes('I') && word.includes('N')).toBe(true);
+    }
+  });
+
+  it('can drop the pangram requirement', () => {
+    // Without the pangram requirement the game need not contain one; assert
+    // it still generates a valid board inside the band.
+    const wordSalad = generateWordSalad(REAL_DICTIONARY, {
+      requirePangram: false,
+    });
+    expect(wordSalad.remainingWords.size).toBeGreaterThanOrEqual(15);
+    expect(wordSalad.remainingWords.size).toBeLessThanOrEqual(60);
+  });
+
+  it('fails when more letters are required than a board holds', () => {
+    expect(() =>
+      generateWordSalad(REAL_DICTIONARY, { requiredCharacters: 'ABCDEFGH' }),
+    ).toThrowError('Failed to generate a game!');
+  });
+
   it('gives up after too many failed attempts', () => {
     expect(() => generateWordSalad([])).toThrowError(
       'Failed to generate a game!',
+    );
+  });
+});
+
+describe('bestRequiredCharacter', () => {
+  it('picks the letter that makes the most words', () => {
+    // Within WORDTES, O, R, D and E each reach four words; O comes first.
+    expect(bestRequiredCharacter(DICTIONARY, 'WORDTES', 4)).toBe('O');
+  });
+
+  it('respects the minimum length when scoring letters', () => {
+    // At length 6 only ROTTED and WORSTED qualify; O still leads.
+    expect(bestRequiredCharacter(DICTIONARY, 'WORDTES', 6)).toBe('O');
+  });
+
+  it('throws when no letter yields any word', () => {
+    expect(() => bestRequiredCharacter(DICTIONARY, 'XYZQJKV', 4)).toThrowError(
+      'No valid words!',
     );
   });
 });

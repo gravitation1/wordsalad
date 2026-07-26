@@ -16,9 +16,10 @@ interface WinDialogProps {
   level: string;
   letters: readonly string[];
   onClose: () => void;
+  onCustomGame: () => void;
   onPlayAgain: () => void;
   onShare: () => void;
-  requiredCharacter: string;
+  requiredCharacters: string;
   shareCopied: boolean;
 }
 
@@ -28,9 +29,10 @@ export function WinDialog({
   level,
   letters,
   onClose,
+  onCustomGame,
   onPlayAgain,
   onShare,
-  requiredCharacter,
+  requiredCharacters,
   shareCopied,
 }: WinDialogProps) {
   const t = useMessages();
@@ -98,7 +100,7 @@ export function WinDialog({
       <Confetti
         letters={letters}
         perfect={perfect}
-        requiredCharacter={requiredCharacter}
+        requiredCharacters={requiredCharacters}
       />
       <button
         aria-label={t.closeButton}
@@ -116,7 +118,7 @@ export function WinDialog({
         <WinBurst
           letters={letters}
           perfect={perfect}
-          requiredCharacter={requiredCharacter}
+          requiredCharacters={requiredCharacters}
         />
         <h2 className="sr-only" id="win-title">
           {t.victory}
@@ -179,17 +181,27 @@ export function WinDialog({
             {shareCopied ? t.shareCopied : t.shareButton}
           </button>
         </div>
-        {/* Nothing left to find once every word is in — the ✕ (or Esc,
-            or the backdrop) still dismisses to review the final board. */}
-        {isComplete ? null : (
+        {/* The quiet "what next" row. Keep playing vanishes once every word
+            is in (the ✕/Esc/backdrop still dismiss to review the board);
+            the builder is offered at exactly this deciding moment. */}
+        <div className="flex items-center justify-center gap-4">
+          {isComplete ? null : (
+            <button
+              className="touch-manipulation text-sm font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
+              onClick={onClose}
+              type="button"
+            >
+              {t.keepPlayingButton}
+            </button>
+          )}
           <button
             className="touch-manipulation text-sm font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
-            onClick={onClose}
+            onClick={onCustomGame}
             type="button"
           >
-            {t.keepPlayingButton}
+            {t.customGameButton}
           </button>
-        )}
+        </div>
       </div>
     </dialog>
   );

@@ -108,6 +108,38 @@ describe('WordSalad', () => {
     );
   });
 
+  it('requires every letter when multiple are required', () => {
+    // WORDTES requiring both R and T: only ROTTED and WORSTED qualify.
+    const wordSalad = new WordSalad(new Set('WORDTES'), 'RT', 4, DICTIONARY);
+    expect(wordSalad.remainingWords).toEqual(new Set(['ROTTED', 'WORSTED']));
+    // TEST has T but not R; WORD has R but not T.
+    expect(wordSalad.previewWord('TEST')).toEqual({
+      verdict: 'missing-required',
+      requiredCharacters: 'RT',
+    });
+    expect(wordSalad.previewWord('WORD')).toEqual({
+      verdict: 'missing-required',
+      requiredCharacters: 'RT',
+    });
+    expect(wordSalad.previewWord('ROTTED')).toEqual({
+      verdict: 'valid',
+      points: 3,
+    });
+  });
+
+  it('canonicalizes the required letters to distinct and sorted', () => {
+    const wordSalad = new WordSalad(new Set('WORDTES'), 'TTR', 4, DICTIONARY);
+    expect(wordSalad.requiredCharacters).toBe('RT');
+  });
+
+  it('throws when any required letter is outside the set', () => {
+    expectWordSaladError(
+      () => new WordSalad(new Set('WORDTES'), 'RZ', 4, DICTIONARY),
+      'MissingRequiredCharacter',
+      'Missing required character!',
+    );
+  });
+
   it('rejects a word with letters outside the character set', () => {
     const wordSalad = newWordSalad();
     expectWordSaladError(
@@ -151,7 +183,7 @@ describe('WordSalad', () => {
     expect(wordSalad.previewWord('TET')).toEqual({ verdict: 'too-short' });
     expect(wordSalad.previewWord('DOSE')).toEqual({
       verdict: 'missing-required',
-      requiredCharacter: 'T',
+      requiredCharacters: 'T',
     });
     expect(wordSalad.previewWord('TAXI')).toEqual({
       verdict: 'invalid-letters',

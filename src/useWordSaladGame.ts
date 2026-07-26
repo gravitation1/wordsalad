@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
+  bestRequiredCharacter,
   generateWordSalad,
   loadWordSalad,
   shuffled,
@@ -122,7 +123,7 @@ export interface WordExit {
 export interface PlayingGame {
   status: 'playing';
   saladLetters: readonly string[];
-  requiredCharacter: string;
+  requiredCharacters: string;
   inputLetters: readonly string[];
   isValidCharacter: (character: string) => boolean;
   inputPreview: WordPreview | null;
@@ -291,27 +292,68 @@ function generateGameInit(dictionary: readonly string[]): GameInit {
   }
 }
 
-// Generate a new game if the URL carries no game params; otherwise load the
-// puzzle they describe (?letters=AZIMUTH&required=I&min=4 — min defaults
-// to 4), restoring any saved progress for it. New games are started
-// explicitly via startNewGame, so a refresh resumes the game; pasting a
-// different puzzle URL is a real navigation and boots through here.
+// Build the game from the URL's puzzle params, each of which is independently
+// optional: whatever is supplied constrains the puzzle and the rest is filled
+// in. `letters` makes a deterministic puzzle (its required letter derived when
+// omitted); without `letters` a puzzle is generated around the supplied
+// `required`/`min`. With no params at all, a fresh curated random game. The
+// URL-write effect then canonicalizes to ?letters=…&required=…&min, so a
+// partial link resolves to a concrete, shareable one. New games are started
+// explicitly via startNewGame, so a refresh resumes; pasting a different
+// puzzle URL is a real navigation and boots through here.
 function createWordSalad(dictionary: readonly string[]): GameInit {
   const params = new URLSearchParams(window.location.search);
-  const letters = params.get('letters');
-  const required = params.get('required');
-  const minimumLength = params.get('min');
+  const lettersParam = params.get('letters');
+  const requiredParam = params.get('required');
+  const minParam = params.get('min');
 
-  if (letters === null && required === null && minimumLength === null) {
+  if (lettersParam === null && requiredParam === null && minParam === null) {
     return generateGameInit(dictionary);
   }
 
+  const letters = lettersParam === null ? null : lettersParam.toUpperCase();
+  const requiredRaw =
+    requiredParam === null ? null : requiredParam.toUpperCase();
+  const minimumLength = minParam === null ? 4 : Number(minParam);
+
+  if (
+    (letters !== null && !/^[A-Z]+$/.test(letters)) ||
+    (requiredRaw !== null && !/^[A-Z]*$/.test(requiredRaw)) ||
+    !Number.isInteger(minimumLength) ||
+    minimumLength < 1
+  ) {
+    return { reason: 'invalid-game-data' };
+  }
+
+  // Canonicalize the required letters — distinct and sorted — so IA, AI, and
+  // AA all describe the one puzzle whose words must contain A and I.
+  const required =
+    requiredRaw === null
+      ? null
+      : Array.from(new Set(requiredRaw)).sort().join('');
+
   try {
-    const wordSalad = loadWordSalad(
-      dictionary,
-      `${letters ?? ''}.${required ?? ''}.${minimumLength ?? '4'}`,
-    );
-    restoreProgress(wordSalad);
+    if (letters !== null) {
+      // Explicit letters: a deterministic puzzle. Derive the required letter
+      // when the URL omits it, then load and restore any saved progress.
+      // An omitted `required` derives a good letter; an explicitly empty
+      // one (?required=) is a deliberate no-required-letter puzzle.
+      const requiredCharacters =
+        required ?? bestRequiredCharacter(dictionary, letters, minimumLength);
+      const wordSalad = loadWordSalad(
+        dictionary,
+        `${letters}.${requiredCharacters}.${minimumLength}`,
+      );
+      restoreProgress(wordSalad);
+      return { wordSalad };
+    }
+    // No letters: generate a puzzle around the supplied constraints (pinned
+    // required letters and/or a custom minimum length), as a fresh game.
+    const wordSalad = generateWordSalad(dictionary, {
+      minimumLength,
+      requiredCharacters: required ?? undefined,
+    });
+    clearSavedProgress(storeWordSalad(wordSalad));
     return { wordSalad };
   } catch (_error) {
     return { reason: 'invalid-game-data' };
@@ -395,9 +437,18 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   }, [wordSalad]);
 
   // Blur on any click so that Enter submits the current word instead of
-  // re-triggering the last focused button or link.
+  // re-triggering the last focused button or link. An open modal owns its
+  // own focus (the same rule the keyboard handler follows), and a clicked
+  // form field must keep the focus it just received — without these guards
+  // the custom-game inputs would deselect the instant they were clicked.
   useEffect(() => {
-    const blurActiveElement = () => {
+    const blurActiveElement = (event: MouseEvent) => {
+      if (
+        event.target instanceof Element &&
+        event.target.closest('dialog[open], input, textarea, select') !== null
+      ) {
+        return;
+      }
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
@@ -579,7 +630,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     clearSavedProgress(storeWordSalad(wordSalad));
     const fresh = new WordSalad(
       wordSalad.characterSet,
-      wordSalad.requiredCharacter,
+      wordSalad.requiredCharacters,
       wordSalad.minimumLength,
       dictionary,
     );
@@ -837,7 +888,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   return {
     status: 'playing',
     saladLetters,
-    requiredCharacter: wordSalad.requiredCharacter,
+    requiredCharacters: wordSalad.requiredCharacters,
     inputLetters,
     isValidCharacter,
     inputPreview,

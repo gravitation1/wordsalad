@@ -21,7 +21,7 @@ interface WordInputProps {
   inputLetters: readonly string[];
   onHint: () => void;
   rejection: LetterRejection | null;
-  requiredCharacter: string;
+  requiredCharacters: string;
   isValidCharacter: (character: string) => boolean;
 }
 
@@ -53,10 +53,10 @@ const EXIT_TONE: Record<WordExitOutcome, string> = {
 
 function letterClass(
   letter: string,
-  requiredCharacter: string,
+  requiredCharacters: string,
   isValidCharacter: (character: string) => boolean,
 ): string {
-  if (letter === requiredCharacter) {
+  if (requiredCharacters.includes(letter)) {
     return 'text-accent';
   } else if (isValidCharacter(letter)) {
     return '';
@@ -90,7 +90,7 @@ export function WordInput({
   inputLetters,
   onHint,
   rejection,
-  requiredCharacter,
+  requiredCharacters,
   isValidCharacter,
 }: WordInputProps) {
   const t = useMessages();
@@ -177,7 +177,7 @@ export function WordInput({
         >
           {inputLetters.map((letter, index) => (
             <span
-              className={`${letterClass(letter, requiredCharacter, isValidCharacter)} ${
+              className={`${letterClass(letter, requiredCharacters, isValidCharacter)} ${
                 isRevealing ? 'letter-reveal' : ''
               }`}
               key={`${letter}${index}`}
