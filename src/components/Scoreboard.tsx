@@ -6,6 +6,7 @@ import type {
   Lockout,
   RankUp,
   WordSlot,
+  WordSpotlight,
 } from '../useWordSaladGame';
 import { WinBurst } from './Confetti';
 import { LockoutDialog } from './LockoutDialog';
@@ -19,7 +20,7 @@ interface ScoreboardProps {
   saladLetters: readonly string[];
   requiredCharacters: string;
   wordSlots: readonly WordSlot[];
-  lastFoundWord: string | null;
+  spotlight: WordSpotlight | null;
   earnedPoints: number;
   maxPoints: number;
   lostPoints: number;
@@ -60,7 +61,7 @@ export function Scoreboard({
   saladLetters,
   requiredCharacters,
   wordSlots,
-  lastFoundWord,
+  spotlight,
   earnedPoints,
   maxPoints,
   lostPoints,
@@ -372,7 +373,7 @@ export function Scoreboard({
         <span className="w-16 text-right font-medium">{t.pointsHeader}</span>
       </div>
       <WordDrum
-        lastFoundWord={lastFoundWord}
+        spotlight={spotlight}
         requiredCharacters={requiredCharacters}
         slots={wordSlots}
       />

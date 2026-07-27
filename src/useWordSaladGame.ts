@@ -93,6 +93,18 @@ export interface RankUp {
   level: string;
 }
 
+// The word the drum should bring into view: a freshly found one, or one the
+// player re-submitted to locate. Carries an id (rather than being a bare
+// string) so re-submitting the same word spotlights it again.
+export interface WordSpotlight {
+  id: number;
+  word: string;
+  // True when the player named the word themselves (re-submitting one they
+  // had already found) rather than simply finding it. Locating is the whole
+  // point of that submission, so it outranks the drum's browsing grace.
+  requested: boolean;
+}
+
 // The hint that spent the win out of reach — the reachable maximum just fell
 // below the win line. Fires once, on that crossing, during play only (never
 // on restore of an already-locked game).
@@ -141,7 +153,7 @@ export interface PlayingGame {
   feedback: GameFeedback | null;
   foundWords: readonly FoundWord[];
   wordSlots: readonly WordSlot[];
-  lastFoundWord: string | null;
+  spotlight: WordSpotlight | null;
   earnedPoints: number;
   maxPoints: number;
   lostPoints: number;
@@ -382,7 +394,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   const [foundWords, setFoundWords] = useState<readonly FoundWord[]>(() =>
     wordSalad === null ? [] : toFoundWords(wordSalad, hintedWords),
   );
-  const [lastFoundWord, setLastFoundWord] = useState<string | null>(null);
+  const [spotlight, setSpotlight] = useState<WordSpotlight | null>(null);
   const [lastSubmission, setLastSubmission] = useState<SubmittedPreview | null>(
     null,
   );
@@ -601,7 +613,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setInputLetters([]);
     setFeedback(null);
     setFoundWords([]);
-    setLastFoundWord(null);
+    setSpotlight(null);
     setLastSubmission(null);
     setLastRejection(null);
     setLastAppended(null);
@@ -641,7 +653,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setInputLetters([]);
     setFeedback(null);
     setFoundWords([]);
-    setLastFoundWord(null);
+    setSpotlight(null);
     setLastSubmission(null);
     setLastRejection(null);
     setLastAppended(null);
@@ -699,6 +711,15 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
 
     if (preview.verdict !== 'valid') {
       setFeedback({ kind: 'word-rejected', word, reason: preview });
+      // Submitting a word you already found is a way of asking where it is,
+      // so bring it into view rather than only reporting the rejection.
+      if (preview.verdict === 'already-found') {
+        setSpotlight((previous) => ({
+          id: (previous?.id ?? 0) + 1,
+          requested: true,
+          word,
+        }));
+      }
       return;
     }
 
@@ -733,7 +754,11 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
 
     const gameKey = storeWordSalad(wordSalad);
     setFoundWords(toFoundWords(wordSalad, hintedWords));
-    setLastFoundWord(word);
+    setSpotlight((previous) => ({
+      id: (previous?.id ?? 0) + 1,
+      requested: false,
+      word,
+    }));
     saveWords(gameKey, Array.from(wordSalad.foundWords.keys()));
   }, [hintedWords, inputLetters, tossId, wordSalad]);
 
@@ -911,7 +936,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     feedback,
     foundWords,
     wordSlots,
-    lastFoundWord,
+    spotlight,
     earnedPoints,
     maxPoints: wordSalad.maxPoints,
     lostPoints,

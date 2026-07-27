@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
-import type { WordSlot } from '../useWordSaladGame';
+import type { WordSlot, WordSpotlight } from '../useWordSaladGame';
 import { miniTileClass } from './tiles';
 
 interface WordDrumProps {
-  lastFoundWord: string | null;
+  // The word to bring into view, if any. A new id re-triggers the scroll,
+  // so asking for the same word twice works.
+  spotlight: WordSpotlight | null;
   requiredCharacters: string;
   slots: readonly WordSlot[];
 }
@@ -18,20 +20,58 @@ const ROW_HEIGHT = 32;
 const VISIBLE_ROWS = 7;
 const DRUM_HEIGHT = ROW_HEIGHT * VISIBLE_ROWS;
 
-// A find never yanks the drum away from a player who is browsing it.
-const INTERACTION_GRACE_MS = 1500;
-
 // How deep the edge fade grows once content is scrolled out behind it.
 const FADE_PX = 56;
 
 export function WordDrum({
-  lastFoundWord,
+  spotlight,
   requiredCharacters,
   slots,
 }: WordDrumProps) {
   const containerRef = useRef<HTMLUListElement>(null);
-  const interactedAt = useRef(0);
   const frame = useRef(0);
+  const scrollFrame = useRef(0);
+
+  // The drum eases to a word itself rather than asking for a native smooth
+  // scroll, which cannot be given a duration (long hops crawled, and the
+  // row's own animation was over before it arrived) and is cancelled outright
+  // by trackpad momentum landing mid-flight. Driving it frame by frame keeps
+  // it short, and each frame overwrites any momentum still arriving, so it
+  // always lands.
+  const easeScrollTo = useCallback((container: HTMLElement, to: number) => {
+    cancelAnimationFrame(scrollFrame.current);
+    const from = container.scrollTop;
+    const distance = to - from;
+    // Short hops stay brisk, long ones take their time, and neither runs away
+    // with the eye.
+    const duration = Math.min(650, Math.max(280, Math.abs(distance) * 0.45));
+    // The row's own emphasis waits out the travel, so the two read as one
+    // move rather than overlapping. Slightly less than the full duration:
+    // the eased tail is imperceptible, and matching it exactly left a dead
+    // beat between arriving and being shown the word.
+    container.style.setProperty(
+      '--spotlight-delay',
+      `${String(Math.round(distance === 0 ? 0 : duration * 0.85))}ms`,
+    );
+    if (distance === 0) {
+      return;
+    }
+    const start = performance.now();
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - start) / duration);
+      // Ease in and out: an ease-out alone leaves at full speed, which is
+      // what made a long jump feel like a lurch.
+      const eased =
+        progress < 0.5
+          ? 4 * progress * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+      container.scrollTop = from + distance * eased;
+      if (progress < 1) {
+        scrollFrame.current = requestAnimationFrame(step);
+      }
+    };
+    scrollFrame.current = requestAnimationFrame(step);
+  }, []);
 
   // An edge only fades when content is actually scrolled out behind it, and
   // the fade grows with the overflow — so the list sits flush and fully
@@ -64,20 +104,24 @@ export function WordDrum({
   useEffect(
     () => () => {
       cancelAnimationFrame(frame.current);
+      cancelAnimationFrame(scrollFrame.current);
     },
     [],
   );
 
-  // A fresh find spins the drum to its slot; the reveal plays there. If the
-  // player interacted with the drum moments ago, skip the spin — the row
-  // still reveals wherever it happens to be.
-  useEffect(() => {
+  // A fresh find — or a word the player re-submitted to locate — brings the
+  // drum to its slot, where the reveal plays. Every spotlight comes from a
+  // deliberate submission, so this always runs: making it conditional on
+  // recent scrolling only made the behaviour look random.
+  useLayoutEffect(() => {
     const container = containerRef.current;
-    if (lastFoundWord === null || container === null) {
+    if (spotlight === null || container === null) {
       return;
     }
-    const index = slots.findIndex((slot) => slot.found?.word === lastFoundWord);
-    if (index < 0 || Date.now() - interactedAt.current < INTERACTION_GRACE_MS) {
+    const index = slots.findIndex(
+      (slot) => slot.found?.word === spotlight.word,
+    );
+    if (index < 0) {
       return;
     }
     // Center the slot; the browser clamps at the list's ends, where the
@@ -93,23 +137,23 @@ export function WordDrum({
     // Reached only in a real browser: the guard above returns early wherever
     // scrollTo is missing, which is the same environment (jsdom) that lacks
     // matchMedia.
-    const reduceMotion = window.matchMedia(
-      '(prefers-reduced-motion: reduce)',
-    ).matches;
-    container.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
-  }, [lastFoundWord, slots]);
-
-  const markInteraction = () => {
-    interactedAt.current = Date.now();
-  };
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      container.style.setProperty('--spotlight-delay', '0ms');
+      container.scrollTop = Math.max(0, top);
+      return;
+    }
+    easeScrollTo(container, Math.max(0, top));
+  }, [easeScrollTo, slots, spotlight]);
 
   return (
     <ul
-      className="w-full overflow-y-auto [scrollbar-width:none]"
+      // relative: the rows' sr-only spans are absolutely positioned, and an
+      // absolute element only gets clipped by an overflow ancestor that is
+      // also its containing block. Without this the drum cannot clip them and
+      // they stretch the page far below the fold.
+      className="relative w-full overflow-y-auto [scrollbar-width:none]"
       data-testid="word-drum"
-      onPointerDown={markInteraction}
       onScroll={handleScroll}
-      onWheel={markInteraction}
       ref={containerRef}
       style={{ height: DRUM_HEIGHT }}
     >
@@ -121,6 +165,11 @@ export function WordDrum({
             // the found words, as with the old flat table.
             aria-hidden={found === null ? true : undefined}
             data-found={found === null ? 'false' : 'true'}
+            data-spotlight={
+              found !== null && found.word === spotlight?.word
+                ? 'true'
+                : 'false'
+            }
             data-testid="word-slot"
             key={index}
             style={{ height: ROW_HEIGHT }}
@@ -132,16 +181,32 @@ export function WordDrum({
               </div>
             ) : (
               <div
+                // Finding a word flips the whole row into place; being taken
+                // to one already found swells the word itself (below), which
+                // leaves the points column and neighbouring rows alone.
                 className={`flex h-full items-center justify-between gap-2 text-sm ${
-                  found.word === lastFoundWord ? 'slot-reveal' : ''
+                  found.word === spotlight?.word && !spotlight.requested
+                    ? 'slot-reveal'
+                    : ''
                 }`}
+                // Remounting on each spotlight replays the reveal, so asking
+                // for the same word twice still flags where it landed.
+                key={
+                  found.word === spotlight?.word
+                    ? `reveal-${String(spotlight.id)}`
+                    : 'idle'
+                }
               >
                 {/* The word spelled in the game's miniature tiles, as in the
                     history rows (long words in the compact cut, so even the
                     dictionary's deepest reach fits a phone); the plain text
                     stays for screen readers. */}
                 <a
-                  className="touch-manipulation transition hover:opacity-70"
+                  className={`touch-manipulation transition hover:opacity-70 ${
+                    found.word === spotlight?.word && spotlight.requested
+                      ? 'slot-locate'
+                      : ''
+                  }`}
                   data-hinted={found.hinted}
                   href={`https://www.merriam-webster.com/dictionary/${found.word}`}
                   rel="noreferrer"

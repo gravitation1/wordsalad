@@ -647,6 +647,37 @@ describe('App', () => {
     expect(slots()[2]).toHaveAttribute('data-found', 'false');
   });
 
+  it('scrolls to a word that was already found when it is resubmitted', () => {
+    render(<App dictionary={DICTIONARY} />);
+    // The row the drum has brought into view.
+    const revealedRow = () =>
+      within(screen.getByTestId('word-drum'))
+        .getAllByTestId('word-slot')
+        .find((slot) => slot.getAttribute('data-spotlight') === 'true')
+        ?.textContent ?? '';
+
+    // ROTTED sorts first and TEST second, so the spotlight has somewhere to
+    // travel. Together they stay under the win line, leaving the board
+    // playable (a win modal would swallow the keyboard).
+    submitWord('rotted');
+    submitWord('test');
+    expect(revealedRow()).toContain('TEST');
+
+    // Re-submitting a found word is a request to be shown where it is: the
+    // drum brings it back into view (and says it was already found).
+    submitWord('rotted');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'ROTTED was already found!',
+    );
+    expect(revealedRow()).toContain('ROTTED');
+
+    // Asking for the same word twice running still re-spotlights it.
+    submitWord('test');
+    expect(revealedRow()).toContain('TEST');
+    submitWord('test');
+    expect(revealedRow()).toContain('TEST');
+  });
+
   it('announces an error for a word that is not in the dictionary', () => {
     render(<App dictionary={DICTIONARY} />);
     submitWord('toss');

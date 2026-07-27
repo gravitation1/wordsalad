@@ -160,7 +160,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           earnedPoints={game.earnedPoints}
           hasWon={game.hasWon}
           hintCount={game.hintCount}
-          lastFoundWord={game.lastFoundWord}
+          spotlight={game.spotlight}
           level={game.level}
           lockedOut={game.lockedOut}
           lockout={game.lockout}
