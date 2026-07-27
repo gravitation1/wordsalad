@@ -14,21 +14,25 @@ export function FeedbackLine({
   const t = useMessages();
   const isSuccess = feedback?.kind === 'scored';
 
-  // A scored word celebrates in the game's miniature tiles, spliced into
-  // the localized sentence wherever the word sits in it; the full sentence
-  // stays for screen readers. Rejections remain plain text.
+  // Every message names something the player just typed — a word, or the
+  // stray letter they reached for. That subject is set in the game's
+  // miniature tiles and spliced back into the localized sentence wherever it
+  // sits in it, so a rejected word is as legible as a scored one; the full
+  // sentence stays for screen readers.
   const renderMessage = () => {
     if (feedback === null) {
       return null;
     }
     const message = t.feedbackText(feedback);
-    if (feedback.kind !== 'scored' || !message.includes(feedback.word)) {
+    const subject =
+      feedback.kind === 'letter-rejected' ? feedback.letter : feedback.word;
+    const at = message.indexOf(subject);
+    if (at < 0) {
       return <span>{message}</span>;
     }
-    const at = message.indexOf(feedback.word);
     const prefix = message.slice(0, at).trim();
-    const suffix = message.slice(at + feedback.word.length).trim();
-    const compact = feedback.word.length > 9;
+    const suffix = message.slice(at + subject.length).trim();
+    const compact = subject.length > 9;
     return (
       <>
         <span className="sr-only">{message}</span>
@@ -40,7 +44,7 @@ export function FeedbackLine({
           <span
             className={`flex items-center ${compact ? 'gap-0.5' : 'gap-1'}`}
           >
-            {Array.from(feedback.word).map((letter, index) => (
+            {Array.from(subject).map((letter, index) => (
               <span
                 className={miniTileClass(letter, requiredCharacters, {
                   compact,
