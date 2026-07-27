@@ -101,6 +101,14 @@ export function CustomGameModal({ dictionary, onClose }: CustomGameModalProps) {
     );
   };
 
+  // Focus lands on the letters caret whenever that mode is showing — the
+  // field the dialog exists to collect.
+  useEffect(() => {
+    if (mode === 'letters') {
+      lettersInputRef.current?.focus();
+    }
+  }, [mode]);
+
   useEffect(() => {
     const dialog = dialogRef.current;
     if (dialog !== null && !dialog.open) {
@@ -189,6 +197,11 @@ export function CustomGameModal({ dictionary, onClose }: CustomGameModalProps) {
   ];
 
   return (
+    // Backdrop click closes the dialog. The keyboard equivalent the a11y
+    // rules ask for is built into <dialog> itself — Esc fires onClose —
+    // so the handler needs no key listener of its own.
+    /* eslint-disable-next-line jsx-a11y/click-events-have-key-events,
+       jsx-a11y/no-noninteractive-element-interactions */
     <dialog
       aria-labelledby="custom-title"
       className="m-auto w-96 max-w-[calc(100vw-2rem)] rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-xl backdrop:bg-black/40 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
@@ -291,7 +304,6 @@ export function CustomGameModal({ dictionary, onClose }: CustomGameModalProps) {
                   always take the last tile back. */}
               <input
                 aria-label={t.customLettersLabel}
-                autoFocus
                 className="h-9 min-w-6 flex-1 bg-transparent px-1 text-base uppercase tracking-widest text-gray-900 focus:outline-none dark:text-gray-100"
                 id="custom-letters"
                 inputMode="text"

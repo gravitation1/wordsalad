@@ -43,7 +43,7 @@ function closeWin(): void {
 }
 
 function currentWord(): string {
-  return screen.getByLabelText('Current word').textContent ?? '';
+  return screen.getByLabelText('Current word').textContent;
 }
 
 describe('App', () => {

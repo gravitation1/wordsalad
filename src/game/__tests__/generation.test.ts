@@ -47,13 +47,13 @@ describe('randomCharacterString', () => {
   });
 
   it('rejects sizes below the minimum', () => {
-    expect(() => randomCharacterString(2)).toThrowError(
+    expect(() => randomCharacterString(2)).toThrow(
       'Character set size too small!',
     );
   });
 
   it('rejects sizes above the maximum', () => {
-    expect(() => randomCharacterString(27)).toThrowError(
+    expect(() => randomCharacterString(27)).toThrow(
       'Character set size too large!',
     );
   });
@@ -74,13 +74,13 @@ describe('storeWordSalad and loadWordSalad', () => {
   });
 
   it('rejects an encoding with the wrong number of pieces', () => {
-    expect(() => loadWordSalad(DICTIONARY, 'WORDTES')).toThrowError(
+    expect(() => loadWordSalad(DICTIONARY, 'WORDTES')).toThrow(
       'Invalid game data!',
     );
-    expect(() => loadWordSalad(DICTIONARY, 'WORDTES.T')).toThrowError(
+    expect(() => loadWordSalad(DICTIONARY, 'WORDTES.T')).toThrow(
       'Invalid game data!',
     );
-    expect(() => loadWordSalad(DICTIONARY, 'WORDTES.T.4.9')).toThrowError(
+    expect(() => loadWordSalad(DICTIONARY, 'WORDTES.T.4.9')).toThrow(
       'Invalid game data!',
     );
   });
@@ -100,7 +100,7 @@ describe('storeWordSalad and loadWordSalad', () => {
       'WORDTES.T.', // empty minimum length
     ];
     for (const encoded of malformed) {
-      expect(() => loadWordSalad(DICTIONARY, encoded)).toThrowError(
+      expect(() => loadWordSalad(DICTIONARY, encoded)).toThrow(
         'Invalid game data!',
       );
     }
@@ -116,20 +116,20 @@ describe('storeWordSalad and loadWordSalad', () => {
   });
 
   it('rejects an encoding whose required character is not in the set', () => {
-    expect(() => loadWordSalad(DICTIONARY, 'WORDES.T.4')).toThrowError(
+    expect(() => loadWordSalad(DICTIONARY, 'WORDES.T.4')).toThrow(
       'Missing required character!',
     );
   });
 
   it('rejects an encoding requiring a letter outside the set', () => {
     // R is present but Z is not; every required letter must be in the set.
-    expect(() => loadWordSalad(DICTIONARY, 'WORDTES.RZ.4')).toThrowError(
+    expect(() => loadWordSalad(DICTIONARY, 'WORDTES.RZ.4')).toThrow(
       'Missing required character!',
     );
   });
 
   it('rejects a hash with no valid words', () => {
-    expect(() => loadWordSalad(DICTIONARY, 'XYZQJKV.X.4')).toThrowError(
+    expect(() => loadWordSalad(DICTIONARY, 'XYZQJKV.X.4')).toThrow(
       'No valid words!',
     );
   });
@@ -245,13 +245,11 @@ describe('generateWordSalad', () => {
   it('fails when more letters are required than a board holds', () => {
     expect(() =>
       generateWordSalad(REAL_DICTIONARY, { requiredCharacters: 'ABCDEFGH' }),
-    ).toThrowError('Failed to generate a game!');
+    ).toThrow('Failed to generate a game!');
   });
 
   it('gives up after too many failed attempts', () => {
-    expect(() => generateWordSalad([])).toThrowError(
-      'Failed to generate a game!',
-    );
+    expect(() => generateWordSalad([])).toThrow('Failed to generate a game!');
   });
 });
 
@@ -267,7 +265,7 @@ describe('bestRequiredCharacter', () => {
   });
 
   it('throws when no letter yields any word', () => {
-    expect(() => bestRequiredCharacter(DICTIONARY, 'XYZQJKV', 4)).toThrowError(
+    expect(() => bestRequiredCharacter(DICTIONARY, 'XYZQJKV', 4)).toThrow(
       'No valid words!',
     );
   });

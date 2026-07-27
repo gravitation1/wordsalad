@@ -46,6 +46,8 @@ export function WordDrum({
     const bottomFade = Math.min(Math.max(bottomGap, 0), FADE_PX);
     const fade = `linear-gradient(to bottom, transparent, black ${topFade}px, black calc(100% - ${bottomFade}px), transparent)`;
     container.style.maskImage = fade;
+    // The prefixed alias is deliberate: Safari still needs it for masks.
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     container.style.webkitMaskImage = fade;
   }, []);
 
@@ -58,7 +60,12 @@ export function WordDrum({
     updateEdgeFade();
   }, [updateEdgeFade, slots.length]);
 
-  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(frame.current);
+    },
+    [],
+  );
 
   // A fresh find spins the drum to its slot; the reveal plays there. If the
   // player interacted with the drum moments ago, skip the spin — the row
@@ -82,8 +89,12 @@ export function WordDrum({
       container.scrollTop = Math.max(0, top); // no layout/smooth scrolling (jsdom)
       return;
     }
-    const reduceMotion =
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    // Reached only in a real browser: the guard above returns early wherever
+    // scrollTo is missing, which is the same environment (jsdom) that lacks
+    // matchMedia.
+    const reduceMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches;
     container.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
   }, [lastFoundWord, slots]);
 

@@ -74,6 +74,11 @@ export function WinDialog({
   }
 
   return (
+    // Backdrop click closes the dialog. The keyboard equivalent the a11y
+    // rules ask for is built into <dialog> itself — Esc fires onClose —
+    // so the handler needs no key listener of its own.
+    /* eslint-disable-next-line jsx-a11y/click-events-have-key-events,
+       jsx-a11y/no-noninteractive-element-interactions */
     <dialog
       aria-labelledby="win-title"
       // focus:outline-none: the dialog is a programmatic focus target (see

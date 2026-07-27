@@ -224,6 +224,11 @@ export function HistoryDialog({
   );
 
   return (
+    // Backdrop click closes the dialog. The keyboard equivalent the a11y
+    // rules ask for is built into <dialog> itself — Esc fires onClose —
+    // so the handler needs no key listener of its own.
+    /* eslint-disable-next-line jsx-a11y/click-events-have-key-events,
+       jsx-a11y/no-noninteractive-element-interactions */
     <dialog
       aria-labelledby="history-title"
       className="m-auto w-[26rem] max-w-[calc(100vw-2rem)] rounded-2xl border border-gray-200 bg-white p-5 text-gray-900 shadow-xl backdrop:bg-black/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"

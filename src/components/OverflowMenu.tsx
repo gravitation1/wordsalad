@@ -108,9 +108,12 @@ export function OverflowMenu({
         // Anchored to the right edge: the trigger sits at the header's end,
         // so a left-anchored panel could overflow narrow screens.
         <div
-          className="absolute right-0 top-full z-10 mt-2 min-w-44 rounded-lg border border-gray-200 bg-white py-1 text-left shadow-lg dark:border-gray-700 dark:bg-gray-900"
+          className="absolute right-0 top-full z-10 mt-2 min-w-44 rounded-lg border border-gray-200 bg-white py-1 text-left shadow-lg focus:outline-none dark:border-gray-700 dark:bg-gray-900"
           onKeyDown={onMenuKeyDown}
           role="menu"
+          // The menu container owns the arrow-key handling, so it must be a
+          // focus target itself (roving focus lives on the items).
+          tabIndex={-1}
         >
           {items.map((item, index) => (
             <button

@@ -84,7 +84,7 @@ export function SaladLetters({
             // score after an earlier win) replays the wave without remount.
             className={`${
               cheering
-                ? (celebration?.id ?? 0) % 2 === 1
+                ? celebration.id % 2 === 1
                   ? 'tile-cheer'
                   : 'tile-cheer-alt'
                 : 'letter-toss'

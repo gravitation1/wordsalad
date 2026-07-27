@@ -125,7 +125,8 @@ const EN: Messages = {
   customMinLabel: 'min',
   customMaxLabel: 'max',
   customLettersLabel: 'Letters',
-  customLettersHint: 'Type up to 7 letters · tap one to require it in every word',
+  customLettersHint:
+    'Type up to 7 letters · tap one to require it in every word',
   customMinLengthLabel: 'Minimum word length',
   customWordCountLabel: 'Word count',
   customPangramLabel: 'Require a pangram',
@@ -137,7 +138,9 @@ const EN: Messages = {
     `${points} point${plural('en', points, { one: '', other: 's' })}` +
     (hasPangram ? ' · pangram ✓' : ' · no pangram'),
   customError: (kind) =>
-    kind === 'no-words' ? 'No valid words for these letters' : 'Could not build a game with these settings',
+    kind === 'no-words'
+      ? 'No valid words for these letters'
+      : 'Could not build a game with these settings',
   restartButton: 'Restart',
   historyButton: 'History',
   historyTitle: 'History',
@@ -264,7 +267,8 @@ const FR: Messages = {
   customMinLabel: 'min',
   customMaxLabel: 'max',
   customLettersLabel: 'Lettres',
-  customLettersHint: 'Saisissez jusqu’à 7 lettres · touchez-en une pour l’exiger dans chaque mot',
+  customLettersHint:
+    'Saisissez jusqu’à 7 lettres · touchez-en une pour l’exiger dans chaque mot',
   customMinLengthLabel: 'Longueur minimale des mots',
   customWordCountLabel: 'Nombre de mots',
   customPangramLabel: 'Exiger un pangramme',
@@ -276,7 +280,9 @@ const FR: Messages = {
     `${points} point${plural('fr', points, { one: '', other: 's' })}` +
     (hasPangram ? ' · pangramme ✓' : ' · pas de pangramme'),
   customError: (kind) =>
-    kind === 'no-words' ? 'Aucun mot valide pour ces lettres' : 'Impossible de créer une partie avec ces réglages',
+    kind === 'no-words'
+      ? 'Aucun mot valide pour ces lettres'
+      : 'Impossible de créer une partie avec ces réglages',
   restartButton: 'Recommencer',
   historyButton: 'Historique',
   historyTitle: 'Historique',
@@ -405,7 +411,8 @@ const ES: Messages = {
   customMinLabel: 'mín',
   customMaxLabel: 'máx',
   customLettersLabel: 'Letras',
-  customLettersHint: 'Escribe hasta 7 letras · toca una para exigirla en cada palabra',
+  customLettersHint:
+    'Escribe hasta 7 letras · toca una para exigirla en cada palabra',
   customMinLengthLabel: 'Longitud mínima de palabra',
   customWordCountLabel: 'Número de palabras',
   customPangramLabel: 'Exigir un pangrama',
@@ -417,7 +424,9 @@ const ES: Messages = {
     `${points} punto${plural('es', points, { one: '', other: 's' })}` +
     (hasPangram ? ' · pangrama ✓' : ' · sin pangrama'),
   customError: (kind) =>
-    kind === 'no-words' ? 'No hay palabras válidas para estas letras' : 'No se pudo crear una partida con estos ajustes',
+    kind === 'no-words'
+      ? 'No hay palabras válidas para estas letras'
+      : 'No se pudo crear una partida con estos ajustes',
   restartButton: 'Reiniciar',
   historyButton: 'Historial',
   historyTitle: 'Historial',
@@ -546,7 +555,8 @@ const DE: Messages = {
   customMinLabel: 'min',
   customMaxLabel: 'max',
   customLettersLabel: 'Buchstaben',
-  customLettersHint: 'Bis zu 7 Buchstaben eingeben · einen antippen, um ihn in jedem Wort zu verlangen',
+  customLettersHint:
+    'Bis zu 7 Buchstaben eingeben · einen antippen, um ihn in jedem Wort zu verlangen',
   customMinLengthLabel: 'Mindestwortlänge',
   customWordCountLabel: 'Wortanzahl',
   customPangramLabel: 'Pangramm verlangen',
@@ -558,7 +568,9 @@ const DE: Messages = {
     `${points} ${plural('de', points, { one: 'Punkt', other: 'Punkte' })}` +
     (hasPangram ? ' · Pangramm ✓' : ' · kein Pangramm'),
   customError: (kind) =>
-    kind === 'no-words' ? 'Keine gültigen Wörter für diese Buchstaben' : 'Mit diesen Einstellungen ließ sich kein Spiel erstellen',
+    kind === 'no-words'
+      ? 'Keine gültigen Wörter für diese Buchstaben'
+      : 'Mit diesen Einstellungen ließ sich kein Spiel erstellen',
   restartButton: 'Neu starten',
   historyButton: 'Verlauf',
   historyTitle: 'Verlauf',
@@ -688,7 +700,8 @@ const IT: Messages = {
   customMinLabel: 'min',
   customMaxLabel: 'max',
   customLettersLabel: 'Lettere',
-  customLettersHint: 'Digita fino a 7 lettere · toccane una per richiederla in ogni parola',
+  customLettersHint:
+    'Digita fino a 7 lettere · toccane una per richiederla in ogni parola',
   customMinLengthLabel: 'Lunghezza minima delle parole',
   customWordCountLabel: 'Numero di parole',
   customPangramLabel: 'Richiedi un pangramma',
@@ -700,7 +713,9 @@ const IT: Messages = {
     `${points} ${plural('it', points, { one: 'punto', other: 'punti' })}` +
     (hasPangram ? ' · pangramma ✓' : ' · nessun pangramma'),
   customError: (kind) =>
-    kind === 'no-words' ? 'Nessuna parola valida per queste lettere' : 'Impossibile creare una partita con queste impostazioni',
+    kind === 'no-words'
+      ? 'Nessuna parola valida per queste lettere'
+      : 'Impossibile creare una partita con queste impostazioni',
   restartButton: 'Ricomincia',
   historyButton: 'Cronologia',
   historyTitle: 'Cronologia',
@@ -830,7 +845,8 @@ const PT: Messages = {
   customMinLabel: 'mín',
   customMaxLabel: 'máx',
   customLettersLabel: 'Letras',
-  customLettersHint: 'Digite até 7 letras · toque numa para exigi-la em cada palavra',
+  customLettersHint:
+    'Digite até 7 letras · toque numa para exigi-la em cada palavra',
   customMinLengthLabel: 'Comprimento mínimo da palavra',
   customWordCountLabel: 'Número de palavras',
   customPangramLabel: 'Exigir um pangrama',
@@ -842,7 +858,9 @@ const PT: Messages = {
     `${points} ponto${plural('pt', points, { one: '', other: 's' })}` +
     (hasPangram ? ' · pangrama ✓' : ' · sem pangrama'),
   customError: (kind) =>
-    kind === 'no-words' ? 'Nenhuma palavra válida para estas letras' : 'Não foi possível criar um jogo com estas definições',
+    kind === 'no-words'
+      ? 'Nenhuma palavra válida para estas letras'
+      : 'Não foi possível criar um jogo com estas definições',
   restartButton: 'Recomeçar',
   historyButton: 'Histórico',
   historyTitle: 'Histórico',
@@ -971,7 +989,8 @@ const NL: Messages = {
   customMinLabel: 'min',
   customMaxLabel: 'max',
   customLettersLabel: 'Letters',
-  customLettersHint: 'Typ maximaal 7 letters · tik op één om die in elk woord te vereisen',
+  customLettersHint:
+    'Typ maximaal 7 letters · tik op één om die in elk woord te vereisen',
   customMinLengthLabel: 'Minimale woordlengte',
   customWordCountLabel: 'Aantal woorden',
   customPangramLabel: 'Pangram vereisen',
@@ -983,7 +1002,9 @@ const NL: Messages = {
     `${points} ${plural('nl', points, { one: 'punt', other: 'punten' })}` +
     (hasPangram ? ' · pangram ✓' : ' · geen pangram'),
   customError: (kind) =>
-    kind === 'no-words' ? 'Geen geldige woorden voor deze letters' : 'Kon geen spel maken met deze instellingen',
+    kind === 'no-words'
+      ? 'Geen geldige woorden voor deze letters'
+      : 'Kon geen spel maken met deze instellingen',
   restartButton: 'Opnieuw beginnen',
   historyButton: 'Geschiedenis',
   historyTitle: 'Geschiedenis',
@@ -1124,7 +1145,9 @@ const JA: Messages = {
     `${words} 単語 · ${points} ポイント` +
     (hasPangram ? ' ・パングラムあり ✓' : ' ・パングラムなし'),
   customError: (kind) =>
-    kind === 'no-words' ? 'この文字では有効な単語がありません' : 'この設定ではゲームを作成できませんでした',
+    kind === 'no-words'
+      ? 'この文字では有効な単語がありません'
+      : 'この設定ではゲームを作成できませんでした',
   restartButton: 'やり直す',
   historyButton: '履歴',
   historyTitle: '履歴',
@@ -1256,7 +1279,9 @@ const KO: Messages = {
     `${words} 단어 · ${points} 점` +
     (hasPangram ? ' · 팬그램 있음 ✓' : ' · 팬그램 없음'),
   customError: (kind) =>
-    kind === 'no-words' ? '이 글자로는 유효한 단어가 없습니다' : '이 설정으로는 게임을 만들 수 없습니다',
+    kind === 'no-words'
+      ? '이 글자로는 유효한 단어가 없습니다'
+      : '이 설정으로는 게임을 만들 수 없습니다',
   restartButton: '다시 시작',
   historyButton: '기록',
   historyTitle: '기록',
@@ -1507,7 +1532,8 @@ const RU: Messages = {
   customMinLabel: 'мин',
   customMaxLabel: 'макс',
   customLettersLabel: 'Буквы',
-  customLettersHint: 'Введите до 7 букв · нажмите на букву, чтобы требовать её в каждом слове',
+  customLettersHint:
+    'Введите до 7 букв · нажмите на букву, чтобы требовать её в каждом слове',
   customMinLengthLabel: 'Минимальная длина слова',
   customWordCountLabel: 'Количество слов',
   customPangramLabel: 'Требовать панграмму',
@@ -1519,7 +1545,9 @@ const RU: Messages = {
     `${points} ${plural('ru', points, { one: 'очко', few: 'очка', other: 'очков' })}` +
     (hasPangram ? ' · есть панграмма ✓' : ' · нет панграммы'),
   customError: (kind) =>
-    kind === 'no-words' ? 'Нет допустимых слов для этих букв' : 'Не удалось создать игру с этими настройками',
+    kind === 'no-words'
+      ? 'Нет допустимых слов для этих букв'
+      : 'Не удалось создать игру с этими настройками',
   restartButton: 'Начать заново',
   historyButton: 'История',
   historyTitle: 'История',

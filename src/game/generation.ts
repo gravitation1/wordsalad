@@ -29,13 +29,13 @@ export function randomCharacterString(length: number): string {
     );
   }
 
-  const vowels = shuffled([...'AEIOU'])
+  const vowels = shuffled(Array.from('AEIOU'))
     .slice(0, Math.ceil(length / 5))
     .join('');
-  const consonants = shuffled([...'BCDFGHJKLMNPQRSTVWXYZ'])
+  const consonants = shuffled(Array.from('BCDFGHJKLMNPQRSTVWXYZ'))
     .slice(0, length - vowels.length)
     .join('');
-  return shuffled([...(vowels + consonants)]).join('');
+  return shuffled(Array.from(vowels + consonants)).join('');
 }
 
 // The curated word-count band a generated game falls into unless a caller
@@ -72,8 +72,7 @@ export function newRandomWordSalad(
       ? characters
       : (required + kept.join('')).slice(0, GAME_CHARACTER_SET_SIZE);
   // Unspecified means "pick one for me"; an explicit '' means none at all.
-  const chosen =
-    requiredCharacters === undefined ? validCharacters[0] : requiredCharacters;
+  const chosen = requiredCharacters ?? validCharacters[0];
   return new WordSalad(
     new Set(validCharacters),
     chosen,
@@ -142,8 +141,10 @@ export function generateWordSalad(
   // so tight or sparse settings still resolve to a game.
   const constrained = Object.keys(constraints).length > 0;
   const midpoint = (minWords + maxWords) / 2;
-  let fallback: WordSalad | null = null;
-  let fallbackScore = -Infinity;
+  const closest: { salad: WordSalad | null; score: number } = {
+    salad: null,
+    score: -Infinity,
+  };
   const consider = (wordSalad: WordSalad): WordSalad | null => {
     const wordCount = wordSalad.remainingWords.size;
     if (wordCount >= minWords && wordCount <= maxWords) {
@@ -151,9 +152,9 @@ export function generateWordSalad(
     }
     if (constrained) {
       const score = -Math.abs(wordCount - midpoint);
-      if (score > fallbackScore) {
-        fallbackScore = score;
-        fallback = wordSalad;
+      if (score > closest.score) {
+        closest.score = score;
+        closest.salad = wordSalad;
       }
     }
     return null;
@@ -169,10 +170,7 @@ export function generateWordSalad(
       ),
     );
     for (const signature of signatures) {
-      const required =
-        requiredCharacters === undefined
-          ? shuffled(Array.from(signature))[0]
-          : requiredCharacters;
+      const required = requiredCharacters ?? shuffled(Array.from(signature))[0];
       const wordSalad = new WordSalad(
         new Set(signature),
         required,
@@ -205,8 +203,8 @@ export function generateWordSalad(
     }
   }
 
-  if (fallback !== null) {
-    return fallback;
+  if (closest.salad !== null) {
+    return closest.salad;
   }
   throw new WordSaladError('GenerationFailed', 'Failed to generate a game!');
 }

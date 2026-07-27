@@ -46,6 +46,11 @@ export function LockoutDialog({
   }, []);
 
   return (
+    // Backdrop click closes the dialog. The keyboard equivalent the a11y
+    // rules ask for is built into <dialog> itself — Esc fires onClose —
+    // so the handler needs no key listener of its own.
+    /* eslint-disable-next-line jsx-a11y/click-events-have-key-events,
+       jsx-a11y/no-noninteractive-element-interactions */
     <dialog
       aria-labelledby="lockout-title"
       className="m-auto w-96 max-w-[calc(100vw-2rem)] rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-xl backdrop:bg-black/40 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"

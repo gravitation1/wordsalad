@@ -57,7 +57,7 @@ function fixtureLinks(): Plugin {
   const ESC = String.fromCharCode(27);
   // Colorize only for an interactive terminal, so piped/redirected output
   // (and NO_COLOR) stays plain.
-  const useColor = process.stdout.isTTY === true && !process.env.NO_COLOR;
+  const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
   const dim = (text: string) =>
     useColor ? `${ESC}[2m${text}${ESC}[22m` : text;
   const cyan = (text: string) =>
@@ -73,11 +73,12 @@ function fixtureLinks(): Plugin {
         if (base === undefined) {
           return;
         }
-        const log = server.config.logger.info;
-        log(`  ${dim('➜')}  ${dim('Fixtures:')}`);
+        // Call through the logger so `info` keeps its `this`.
+        const { logger } = server.config;
+        logger.info(`  ${dim('➜')}  ${dim('Fixtures:')}`);
         for (const { note, query } of FIXTURES) {
-          log(`     ${cyan(`${base}${query}`)}`);
-          log(`       ${dim(note)}`);
+          logger.info(`     ${cyan(`${base}${query}`)}`);
+          logger.info(`       ${dim(note)}`);
         }
       };
     },
