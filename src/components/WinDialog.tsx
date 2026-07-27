@@ -17,7 +17,7 @@ interface WinDialogProps {
   letters: readonly string[];
   onClose: () => void;
   onCustomGame: () => void;
-  onPlayAgain: () => void;
+  onNewGame: () => void;
   onShare: () => void;
   requiredCharacters: string;
   shareCopied: boolean;
@@ -30,7 +30,7 @@ export function WinDialog({
   letters,
   onClose,
   onCustomGame,
-  onPlayAgain,
+  onNewGame,
   onShare,
   requiredCharacters,
   shareCopied,
@@ -172,10 +172,10 @@ export function WinDialog({
                 ? 'bg-amber-400 hover:bg-amber-400/90'
                 : 'bg-accent hover:bg-accent/90'
             }`}
-            onClick={onPlayAgain}
+            onClick={onNewGame}
             type="button"
           >
-            {t.playAgainButton}
+            {t.newGameButton}
           </button>
           <button
             className="min-h-11 touch-manipulation rounded-full border border-gray-300 px-5 py-2 font-medium transition hover:bg-gray-50 active:scale-95 dark:border-gray-700 dark:hover:bg-gray-800"

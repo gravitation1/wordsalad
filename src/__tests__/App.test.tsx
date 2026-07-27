@@ -677,8 +677,11 @@ describe('App', () => {
     submitWord('rotted');
     submitWord('worsted');
     expect(screen.getByText('YOU WIN!')).toBeInTheDocument();
+    // Scoped to the modal: the header carries a New game button of its own.
     expect(
-      screen.getByRole('button', { name: 'Play again' }),
+      within(screen.getByTestId('win-banner')).getByRole('button', {
+        name: 'New game',
+      }),
     ).toBeInTheDocument();
     expect(screen.getByText('Found 3 words')).toBeInTheDocument();
     expect(

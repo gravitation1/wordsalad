@@ -168,7 +168,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           lostPoints={game.lostPoints}
           maxPoints={game.maxPoints}
           onCustomGame={openCustom}
-          onPlayAgain={game.startNewGame}
+          onNewGame={game.startNewGame}
           onRestart={game.restartGame}
           rankUp={game.rankUp}
           winPoints={game.winPoints}

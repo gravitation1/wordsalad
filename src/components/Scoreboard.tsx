@@ -35,7 +35,7 @@ interface ScoreboardProps {
   challengeScore: number | null;
   rankUp: RankUp | null;
   onCustomGame: () => void;
-  onPlayAgain: () => void;
+  onNewGame: () => void;
   onRestart: () => void;
 }
 
@@ -76,7 +76,7 @@ export function Scoreboard({
   challengeScore,
   rankUp,
   onCustomGame,
-  onPlayAgain,
+  onNewGame,
   onRestart,
 }: ScoreboardProps) {
   const t = useMessages();
@@ -183,7 +183,7 @@ export function Scoreboard({
             setDismissedWinId(celebration.id);
             onCustomGame();
           }}
-          onPlayAgain={onPlayAgain}
+          onNewGame={onNewGame}
           onShare={() => {
             void handleShare();
           }}

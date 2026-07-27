@@ -29,7 +29,6 @@ export interface Messages {
   wordsHeader: string;
   pointsHeader: string;
   newGameButton: string;
-  playAgainButton: string;
   keepPlayingButton: string;
   customGameButton: string;
   moreMenuLabel: string;
@@ -114,7 +113,6 @@ const EN: Messages = {
   wordsHeader: 'Words',
   pointsHeader: 'Points',
   newGameButton: 'New game',
-  playAgainButton: 'Play again',
   keepPlayingButton: 'Keep playing',
   customGameButton: 'Custom game',
   moreMenuLabel: 'More options',
@@ -256,7 +254,6 @@ const FR: Messages = {
   wordsHeader: 'Mots',
   pointsHeader: 'Points',
   newGameButton: 'Nouvelle partie',
-  playAgainButton: 'Rejouer',
   keepPlayingButton: 'Continuer à jouer',
   customGameButton: 'Partie personnalisée',
   moreMenuLabel: 'Plus d’options',
@@ -400,7 +397,6 @@ const ES: Messages = {
   wordsHeader: 'Palabras',
   pointsHeader: 'Puntos',
   newGameButton: 'Nueva partida',
-  playAgainButton: 'Jugar otra vez',
   keepPlayingButton: 'Seguir jugando',
   customGameButton: 'Partida personalizada',
   moreMenuLabel: 'Más opciones',
@@ -544,7 +540,6 @@ const DE: Messages = {
   wordsHeader: 'Wörter',
   pointsHeader: 'Punkte',
   newGameButton: 'Neues Spiel',
-  playAgainButton: 'Nochmal spielen',
   keepPlayingButton: 'Weiterspielen',
   customGameButton: 'Eigenes Spiel',
   moreMenuLabel: 'Weitere Optionen',
@@ -689,7 +684,6 @@ const IT: Messages = {
   wordsHeader: 'Parole',
   pointsHeader: 'Punti',
   newGameButton: 'Nuova partita',
-  playAgainButton: 'Gioca ancora',
   keepPlayingButton: 'Continua a giocare',
   customGameButton: 'Partita personalizzata',
   moreMenuLabel: 'Altre opzioni',
@@ -834,7 +828,6 @@ const PT: Messages = {
   wordsHeader: 'Palavras',
   pointsHeader: 'Pontos',
   newGameButton: 'Novo jogo',
-  playAgainButton: 'Jogar de novo',
   keepPlayingButton: 'Continuar jogando',
   customGameButton: 'Jogo personalizado',
   moreMenuLabel: 'Mais opções',
@@ -978,7 +971,6 @@ const NL: Messages = {
   wordsHeader: 'Woorden',
   pointsHeader: 'Punten',
   newGameButton: 'Nieuw spel',
-  playAgainButton: 'Opnieuw spelen',
   keepPlayingButton: 'Verder spelen',
   customGameButton: 'Eigen spel',
   moreMenuLabel: 'Meer opties',
@@ -1123,7 +1115,6 @@ const JA: Messages = {
   wordsHeader: '単語',
   pointsHeader: 'ポイント',
   newGameButton: '新しいゲーム',
-  playAgainButton: 'もう一度遊ぶ',
   keepPlayingButton: 'プレイを続ける',
   customGameButton: 'カスタムゲーム',
   moreMenuLabel: 'その他のオプション',
@@ -1257,7 +1248,6 @@ const KO: Messages = {
   wordsHeader: '단어',
   pointsHeader: '점수',
   newGameButton: '새 게임',
-  playAgainButton: '다시 하기',
   keepPlayingButton: '계속 플레이하기',
   customGameButton: '커스텀 게임',
   moreMenuLabel: '더 보기',
@@ -1391,7 +1381,6 @@ const ZH: Messages = {
   wordsHeader: '单词',
   pointsHeader: '分数',
   newGameButton: '新游戏',
-  playAgainButton: '再玩一局',
   keepPlayingButton: '继续游戏',
   customGameButton: '自定义游戏',
   moreMenuLabel: '更多选项',
@@ -1521,7 +1510,6 @@ const RU: Messages = {
   wordsHeader: 'Слова',
   pointsHeader: 'Очки',
   newGameButton: 'Новая игра',
-  playAgainButton: 'Сыграть ещё раз',
   keepPlayingButton: 'Продолжить игру',
   customGameButton: 'Своя игра',
   moreMenuLabel: 'Ещё',
