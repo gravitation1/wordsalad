@@ -9,10 +9,11 @@ interface WordDrumProps {
   slots: readonly WordSlot[];
 }
 
-// A fixed-height drum: a snap-scrolling window onto the full word list, so
-// the scoreboard never grows with the puzzle. Native overflow scrolling
-// supplies the physics; a scroll-sized mask fades rows in and out at the
-// edges.
+// A fixed-height drum: a scrolling window onto the full word list, so the
+// scoreboard never grows with the puzzle. Native overflow scrolling supplies
+// the physics, free of scroll snapping — mandatory snap intercepted every
+// flick and made the motion feel like it was grabbing at rows. A scroll-sized
+// mask fades rows in and out at the edges.
 const ROW_HEIGHT = 32;
 const VISIBLE_ROWS = 7;
 const DRUM_HEIGHT = ROW_HEIGHT * VISIBLE_ROWS;
@@ -104,7 +105,7 @@ export function WordDrum({
 
   return (
     <ul
-      className="w-full snap-y snap-mandatory overflow-y-auto [scrollbar-width:none]"
+      className="w-full overflow-y-auto [scrollbar-width:none]"
       data-testid="word-drum"
       onPointerDown={markInteraction}
       onScroll={handleScroll}
@@ -119,7 +120,6 @@ export function WordDrum({
             // Placeholders are visual scaffolding; screen readers hear only
             // the found words, as with the old flat table.
             aria-hidden={found === null ? true : undefined}
-            className="snap-center"
             data-found={found === null ? 'false' : 'true'}
             data-testid="word-slot"
             key={index}
