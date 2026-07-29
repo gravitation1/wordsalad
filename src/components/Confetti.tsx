@@ -124,10 +124,20 @@ export function WinBurst({
   perfect,
   requiredCharacters,
 }: WinBurstProps) {
+  // The banner's burst is fixed rather than absolute, like the rain above
+  // it: pieces fly well past the dialog's edges, and an absolute layer would
+  // make the dialog count that flight as content to scroll to — a scrollbar
+  // flickering through the celebration. Fixed descendants are outside their
+  // ancestors' scrollable overflow, and centering on the viewport lands in
+  // the same place, the dialog being centered there itself. The rank-up
+  // cousin stays absolute: it is anchored to a rating in the page, not to
+  // anything the viewport can locate.
   return (
     <span
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 flex items-center justify-center"
+      className={`pointer-events-none flex items-center justify-center ${
+        mini ? 'absolute' : 'fixed'
+      } inset-0`}
     >
       {(mini ? MINI_BURST_LAYOUTS : BURST_LAYOUTS).map((piece, index) => {
         const letter = letterFor(letters, piece.letterSlot);

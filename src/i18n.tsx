@@ -32,6 +32,9 @@ export interface Messages {
   keepPlayingButton: string;
   customGameButton: string;
   moreMenuLabel: string;
+  // The header's ♪ toggle. Its pressed state carries on/off, so the label
+  // names the thing rather than the action.
+  soundLabel: string;
   customGameTitle: string;
   customModeLegend: string;
   customModeRandom: string;
@@ -118,6 +121,7 @@ const EN: Messages = {
   keepPlayingButton: 'Keep playing',
   customGameButton: 'Custom game',
   moreMenuLabel: 'More options',
+  soundLabel: 'Sound',
   customGameTitle: 'Custom game',
   customModeLegend: 'Board',
   customModeRandom: 'Surprise me',
@@ -259,6 +263,7 @@ const FR: Messages = {
   keepPlayingButton: 'Continuer à jouer',
   customGameButton: 'Partie personnalisée',
   moreMenuLabel: 'Plus d’options',
+  soundLabel: 'Son',
   customGameTitle: 'Partie personnalisée',
   customModeLegend: 'Plateau',
   customModeRandom: 'Surprise',
@@ -402,6 +407,7 @@ const ES: Messages = {
   keepPlayingButton: 'Seguir jugando',
   customGameButton: 'Partida personalizada',
   moreMenuLabel: 'Más opciones',
+  soundLabel: 'Sonido',
   customGameTitle: 'Partida personalizada',
   customModeLegend: 'Tablero',
   customModeRandom: 'Sorpréndeme',
@@ -545,6 +551,7 @@ const DE: Messages = {
   keepPlayingButton: 'Weiterspielen',
   customGameButton: 'Eigenes Spiel',
   moreMenuLabel: 'Weitere Optionen',
+  soundLabel: 'Ton',
   customGameTitle: 'Eigenes Spiel',
   customModeLegend: 'Feld',
   customModeRandom: 'Überrasch mich',
@@ -689,6 +696,7 @@ const IT: Messages = {
   keepPlayingButton: 'Continua a giocare',
   customGameButton: 'Partita personalizzata',
   moreMenuLabel: 'Altre opzioni',
+  soundLabel: 'Suono',
   customGameTitle: 'Partita personalizzata',
   customModeLegend: 'Tabellone',
   customModeRandom: 'Sorprendimi',
@@ -833,6 +841,7 @@ const PT: Messages = {
   keepPlayingButton: 'Continuar jogando',
   customGameButton: 'Jogo personalizado',
   moreMenuLabel: 'Mais opções',
+  soundLabel: 'Som',
   customGameTitle: 'Jogo personalizado',
   customModeLegend: 'Tabuleiro',
   customModeRandom: 'Surpreenda-me',
@@ -976,6 +985,7 @@ const NL: Messages = {
   keepPlayingButton: 'Verder spelen',
   customGameButton: 'Eigen spel',
   moreMenuLabel: 'Meer opties',
+  soundLabel: 'Geluid',
   customGameTitle: 'Eigen spel',
   customModeLegend: 'Bord',
   customModeRandom: 'Verras me',
@@ -1120,6 +1130,7 @@ const JA: Messages = {
   keepPlayingButton: 'プレイを続ける',
   customGameButton: 'カスタムゲーム',
   moreMenuLabel: 'その他のオプション',
+  soundLabel: 'サウンド',
   customGameTitle: 'カスタムゲーム',
   customModeLegend: '盤面',
   customModeRandom: 'おまかせ',
@@ -1253,6 +1264,7 @@ const KO: Messages = {
   keepPlayingButton: '계속 플레이하기',
   customGameButton: '커스텀 게임',
   moreMenuLabel: '더 보기',
+  soundLabel: '소리',
   customGameTitle: '커스텀 게임',
   customModeLegend: '보드',
   customModeRandom: '랜덤',
@@ -1386,6 +1398,7 @@ const ZH: Messages = {
   keepPlayingButton: '继续游戏',
   customGameButton: '自定义游戏',
   moreMenuLabel: '更多选项',
+  soundLabel: '声音',
   customGameTitle: '自定义游戏',
   customModeLegend: '棋盘',
   customModeRandom: '随机',
@@ -1515,6 +1528,7 @@ const RU: Messages = {
   keepPlayingButton: 'Продолжить игру',
   customGameButton: 'Своя игра',
   moreMenuLabel: 'Ещё',
+  soundLabel: 'Звук',
   customGameTitle: 'Своя игра',
   customModeLegend: 'Поле',
   customModeRandom: 'Наугад',

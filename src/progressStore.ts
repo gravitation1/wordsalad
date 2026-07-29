@@ -8,6 +8,9 @@ const HINTED_WORDS_PREFIX = 'wordsalad:hinted:';
 const META_PREFIX = 'wordsalad:meta:';
 // Legacy key from an earlier hint-count design; still cleared on reset.
 const LEGACY_HINTS_PREFIX = 'wordsalad:hints:';
+// The one setting here that belongs to the player rather than to a puzzle,
+// so it has no game key and no reset survives it.
+const SOUND_KEY = 'wordsalad:sound';
 
 // A compact per-game record for the history view: everything the list and
 // its aggregate statistics need, without re-solving the puzzle.
@@ -130,6 +133,25 @@ export function loadSummaries(): readonly HistoryEntry[] {
     // No storage, no history.
   }
   return entries;
+}
+
+// Sound is off until asked for: a page that makes noise before it is
+// invited to is the definition of the thing this feature is trying not to
+// be. Anything unreadable therefore means silence.
+export function loadSoundEnabled(): boolean {
+  try {
+    return window.localStorage.getItem(SOUND_KEY) === 'on';
+  } catch (_error) {
+    return false;
+  }
+}
+
+export function saveSoundEnabled(enabled: boolean): void {
+  try {
+    window.localStorage.setItem(SOUND_KEY, enabled ? 'on' : 'off');
+  } catch (_error) {
+    // The preference lasts as long as the session, then.
+  }
 }
 
 export function clearSavedProgress(gameKey: string): void {

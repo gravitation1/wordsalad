@@ -1305,6 +1305,39 @@ describe('App', () => {
     expect(screen.getByTestId('lockout-note')).toBeInTheDocument();
   });
 
+  it('celebrates again when the same puzzle is won after a restart', () => {
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted');
+    submitWord('test'); // 12 of 15: the win
+    expect(screen.getByTestId('win-banner')).toBeInTheDocument();
+
+    closeWin();
+    fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
+    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
+
+    // Restart rewinds the celebration counter without remounting the board,
+    // so this second win arrives wearing the same id as the dismissed one.
+    submitWord('worsted');
+    submitWord('test');
+    expect(screen.getByTestId('win-banner')).toBeInTheDocument();
+  });
+
+  it('warns again when the restarted puzzle is hinted into lockout', () => {
+    render(<App dictionary={DICTIONARY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // TEST
+    pressKey('Enter');
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // ROTTED
+    expect(screen.getByTestId('lockout-dialog')).toBeInTheDocument();
+
+    keepPlaying();
+    fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+    pressKey('Enter');
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+    expect(screen.getByTestId('lockout-dialog')).toBeInTheDocument();
+  });
+
   it('shows the lockout reminder without a modal on restore', () => {
     // A locked game restored from storage: TEST + ROTTED both hinted (0 pts
     // earned, 4 lost) leaves only 11 of 15 reachable, below the win line.

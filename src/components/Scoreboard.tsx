@@ -85,16 +85,24 @@ export function Scoreboard({
   const ratingsButtonRef = useRef<HTMLButtonElement>(null);
 
   // The win modal opens on each celebration (the win, and again — gold —
-  // for a perfect clear) and stays dismissed by id, so closing it returns
-  // the board to its normal playing view. Restored wins never open it:
-  // a restore carries no celebration.
-  const [dismissedWinId, setDismissedWinId] = useState(0);
+  // for a perfect clear) and stays dismissed once closed, so closing it
+  // returns the board to its normal playing view. Restored wins never open
+  // it: a restore carries no celebration.
+  //
+  // Dismissal is held as the event itself rather than its id. Restart
+  // clears the celebration without remounting the board — so the counter
+  // starts over at 1 while this state survives, and a remembered id would
+  // read the next win as the one already dismissed and never open again.
+  // Every event is a fresh object, so identity cannot collide that way.
+  const [dismissedWin, setDismissedWin] = useState<Celebration | null>(null);
 
   // The lockout modal mirrors the win: it opens once on the crossing event
-  // and stays dismissed by id, so the board returns to normal (a slim
-  // reminder stays on the score line). A restored locked game carries no
-  // event, so it shows only the reminder — never the modal.
-  const [dismissedLockoutId, setDismissedLockoutId] = useState(0);
+  // and stays dismissed, so the board returns to normal (a slim reminder
+  // stays on the score line). A restored locked game carries no event, so
+  // it shows only the reminder — never the modal.
+  const [dismissedLockout, setDismissedLockout] = useState<Lockout | null>(
+    null,
+  );
 
   // "Copied!" flashes on the Share button after a clipboard fallback.
   const [shareCopied, setShareCopied] = useState(false);
@@ -170,7 +178,7 @@ export function Scoreboard({
       {/* The fanfare interrupts, then gets out of the way: dismissing the
           modal returns the board to its normal view. Keyed per celebration
           so the perfect (gold) pass remounts and replays the show. */}
-      {celebration !== null && celebration.id !== dismissedWinId ? (
+      {celebration !== null && celebration !== dismissedWin ? (
         <WinDialog
           celebration={celebration}
           isComplete={isComplete}
@@ -178,10 +186,10 @@ export function Scoreboard({
           letters={saladLetters}
           level={level}
           onClose={() => {
-            setDismissedWinId(celebration.id);
+            setDismissedWin(celebration);
           }}
           onCustomGame={() => {
-            setDismissedWinId(celebration.id);
+            setDismissedWin(celebration);
             onCustomGame();
           }}
           onNewGame={onNewGame}
@@ -194,15 +202,15 @@ export function Scoreboard({
       ) : null}
       {/* The loss counterpart to the win modal: fired once on the crossing,
           then dismissible so play can continue for rank. */}
-      {lockout !== null && lockout.id !== dismissedLockoutId ? (
+      {lockout !== null && lockout !== dismissedLockout ? (
         <LockoutDialog
           isComplete={isComplete}
           key={`lockout-${lockout.id}`}
           onClose={() => {
-            setDismissedLockoutId(lockout.id);
+            setDismissedLockout(lockout);
           }}
           onCustomGame={() => {
-            setDismissedLockoutId(lockout.id);
+            setDismissedLockout(lockout);
             onCustomGame();
           }}
           onRestart={onRestart}

@@ -7,10 +7,17 @@ import { HistoryDialog } from './components/HistoryDialog';
 import { OverflowMenu } from './components/OverflowMenu';
 import { SaladLetters } from './components/SaladLetters';
 import { Scoreboard } from './components/Scoreboard';
+import { SoundToggle } from './components/SoundToggle';
 import { WordInput } from './components/WordInput';
 import { useMessages } from './i18n';
 import type { HistoryEntry } from './progressStore';
-import { loadSummaries } from './progressStore';
+import {
+  loadSoundEnabled,
+  loadSummaries,
+  saveSoundEnabled,
+} from './progressStore';
+import { soundEnabled as playSoundEnabled } from './sound';
+import { useGameSounds } from './useGameSounds';
 import { useWordSaladGame } from './useWordSaladGame';
 
 // Loaded in the History button's click handler (reading storage and the
@@ -26,7 +33,21 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
   const game = useWordSaladGame(dictionary);
   const [history, setHistory] = useState<HistorySnapshot | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
+  const [soundOn, setSoundOn] = useState(loadSoundEnabled);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useGameSounds(game, soundOn);
+
+  const toggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    saveSoundEnabled(next);
+    if (next) {
+      // Answer in the medium being switched on, so the player hears the
+      // volume before a word depends on it.
+      playSoundEnabled();
+    }
+  };
 
   const openHistory = () => {
     setHistory({
@@ -87,6 +108,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
           </span>
           {t.newGameButton}
         </button>
+        <SoundToggle enabled={soundOn} onToggle={toggleSound} />
         <OverflowMenu
           onCustomGame={openCustom}
           onHistory={openHistory}

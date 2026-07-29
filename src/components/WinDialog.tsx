@@ -107,9 +107,24 @@ export function WinDialog({
         perfect={perfect}
         requiredCharacters={requiredCharacters}
       />
+      {/* A sibling of the rain, not a child of the banner below: the banner
+          animates a transform, which would make it the containing block for
+          this fixed layer and pull the pieces' flight back into the dialog's
+          scrollable overflow — a scrollbar flickering through the
+          celebration. Out here the viewport holds it, and the pieces fly
+          past the dialog's edges without the dialog counting them. */}
+      <WinBurst
+        letters={letters}
+        perfect={perfect}
+        requiredCharacters={requiredCharacters}
+      />
+      {/* z-10 because the content below is positioned too, and being later
+          in the DOM it would otherwise take the clicks aimed at this
+          button — its boxes reach into this corner even where nothing of
+          it is drawn there. */}
       <button
         aria-label={t.closeButton}
-        className="absolute right-3 top-3 flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 active:scale-95 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+        className="absolute right-3 top-3 z-10 flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 active:scale-95 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300"
         onClick={onClose}
         type="button"
       >
@@ -120,11 +135,6 @@ export function WinDialog({
           perfect ? 'win-pop-perfect' : 'win-pop'
         }`}
       >
-        <WinBurst
-          letters={letters}
-          perfect={perfect}
-          requiredCharacters={requiredCharacters}
-        />
         <h2 className="sr-only" id="win-title">
           {t.victory}
         </h2>
