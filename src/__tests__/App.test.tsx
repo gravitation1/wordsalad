@@ -546,7 +546,11 @@ describe('App', () => {
     submitWord('test');
     fireEvent.click(screen.getByRole('button', { name: /Share/ }));
 
-    expect(await screen.findByText('Copied to clipboard!')).toBeVisible();
+    // Both labels stay mounted so the button keeps its width; the shown
+    // one is the only one that names the button.
+    expect(
+      await screen.findByRole('button', { name: 'Copied!' }),
+    ).toBeInTheDocument();
     const text = writeText.mock.calls[0][0] as string;
     expect(text).toContain('Word Salad · DEORSTW (T)');
     expect(text).toContain('1/15 · Meh');
@@ -583,6 +587,27 @@ describe('App', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'Q is not in the word salad!',
     );
+  });
+
+  it('clears a stale verdict as soon as the word is edited', () => {
+    render(<App dictionary={DICTIONARY} />);
+    typeWord('tq');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Q is not in the word salad!',
+    );
+
+    // The rejected letter never made it in, so the complaint about it must
+    // not linger over the word being typed.
+    typeWord('e');
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+
+    // Nor over what's left after deleting.
+    fireEvent.keyDown(document, { key: 'Backspace', ctrlKey: true });
+    submitWord('test');
+    expect(screen.getByRole('status')).toHaveTextContent('TEST earned you');
+    typeWord('ro');
+    pressKey('Backspace');
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 
   it('removes the last letter on backspace', () => {

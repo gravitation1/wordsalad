@@ -182,8 +182,30 @@ export function WinDialog({
             onClick={onShare}
             type="button"
           >
-            <span aria-hidden="true">↗ </span>
-            {shareCopied ? t.shareCopied : t.shareButton}
+            {/* Both labels sit in the same grid cell, so the button is
+                always as wide as the longer of the two and the row never
+                reflows when the copy lands. Only the shown one names the
+                button. */}
+            <span className="grid">
+              <span
+                aria-hidden={shareCopied}
+                className={`col-start-1 row-start-1 whitespace-nowrap ${
+                  shareCopied ? 'invisible' : ''
+                }`}
+              >
+                <span aria-hidden="true">↗ </span>
+                {t.shareButton}
+              </span>
+              <span
+                aria-hidden={!shareCopied}
+                className={`col-start-1 row-start-1 whitespace-nowrap ${
+                  shareCopied ? '' : 'invisible'
+                }`}
+              >
+                <span aria-hidden="true">✓ </span>
+                {t.shareCopied}
+              </span>
+            </span>
           </button>
         </div>
         {/* The quiet "what next" row. Keep playing vanishes once every word

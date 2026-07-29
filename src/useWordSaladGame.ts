@@ -491,6 +491,10 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       // ends the previous word's exit so the ghost never overlaps new letters.
       setHintReveal(null);
       setWordExit(null);
+      // The feedback line speaks for the word as it stands; editing it makes
+      // the last verdict history, and a stale one would misread as the reason
+      // the word in progress can't be submitted.
+      setFeedback(null);
       setLastAppended((previous) => ({
         id: (previous?.id ?? 0) + 1,
         letter,
@@ -506,6 +510,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       return;
     }
     setHintReveal(null);
+    setFeedback(null);
     // A fired action supersedes any lingering denial dip, so the button's
     // remount replays the press, not the dip.
     setDeniedControl(null);
@@ -519,6 +524,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       return;
     }
     setHintReveal(null);
+    setFeedback(null);
     setDeniedControl(null);
     setDeleteId((previous) => previous + 1);
     setInputLetters([]);
@@ -554,6 +560,9 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
 
     const letters = Array.from(hint.word);
     setInputLetters(letters);
+    // The revealed word replaces whatever was typed, so the last verdict no
+    // longer describes what's in the word area.
+    setFeedback(null);
     // Drive the reveal animation (letters cascade in, source tiles ripple);
     // clear any stale press so only the hint drives the tiles, and any
     // exiting word so the ghost never overlaps the revealed letters.

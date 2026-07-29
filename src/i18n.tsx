@@ -59,6 +59,8 @@ export interface Messages {
   statStreak: string;
   statHints: string;
   shareButton: string;
+  // Sits inside the share button in place of its label, so it stays short
+  // enough not to reflow the button row.
   shareCopied: string;
   challengeNote: (points: number) => string;
   challengeBeaten: (points: number) => string;
@@ -151,7 +153,7 @@ const EN: Messages = {
   statStreak: 'Streak',
   statHints: 'Hints',
   shareButton: 'Share',
-  shareCopied: 'Copied to clipboard!',
+  shareCopied: 'Copied!',
   challengeNote: (points) => `Shared score to beat: ${points}`,
   challengeBeaten: (points) => `You beat the shared score of ${points}!`,
   hintButton: 'Hint',
@@ -293,7 +295,7 @@ const FR: Messages = {
   statStreak: 'Série',
   statHints: 'Indices',
   shareButton: 'Partager',
-  shareCopied: 'Copié dans le presse-papiers !',
+  shareCopied: 'Copié !',
   challengeNote: (points) => `Score partagé à battre : ${points}`,
   challengeBeaten: (points) =>
     `Vous avez battu le score partagé de ${points} !`,
@@ -436,7 +438,7 @@ const ES: Messages = {
   statStreak: 'Racha',
   statHints: 'Pistas',
   shareButton: 'Compartir',
-  shareCopied: '¡Copiado al portapapeles!',
+  shareCopied: '¡Copiado!',
   challengeNote: (points) => `Puntuación compartida a batir: ${points}`,
   challengeBeaten: (points) =>
     `¡Superaste la puntuación compartida de ${points}!`,
@@ -579,7 +581,7 @@ const DE: Messages = {
   statStreak: 'Serie',
   statHints: 'Tipps',
   shareButton: 'Teilen',
-  shareCopied: 'In die Zwischenablage kopiert!',
+  shareCopied: 'Kopiert!',
   challengeNote: (points) => `Geteilte Punktzahl zum Schlagen: ${points}`,
   challengeBeaten: (points) =>
     `Du hast die geteilte Punktzahl von ${points} geschlagen!`,
@@ -723,7 +725,7 @@ const IT: Messages = {
   statStreak: 'Serie',
   statHints: 'Indizi',
   shareButton: 'Condividi',
-  shareCopied: 'Copiato negli appunti!',
+  shareCopied: 'Copiato!',
   challengeNote: (points) => `Punteggio condiviso da battere: ${points}`,
   challengeBeaten: (points) =>
     `Hai battuto il punteggio condiviso di ${points}!`,
@@ -867,7 +869,7 @@ const PT: Messages = {
   statStreak: 'Sequência',
   statHints: 'Dicas',
   shareButton: 'Compartilhar',
-  shareCopied: 'Copiado para a área de transferência!',
+  shareCopied: 'Copiado!',
   challengeNote: (points) => `Pontuação compartilhada a bater: ${points}`,
   challengeBeaten: (points) =>
     `Você superou a pontuação compartilhada de ${points}!`,
@@ -1010,7 +1012,7 @@ const NL: Messages = {
   statStreak: 'Reeks',
   statHints: 'Hints',
   shareButton: 'Delen',
-  shareCopied: 'Gekopieerd naar het klembord!',
+  shareCopied: 'Gekopieerd!',
   challengeNote: (points) => `Gedeelde score om te verslaan: ${points}`,
   challengeBeaten: (points) =>
     `Je hebt de gedeelde score van ${points} verslagen!`,
@@ -1151,7 +1153,7 @@ const JA: Messages = {
   statStreak: '連続日数',
   statHints: 'ヒント',
   shareButton: '共有',
-  shareCopied: 'クリップボードにコピーしました！',
+  shareCopied: 'コピーしました！',
   challengeNote: (points) => `共有されたスコア：${points}（これを超えよう）`,
   challengeBeaten: (points) => `共有されたスコア${points}を超えました！`,
   hintButton: 'ヒント',
@@ -1284,7 +1286,7 @@ const KO: Messages = {
   statStreak: '연속',
   statHints: '힌트',
   shareButton: '공유',
-  shareCopied: '클립보드에 복사했어요!',
+  shareCopied: '복사했어요!',
   challengeNote: (points) => `공유된 점수: ${points} (도전해 보세요)`,
   challengeBeaten: (points) => `공유된 점수 ${points}점을 넘었어요!`,
   hintButton: '힌트',
@@ -1415,7 +1417,7 @@ const ZH: Messages = {
   statStreak: '连续天数',
   statHints: '提示',
   shareButton: '分享',
-  shareCopied: '已复制到剪贴板！',
+  shareCopied: '已复制！',
   challengeNote: (points) => `好友分享的分数：${points}（超过它！）`,
   challengeBeaten: (points) => `你超过了分享的分数 ${points}！`,
   hintButton: '提示',
@@ -1548,7 +1550,7 @@ const RU: Messages = {
   statStreak: 'Серия',
   statHints: 'Подсказки',
   shareButton: 'Поделиться',
-  shareCopied: 'Скопировано в буфер обмена!',
+  shareCopied: 'Скопировано!',
   challengeNote: (points) => `Поделились результатом ${points} — побейте его!`,
   challengeBeaten: (points) => `Вы побили результат ${points}!`,
   hintButton: 'Подсказка',

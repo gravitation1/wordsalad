@@ -245,8 +245,28 @@ export function Scoreboard({
               }}
               type="button"
             >
-              <span aria-hidden="true">↗</span>
-              {shareCopied ? t.shareCopied : t.shareButton}
+              {/* Stacked in one grid cell so the confirmation does not
+                  widen the button and reflow the summary beside it. */}
+              <span className="grid">
+                <span
+                  aria-hidden={shareCopied}
+                  className={`col-start-1 row-start-1 flex items-center gap-1 whitespace-nowrap ${
+                    shareCopied ? 'invisible' : ''
+                  }`}
+                >
+                  <span aria-hidden="true">↗</span>
+                  {t.shareButton}
+                </span>
+                <span
+                  aria-hidden={!shareCopied}
+                  className={`col-start-1 row-start-1 flex items-center gap-1 whitespace-nowrap ${
+                    shareCopied ? '' : 'invisible'
+                  }`}
+                >
+                  <span aria-hidden="true">✓</span>
+                  {t.shareCopied}
+                </span>
+              </span>
             </button>
             <button
               className="-my-2 flex touch-manipulation items-center gap-1 py-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
