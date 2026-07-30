@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import type { DictionarySpec } from '../game/dictionaries';
 import { generateWordSalad, storeWordSalad } from '../game/generation';
 import { WordSalad } from '../game/wordSalad';
 import { useMessages } from '../i18n';
@@ -13,6 +14,7 @@ import { TILE_FACE } from './tiles';
 // puzzle URL, which boots the game.
 interface CustomGameModalProps {
   dictionary: readonly string[];
+  spec: DictionarySpec;
   onClose: () => void;
 }
 
@@ -38,11 +40,18 @@ function clamp(value: number, low: number, high: number): number {
   return Number.isFinite(value) ? Math.min(Math.max(value, low), high) : low;
 }
 
-// Keep an input to distinct uppercase letters, capped at `max`.
-function sanitizeLetters(value: string, max: number): string {
-  return Array.from(new Set(value.toUpperCase().replace(/[^A-Z]/g, '')))
-    .join('')
-    .slice(0, max);
+// Keep an input to distinct board letters, capped at `max`. Typed text
+// folds first (é lands as E), then anything outside the dictionary's
+// alphabet drops.
+function sanitizeLetters(
+  value: string,
+  max: number,
+  spec: DictionarySpec,
+): string {
+  const folded = Array.from(spec.fold(value)).filter((letter) =>
+    spec.letters.includes(letter),
+  );
+  return Array.from(new Set(folded)).join('').slice(0, max);
 }
 
 // A deterministic puzzle from the chosen letters. An empty required set is
@@ -53,11 +62,22 @@ function buildFixedGame(
   letters: string,
   required: string,
   minLength: number,
+  spec: DictionarySpec,
 ): WordSalad {
-  return new WordSalad(new Set(letters), required, minLength, dictionary);
+  return new WordSalad(
+    new Set(letters),
+    required,
+    minLength,
+    dictionary,
+    spec.fold,
+  );
 }
 
-export function CustomGameModal({ dictionary, onClose }: CustomGameModalProps) {
+export function CustomGameModal({
+  dictionary,
+  spec,
+  onClose,
+}: CustomGameModalProps) {
   const t = useMessages();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [mode, setMode] = useState<Mode>('random');
@@ -134,6 +154,7 @@ export function CustomGameModal({ dictionary, onClose }: CustomGameModalProps) {
           letters,
           required,
           minLength,
+          spec,
         );
         return {
           kind: 'stats',
@@ -146,7 +167,7 @@ export function CustomGameModal({ dictionary, onClose }: CustomGameModalProps) {
       }
     }
     return { kind: 'random' };
-  }, [dictionary, letters, minLength, mode, required]);
+  }, [dictionary, letters, minLength, mode, required, spec]);
 
   const canCreate = preview !== null && preview.kind !== 'error';
 
@@ -156,19 +177,24 @@ export function CustomGameModal({ dictionary, onClose }: CustomGameModalProps) {
     try {
       wordSalad =
         mode === 'letters'
-          ? buildFixedGame(dictionary, letters, required, minLength)
-          : generateWordSalad(dictionary, {
-              minimumLength: minLength,
-              minWords,
-              maxWords,
-              requirePangram,
-            });
+          ? buildFixedGame(dictionary, letters, required, minLength, spec)
+          : generateWordSalad(
+              dictionary,
+              {
+                minimumLength: minLength,
+                minWords,
+                maxWords,
+                requirePangram,
+              },
+              spec,
+            );
     } catch (_error) {
       setCreateFailed(true);
       return;
     }
     // Navigate to the canonical puzzle URL (a real load boots the game),
-    // preserving any language override.
+    // preserving any language override — and the dictionary, which is part
+    // of the puzzle being built.
     const [gameLetters, gameRequired, gameMin] =
       storeWordSalad(wordSalad).split('.');
     const url = new URL(window.location.href);
@@ -176,6 +202,9 @@ export function CustomGameModal({ dictionary, onClose }: CustomGameModalProps) {
     url.search = '';
     if (lang !== null) {
       url.searchParams.set('lang', lang);
+    }
+    if (spec.id !== 'en') {
+      url.searchParams.set('dict', spec.id);
     }
     url.searchParams.set('letters', gameLetters);
     url.searchParams.set('required', gameRequired);
@@ -309,7 +338,11 @@ export function CustomGameModal({ dictionary, onClose }: CustomGameModalProps) {
                 inputMode="text"
                 onChange={(event) => {
                   setLetters((previous) =>
-                    sanitizeLetters(previous + event.target.value, MAX_LETTERS),
+                    sanitizeLetters(
+                      previous + event.target.value,
+                      MAX_LETTERS,
+                      spec,
+                    ),
                   );
                 }}
                 onKeyDown={(event) => {

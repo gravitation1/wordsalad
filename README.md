@@ -18,7 +18,7 @@ Built with React, TypeScript, and Vite. Deployed to GitHub Pages.
 
 ## Dictionary
 
-`public/dictionary.txt` is derived from two public-domain word lists: the
+`public/dictionaries/en.txt` is derived from two public-domain word lists: the
 ENABLE list (Enhanced North American Benchmark Lexicon, mirrored at
 [norvig.com/ngrams/enable1.txt](https://norvig.com/ngrams/enable1.txt))
 restricted to the common-word list
@@ -27,6 +27,14 @@ least three of six dictionaries, inflections included). It is filtered to
 American, alphabetic words, and a small blocklist of slurs and crude
 vulgarities is removed. The result favors words people actually know over
 obscure but technically-valid entries.
+
+`public/dictionaries/fr.txt` is derived from
+[Lexique 3.83](http://www.lexique.org) (New, Pallier, Brysbaert; CC BY-SA),
+keeping alphabetic words whose film-subtitle or book frequency reaches 0.3
+per million, with a blocklist of group-targeting slurs removed. Entries keep
+their real accented spellings; the game folds them to A–Z for play, as
+French word games traditionally do. A dictionary is selected per puzzle
+with `?dict=fr` and rides along in share links.
 
 ## License
 

@@ -4,10 +4,11 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '../App';
+import { DICTIONARIES } from '../game/dictionaries';
 
 // The real dictionary, for tests that need New game to actually generate a
 // playable puzzle (the tiny DICTIONARY above cannot satisfy generation).
-const REAL_DICTIONARY = readFileSync('public/dictionary.txt', 'utf8')
+const REAL_DICTIONARY = readFileSync('public/dictionaries/en.txt', 'utf8')
   .split('\n')
   .filter(Boolean);
 
@@ -1834,5 +1835,202 @@ describe('App', () => {
     expect(screen.getByRole('combobox', { name: 'UI language' })).toHaveValue(
       '',
     );
+  });
+
+  it('starts a game in another word list from the ⋯ menu', () => {
+    render(<App dictionary={DICTIONARY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+
+    // Lists are named in their own language, current one selected.
+    const picker = screen.getByRole('combobox', { name: 'Word list' });
+    expect(picker).toHaveValue('en');
+    expect(
+      within(picker).getByRole('option', { name: 'Français' }),
+    ).toBeInTheDocument();
+
+    // Choosing one navigates to a fresh game there: bare of puzzle params
+    // (a new board generates at boot) but carrying the dictionary.
+    const assign = vi.fn();
+    vi.stubGlobal('location', {
+      assign,
+      href: 'http://localhost/wordsalad/?letters=DEORSTW&required=T',
+      search: '?letters=DEORSTW&required=T',
+    });
+    fireEvent.change(picker, { target: { value: 'fr' } });
+    vi.unstubAllGlobals();
+
+    const target = new URL(String(assign.mock.calls[0]?.[0]));
+    expect(target.searchParams.get('dict')).toBe('fr');
+    expect(target.searchParams.get('letters')).toBeNull();
+  });
+
+  it('marks non-English games in History and links them with their dict', () => {
+    // A finished French game alongside the English one about to be played.
+    window.localStorage.setItem(
+      'wordsalad:meta:fr:CEOST.T.4',
+      JSON.stringify({
+        earned: 3,
+        found: 4,
+        hints: 0,
+        lost: 0,
+        max: 7,
+        playedAt: 1000,
+        total: 6,
+      }),
+    );
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test');
+
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'History' }));
+    const dialog = screen.getByRole('dialog');
+
+    // Exactly one row carries a word-list chip — the French one; English
+    // stays implicit, as everywhere else.
+    const chips = within(dialog).getAllByTestId('history-dict');
+    expect(chips).toHaveLength(1);
+    expect(chips[0]).toHaveTextContent('FR');
+
+    // The French row resumes with its dictionary aboard.
+    const links = within(dialog).getAllByRole('link');
+    expect(links[1]).toHaveAttribute(
+      'href',
+      '?dict=fr&letters=CEOST&required=T',
+    );
+  });
+
+  it('does not navigate when re-choosing the current word list', () => {
+    render(<App dictionary={DICTIONARY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+
+    const assign = vi.fn();
+    vi.stubGlobal('location', {
+      assign,
+      href: 'http://localhost/wordsalad/',
+      search: '',
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Word list' }), {
+      target: { value: 'en' },
+    });
+    vi.unstubAllGlobals();
+    expect(assign).not.toHaveBeenCalled();
+  });
+});
+
+describe('App with the French dictionary', () => {
+  // Board CEOST, required T: one four-sibling key group (COTE) plus two
+  // singletons. Six surface entries, five distinct keys.
+  const FRENCH = ['CÔTE', 'CÔTÉ', 'COTE', 'COTÉ', 'ÉTÉS', 'TÊTES'];
+  const frApp = () => <App dictionary={FRENCH} spec={DICTIONARIES.fr} />;
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.history.replaceState(null, '', '?letters=COTES&required=T');
+  });
+
+  afterEach(() => {
+    window.history.replaceState(null, '', window.location.pathname);
+  });
+
+  it('reveals every accented sibling as its own row on one submission', () => {
+    render(frApp());
+    submitWord('cote');
+
+    // One typed key, four French words found — each row its own entry.
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'COTE earned you 4 points!',
+    );
+    expect(screen.getByText('Found 4 words')).toBeInTheDocument();
+    for (const word of ['CÔTE', 'CÔTÉ', 'COTE', 'COTÉ']) {
+      expect(screen.getByRole('link', { name: word })).toBeInTheDocument();
+    }
+  });
+
+  it('links each surface form to its own French definition', () => {
+    render(frApp());
+    submitWord('cote');
+
+    // UI is English here, so definitions come from the English Wiktionary's
+    // French section, keyed by the exact accented spelling.
+    expect(screen.getByRole('link', { name: 'CÔTÉ' })).toHaveAttribute(
+      'href',
+      'https://en.wiktionary.org/wiki/c%C3%B4t%C3%A9#French',
+    );
+    expect(screen.getByRole('link', { name: 'COTE' })).toHaveAttribute(
+      'href',
+      'https://en.wiktionary.org/wiki/cote#French',
+    );
+  });
+
+  it('folds accented typing into the play key', () => {
+    render(frApp());
+    typeWord('côté');
+    expect(currentWord()).toBe('COTE');
+    pressKey('Enter');
+    expect(screen.getByText('Found 4 words')).toBeInTheDocument();
+  });
+
+  it('carries the dictionary in the shareable URL and storage keys', () => {
+    render(frApp());
+    expect(new URLSearchParams(window.location.search).get('dict')).toBe('fr');
+
+    submitWord('etes');
+    expect(
+      JSON.parse(window.localStorage.getItem('wordsalad:fr:CEOST.T.4') ?? '[]'),
+    ).toEqual(['ÉTÉS']);
+  });
+
+  it('prices and commits a hinted key group as one unit', () => {
+    render(frApp());
+    const hint = () => screen.getByRole('button', { name: 'Hint' });
+
+    // The next hint is the COTE group: four one-point siblings, −4 max.
+    expect(hint()).toHaveTextContent('−4 max');
+    fireEvent.click(hint());
+    expect(currentWord()).toBe('COTE');
+    // Spending 4 of 7 points drops the win out of reach: dismiss the
+    // lockout notice, then land the revealed group.
+    keepPlaying();
+    pressKey('Enter');
+
+    // All four siblings land, hinted and worth nothing.
+    expect(screen.getByText('Found 4 words')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'CÔTÉ*' })).toHaveAttribute(
+      'data-hinted',
+      'true',
+    );
+    expect(screen.getByText('· 4 hints (−4 pts)')).toBeInTheDocument();
+  });
+
+  it('restores accented progress from storage', () => {
+    window.localStorage.setItem(
+      'wordsalad:fr:CEOST.T.4',
+      JSON.stringify(['CÔTE']),
+    );
+    render(frApp());
+    // Replaying one sibling restores its whole group, as found together.
+    expect(screen.getByText('Found 4 words')).toBeInTheDocument();
+  });
+
+  it('offers the way back to English from the word-list picker', () => {
+    render(frApp());
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+
+    const picker = screen.getByRole('combobox', { name: 'Word list' });
+    expect(picker).toHaveValue('fr');
+
+    const assign = vi.fn();
+    vi.stubGlobal('location', {
+      assign,
+      href: 'http://localhost/wordsalad/?letters=COTES&required=T&dict=fr',
+      search: '?letters=COTES&required=T&dict=fr',
+    });
+    fireEvent.change(picker, { target: { value: 'en' } });
+    vi.unstubAllGlobals();
+
+    // English is the default: the fresh-game URL carries no dict at all.
+    const target = new URL(String(assign.mock.calls[0]?.[0]));
+    expect(target.searchParams.get('dict')).toBeNull();
+    expect(target.searchParams.get('letters')).toBeNull();
   });
 });

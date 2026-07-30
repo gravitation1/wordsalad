@@ -1,3 +1,5 @@
+import type { DictionarySpec } from './dictionaries';
+import { alphabetPattern, DEFAULT_DICTIONARY } from './dictionaries';
 import { WordSaladError } from './errors';
 import { WordSalad } from './wordSalad';
 
@@ -16,7 +18,10 @@ export function shuffled<T>(items: readonly T[]): T[] {
   return result;
 }
 
-export function randomCharacterString(length: number): string {
+export function randomCharacterString(
+  length: number,
+  spec: DictionarySpec = DEFAULT_DICTIONARY,
+): string {
   if (length < MINIMUM_SET_SIZE) {
     throw new WordSaladError(
       'CharacterSetTooSmall',
@@ -29,10 +34,14 @@ export function randomCharacterString(length: number): string {
     );
   }
 
-  const vowels = shuffled(Array.from('AEIOU'))
+  const vowelPool = Array.from(spec.vowels);
+  const consonantPool = Array.from(spec.letters).filter(
+    (letter) => !spec.vowels.includes(letter),
+  );
+  const vowels = shuffled(vowelPool)
     .slice(0, Math.ceil(length / 5))
     .join('');
-  const consonants = shuffled(Array.from('BCDFGHJKLMNPQRSTVWXYZ'))
+  const consonants = shuffled(consonantPool)
     .slice(0, length - vowels.length)
     .join('');
   return shuffled(Array.from(vowels + consonants)).join('');
@@ -59,9 +68,10 @@ export interface GenerationConstraints {
 export function newRandomWordSalad(
   validWordList: readonly string[],
   { minimumLength, requiredCharacters }: GenerationConstraints = {},
+  spec: DictionarySpec = DEFAULT_DICTIONARY,
 ): WordSalad {
   const required = requiredCharacters ?? '';
-  const characters = randomCharacterString(GAME_CHARACTER_SET_SIZE);
+  const characters = randomCharacterString(GAME_CHARACTER_SET_SIZE, spec);
   // Force every pinned required letter into the set; the displaced letters
   // keep the set at seven distinct characters.
   const kept = Array.from(characters).filter(
@@ -78,27 +88,31 @@ export function newRandomWordSalad(
     chosen,
     minimumLength ?? GAME_MINIMUM_WORD_LENGTH,
     validWordList,
+    spec.fold,
   );
 }
 
 // The exact pool of pangram-capable character sets: the distinct-letter set
 // of every word long enough to play that uses exactly `size` letters, deduped.
 // Filtered to sets containing all the required letters, since a pangram (which
-// uses every charset letter) must contain them too.
+// uses every charset letter) must contain them too. Boards live in play-key
+// space, so signatures come from folded words.
 function pangramSignatures(
   validWordList: readonly string[],
   size: number,
   minimumLength: number,
   requiredCharacters: string,
+  fold: (text: string) => string,
 ): string[] {
   const required = Array.from(requiredCharacters);
   const seen = new Set<string>();
   const signatures: string[] = [];
   for (const word of validWordList) {
-    if (word.length < minimumLength) {
+    const key = fold(word);
+    if (key.length < minimumLength) {
       continue;
     }
-    const distinct = new Set(word);
+    const distinct = new Set(key);
     if (distinct.size !== size) {
       continue;
     }
@@ -123,6 +137,7 @@ function pangramSignatures(
 export function generateWordSalad(
   validWordList: readonly string[],
   constraints: GenerationConstraints = {},
+  spec: DictionarySpec = DEFAULT_DICTIONARY,
 ): WordSalad {
   const minimumLength = constraints.minimumLength ?? GAME_MINIMUM_WORD_LENGTH;
   const requiredCharacters = constraints.requiredCharacters;
@@ -167,6 +182,7 @@ export function generateWordSalad(
         GAME_CHARACTER_SET_SIZE,
         minimumLength,
         requiredLetters,
+        spec.fold,
       ),
     );
     for (const signature of signatures) {
@@ -176,6 +192,7 @@ export function generateWordSalad(
         required,
         minimumLength,
         validWordList,
+        spec.fold,
       );
       const accepted = consider(wordSalad);
       if (accepted !== null) {
@@ -186,10 +203,14 @@ export function generateWordSalad(
     for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; ++attempt) {
       let wordSalad: WordSalad;
       try {
-        wordSalad = newRandomWordSalad(validWordList, {
-          minimumLength,
-          requiredCharacters,
-        });
+        wordSalad = newRandomWordSalad(
+          validWordList,
+          {
+            minimumLength,
+            requiredCharacters,
+          },
+          spec,
+        );
       } catch (error) {
         if (error instanceof WordSaladError && error.name === 'NoValidWords') {
           continue;
@@ -216,6 +237,7 @@ export function bestRequiredCharacter(
   validWordList: readonly string[],
   characters: string,
   minimumLength: number,
+  spec: DictionarySpec = DEFAULT_DICTIONARY,
 ): string {
   const characterSet = new Set(characters);
   let best: string | null = null;
@@ -227,6 +249,7 @@ export function bestRequiredCharacter(
         candidate,
         minimumLength,
         validWordList,
+        spec.fold,
       );
       if (wordSalad.remainingWords.size > bestCount) {
         bestCount = wordSalad.remainingWords.size;
@@ -260,10 +283,13 @@ export function storeWordSalad(wordSalad: WordSalad): string {
 }
 
 // Parses the exact encoding storeWordSalad produces (CHARACTERS.REQUIRED.MIN);
-// the REQUIRED piece is empty for a puzzle with no required letter.
+// the REQUIRED piece is empty for a puzzle with no required letter. The
+// pieces are validated against the dictionary's own alphabet — boards live
+// in play-key space, so this stays A–Z for languages that fold to it.
 export function loadWordSalad(
   validWordList: readonly string[],
   encodedGame: string,
+  spec: DictionarySpec = DEFAULT_DICTIONARY,
 ): WordSalad {
   const pieces = encodedGame.split('.');
 
@@ -271,13 +297,14 @@ export function loadWordSalad(
     throw new WordSaladError('InvalidGameData', 'Invalid game data!');
   }
 
+  const letterPattern = alphabetPattern(spec);
   const validCharacters = pieces[0].toUpperCase();
   const requiredCharacters = pieces[1].toUpperCase();
   const minimumWordLength = Number(pieces[2]);
 
   if (
-    !/^[A-Z]+$/.test(validCharacters) ||
-    !/^[A-Z]*$/.test(requiredCharacters) ||
+    !letterPattern.test(validCharacters) ||
+    !(requiredCharacters === '' || letterPattern.test(requiredCharacters)) ||
     !Number.isInteger(minimumWordLength) ||
     minimumWordLength < 1
   ) {
@@ -289,5 +316,6 @@ export function loadWordSalad(
     requiredCharacters,
     minimumWordLength,
     validWordList,
+    spec.fold,
   );
 }

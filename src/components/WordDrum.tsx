@@ -4,6 +4,12 @@ import type { WordSlot, WordSpotlight } from '../useWordSaladGame';
 import { miniTileClass } from './tiles';
 
 interface WordDrumProps {
+  // Where a found word's definition lives (dictionary- and UI-language
+  // aware; the rows are surface forms, exactly what definitions key on).
+  definitionUrl: (word: string) => string;
+  // Surface letter -> play key, so an accented tile (É in CAFÉ) still
+  // recognizes itself as the required letter it folds to.
+  foldLetter: (letter: string) => string;
   // The word to bring into view, if any. A new id re-triggers the scroll,
   // so asking for the same word twice works.
   spotlight: WordSpotlight | null;
@@ -24,6 +30,8 @@ const DRUM_HEIGHT = ROW_HEIGHT * VISIBLE_ROWS;
 const FADE_PX = 56;
 
 export function WordDrum({
+  definitionUrl,
+  foldLetter,
   spotlight,
   requiredCharacters,
   slots,
@@ -208,7 +216,7 @@ export function WordDrum({
                       : ''
                   }`}
                   data-hinted={found.hinted}
-                  href={`https://www.merriam-webster.com/dictionary/${found.word}`}
+                  href={definitionUrl(found.word)}
                   rel="noreferrer"
                   target="_blank"
                 >
@@ -224,10 +232,14 @@ export function WordDrum({
                   >
                     {Array.from(found.word).map((letter, tileIndex) => (
                       <span
-                        className={miniTileClass(letter, requiredCharacters, {
-                          compact: found.word.length > 9,
-                          muted: found.hinted,
-                        })}
+                        className={miniTileClass(
+                          foldLetter(letter),
+                          requiredCharacters,
+                          {
+                            compact: found.word.length > 9,
+                            muted: found.hinted,
+                          },
+                        )}
                         key={tileIndex}
                       >
                         {letter}

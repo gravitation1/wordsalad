@@ -24,6 +24,9 @@ type GameStatus = 'locked' | 'playing' | 'won';
 
 interface Row {
   dateLabel: string;
+  // The game's word list, as an uppercase code beside the date — null for
+  // English, which stays implicit everywhere (bare URLs, bare keys).
+  dict: string | null;
   earned: number;
   gameKey: string;
   href: string;
@@ -50,7 +53,12 @@ function toRow(
   formatDate: (timestamp: number) => string,
 ): Row {
   const { gameKey, summary } = entry;
-  const [letters, requiredCharacters, minimumLength] = gameKey.split('.');
+  // Non-English games carry their dictionary as a "fr:" style key prefix
+  // (English stays bare); it rides back into the replay link as ?dict=.
+  const colon = gameKey.indexOf(':');
+  const dict = colon === -1 ? null : gameKey.slice(0, colon);
+  const encoded = colon === -1 ? gameKey : gameKey.slice(colon + 1);
+  const [letters, requiredCharacters, minimumLength] = encoded.split('.');
   const winPoints = completionToPoints(WIN_THRESHOLD, summary.max);
   const won = summary.earned >= winPoints;
   const locked = !won && summary.max - summary.lost < winPoints;
@@ -58,6 +66,9 @@ function toRow(
   const params = new URLSearchParams();
   if (langParam !== null) {
     params.set('lang', langParam);
+  }
+  if (dict !== null) {
+    params.set('dict', dict);
   }
   params.set('letters', letters);
   params.set('required', requiredCharacters);
@@ -67,6 +78,7 @@ function toRow(
 
   return {
     dateLabel: formatDate(summary.playedAt),
+    dict,
     earned: summary.earned,
     gameKey,
     href: `?${params.toString()}`,
@@ -307,6 +319,12 @@ export function HistoryDialog({
                       ))}
                     </span>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {row.dict === null ? null : (
+                        <span data-testid="history-dict">
+                          {row.dict.toUpperCase()}
+                          {' · '}
+                        </span>
+                      )}
                       {row.dateLabel}
                     </span>
                   </span>

@@ -16,6 +16,9 @@ import { WordDrum } from './WordDrum';
 
 interface ScoreboardProps {
   celebration: Celebration | null;
+  // Passed through to the word drum's found-word rows.
+  definitionUrl: (word: string) => string;
+  foldLetter: (letter: string) => string;
   // For the celebration burst's letter tiles.
   saladLetters: readonly string[];
   requiredCharacters: string;
@@ -58,6 +61,8 @@ function shareBar(earned: number, lost: number, max: number): string {
 
 export function Scoreboard({
   celebration,
+  definitionUrl,
+  foldLetter,
   saladLetters,
   requiredCharacters,
   wordSlots,
@@ -401,6 +406,8 @@ export function Scoreboard({
         <span className="w-16 text-right font-medium">{t.pointsHeader}</span>
       </div>
       <WordDrum
+        definitionUrl={definitionUrl}
+        foldLetter={foldLetter}
         spotlight={spotlight}
         requiredCharacters={requiredCharacters}
         slots={wordSlots}

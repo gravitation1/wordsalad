@@ -16,7 +16,7 @@ import { WordSalad } from '../wordSalad';
 const DICTIONARY = ['TEST', 'ROTTED', 'WORSTED', 'WORD', 'REDO', 'ABLE'];
 
 // Vitest runs with the project root as the working directory.
-const REAL_DICTIONARY = readFileSync('public/dictionary.txt', 'utf8')
+const REAL_DICTIONARY = readFileSync('public/dictionaries/en.txt', 'utf8')
   .split('\n')
   .filter((word) => word.length > 0);
 

@@ -9,6 +9,8 @@ import { SaladLetters } from './components/SaladLetters';
 import { Scoreboard } from './components/Scoreboard';
 import { SoundToggle } from './components/SoundToggle';
 import { WordInput } from './components/WordInput';
+import type { DictionarySpec } from './game/dictionaries';
+import { DEFAULT_DICTIONARY } from './game/dictionaries';
 import type { Locale } from './i18n';
 import {
   MessagesProvider,
@@ -48,7 +50,15 @@ interface Settings {
 // Owns the device settings (theme, UI language) and provides the resolved
 // message catalog, so a language change rewords the whole app in place.
 // The body lives below the provider because it consumes the catalog itself.
-export function App({ dictionary }: { dictionary: readonly string[] }) {
+// The word list and its spec arrive together: the dictionary is a property
+// of the puzzle (selected by ?dict= at boot), not a device setting.
+export function App({
+  dictionary,
+  spec = DEFAULT_DICTIONARY,
+}: {
+  dictionary: readonly string[];
+  spec?: DictionarySpec;
+}) {
   const [theme, setTheme] = useState<ThemePreference>(loadThemePreference);
   const [localeOverride, setLocaleOverride] = useState<Locale | null>(() => {
     // Revalidate the stored tag: a stale override for a locale that no
@@ -89,7 +99,7 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
 
   return (
     <MessagesProvider locale={locale}>
-      <AppBody dictionary={dictionary} settings={settings} />
+      <AppBody dictionary={dictionary} settings={settings} spec={spec} />
     </MessagesProvider>
   );
 }
@@ -97,12 +107,14 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
 function AppBody({
   dictionary,
   settings,
+  spec,
 }: {
   dictionary: readonly string[];
   settings: Settings;
+  spec: DictionarySpec;
 }) {
   const t = useMessages();
-  const game = useWordSaladGame(dictionary);
+  const game = useWordSaladGame(dictionary, spec);
   const [history, setHistory] = useState<HistorySnapshot | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(loadSoundEnabled);
@@ -131,6 +143,22 @@ function AppBody({
 
   const openCustom = () => {
     setCustomOpen(true);
+  };
+
+  // Start a fresh game drawing from another word list. A real navigation:
+  // the dictionary is a boot-level property, and the abandoned board's
+  // progress is already saved, so it stays resumable from History.
+  const switchWordList = (id: string) => {
+    const url = new URL(window.location.href);
+    const lang = url.searchParams.get('lang');
+    url.search = '';
+    if (lang !== null) {
+      url.searchParams.set('lang', lang);
+    }
+    if (id !== 'en') {
+      url.searchParams.set('dict', id);
+    }
+    window.location.assign(url.toString());
   };
 
   // Both dialogs open from the ⋯ menu, whose items unmount on close — so
@@ -187,7 +215,9 @@ function AppBody({
           onHistory={openHistory}
           onLocaleOverride={settings.onLocaleOverride}
           onTheme={settings.onTheme}
+          onWordList={switchWordList}
           theme={settings.theme}
+          wordList={spec.id}
           triggerRef={menuTriggerRef}
         />
       </header>
@@ -200,7 +230,11 @@ function AppBody({
         />
       )}
       {customOpen ? (
-        <CustomGameModal dictionary={dictionary} onClose={closeCustom} />
+        <CustomGameModal
+          dictionary={dictionary}
+          onClose={closeCustom}
+          spec={spec}
+        />
       ) : null}
       {/* Remounts on every new game (key) so the board deals in fresh. */}
       <div
@@ -252,6 +286,8 @@ function AppBody({
         <Scoreboard
           celebration={game.celebration}
           challengeScore={game.challengeScore}
+          definitionUrl={(word) => spec.definitionUrl(word, t.locale)}
+          foldLetter={spec.fold}
           earnedPercent={game.earnedPercent}
           requiredCharacters={game.requiredCharacters}
           saladLetters={game.saladLetters}

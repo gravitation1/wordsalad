@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from './App';
+import { dictionaryById, dictionaryFile } from './game/dictionaries';
 import { CATALOGS, resolveLocale } from './i18n';
 import { loadLocaleOverride } from './progressStore';
 
@@ -13,8 +14,17 @@ import { loadLocaleOverride } from './progressStore';
 const locale = resolveLocale(loadLocaleOverride());
 document.documentElement.lang = locale;
 
+// The dictionary is a property of the puzzle, carried by ?dict= (absent
+// means English); an unknown id falls back to the default rather than
+// wedging the app on a typo.
+const spec = dictionaryById(
+  new URLSearchParams(window.location.search).get('dict'),
+);
+
 async function loadDictionary(): Promise<string[]> {
-  const response = await fetch(`${import.meta.env.BASE_URL}dictionary.txt`);
+  const response = await fetch(
+    `${import.meta.env.BASE_URL}${dictionaryFile(spec)}`,
+  );
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
@@ -36,7 +46,7 @@ void loadDictionary().then(
   (dictionary) => {
     root.render(
       <StrictMode>
-        <App dictionary={dictionary} />
+        <App dictionary={dictionary} spec={spec} />
       </StrictMode>,
     );
   },

@@ -48,6 +48,9 @@ export interface Messages {
   keepPlayingButton: string;
   customGameButton: string;
   moreMenuLabel: string;
+  // The dictionary the puzzles draw words from — a property of the game,
+  // deliberately named apart from the UI language.
+  wordListLabel: string;
   themeLabel: string;
   themeSystem: string;
   themeLight: string;
@@ -145,6 +148,7 @@ const EN: Messages = {
   keepPlayingButton: 'Keep playing',
   customGameButton: 'Custom game',
   moreMenuLabel: 'More options',
+  wordListLabel: 'Word list',
   themeLabel: 'Theme',
   themeSystem: 'System',
   themeLight: 'Light',
@@ -293,6 +297,7 @@ const FR: Messages = {
   keepPlayingButton: 'Continuer à jouer',
   customGameButton: 'Partie personnalisée',
   moreMenuLabel: 'Plus d’options',
+  wordListLabel: 'Liste de mots',
   themeLabel: 'Thème',
   themeSystem: 'Système',
   themeLight: 'Clair',
@@ -443,6 +448,7 @@ const ES: Messages = {
   keepPlayingButton: 'Seguir jugando',
   customGameButton: 'Partida personalizada',
   moreMenuLabel: 'Más opciones',
+  wordListLabel: 'Lista de palabras',
   themeLabel: 'Tema',
   themeSystem: 'Sistema',
   themeLight: 'Claro',
@@ -593,6 +599,7 @@ const DE: Messages = {
   keepPlayingButton: 'Weiterspielen',
   customGameButton: 'Eigenes Spiel',
   moreMenuLabel: 'Weitere Optionen',
+  wordListLabel: 'Wortliste',
   themeLabel: 'Design',
   themeSystem: 'System',
   themeLight: 'Hell',
@@ -744,6 +751,7 @@ const IT: Messages = {
   keepPlayingButton: 'Continua a giocare',
   customGameButton: 'Partita personalizzata',
   moreMenuLabel: 'Altre opzioni',
+  wordListLabel: 'Lista di parole',
   themeLabel: 'Tema',
   themeSystem: 'Sistema',
   themeLight: 'Chiaro',
@@ -895,6 +903,7 @@ const PT: Messages = {
   keepPlayingButton: 'Continuar jogando',
   customGameButton: 'Jogo personalizado',
   moreMenuLabel: 'Mais opções',
+  wordListLabel: 'Lista de palavras',
   themeLabel: 'Tema',
   themeSystem: 'Sistema',
   themeLight: 'Claro',
@@ -1045,6 +1054,7 @@ const NL: Messages = {
   keepPlayingButton: 'Verder spelen',
   customGameButton: 'Eigen spel',
   moreMenuLabel: 'Meer opties',
+  wordListLabel: 'Woordenlijst',
   themeLabel: 'Thema',
   themeSystem: 'Systeem',
   themeLight: 'Licht',
@@ -1196,6 +1206,7 @@ const JA: Messages = {
   keepPlayingButton: 'プレイを続ける',
   customGameButton: 'カスタムゲーム',
   moreMenuLabel: 'その他のオプション',
+  wordListLabel: '単語リスト',
   themeLabel: 'テーマ',
   themeSystem: 'システム',
   themeLight: 'ライト',
@@ -1336,6 +1347,7 @@ const KO: Messages = {
   keepPlayingButton: '계속 플레이하기',
   customGameButton: '커스텀 게임',
   moreMenuLabel: '더 보기',
+  wordListLabel: '단어 목록',
   themeLabel: '테마',
   themeSystem: '시스템',
   themeLight: '라이트',
@@ -1476,6 +1488,7 @@ const ZH: Messages = {
   keepPlayingButton: '继续游戏',
   customGameButton: '自定义游戏',
   moreMenuLabel: '更多选项',
+  wordListLabel: '词库',
   themeLabel: '主题',
   themeSystem: '跟随系统',
   themeLight: '浅色',
@@ -1612,6 +1625,7 @@ const RU: Messages = {
   keepPlayingButton: 'Продолжить игру',
   customGameButton: 'Своя игра',
   moreMenuLabel: 'Ещё',
+  wordListLabel: 'Список слов',
   themeLabel: 'Тема',
   themeSystem: 'Системная',
   themeLight: 'Светлая',

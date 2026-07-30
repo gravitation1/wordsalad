@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import type { DictionarySpec } from './game/dictionaries';
+import { alphabetPattern, DEFAULT_DICTIONARY } from './game/dictionaries';
 import {
   bestRequiredCharacter,
   generateWordSalad,
@@ -214,16 +216,27 @@ export type WordSaladGame = FailedGame | PlayingGame;
 
 type GameInit = { reason: FailureReason } | { wordSalad: WordSalad };
 
-// Hinted (committed) words score nothing, so they show 0 points.
+// Storage keys carry the dictionary id so equal boards in different
+// languages never share progress; English stays bare so saves that predate
+// multiple dictionaries keep working.
+function storageKey(spec: DictionarySpec, wordSalad: WordSalad): string {
+  const encoded = storeWordSalad(wordSalad);
+  return spec.id === 'en' ? encoded : `${spec.id}:${encoded}`;
+}
+
+// Hinted (committed) words score nothing, so they show 0 points. Sorting
+// uses the dictionary's own collation so accented surface forms file where
+// their language expects them (côte beside cote, not after Z).
 function toFoundWords(
   wordSalad: WordSalad,
   hintedWords: ReadonlySet<string>,
+  collate: (a: string, b: string) => number,
 ): readonly FoundWord[] {
   return Array.from(wordSalad.foundWords, ([word, points]) => ({
     word,
     points: hintedWords.has(word) ? 0 : points,
     hinted: hintedWords.has(word),
-  })).sort((a, b) => (a.word < b.word ? -1 : 1));
+  })).sort((a, b) => collate(a.word, b.word));
 }
 
 // A hinted word scores nothing, so its "valid" preview shows 0 points. Valid
@@ -244,10 +257,11 @@ function nextHintWord(
   wordSalad: WordSalad,
   hintedWords: ReadonlySet<string>,
 ): { word: string; cost: number } | null {
+  const keyLength = (word: string) => wordSalad.keyOf(word).length;
   let rehint: string | null = null;
   for (const word of hintedWords) {
     if (!wordSalad.foundWords.has(word)) {
-      if (rehint === null || word.length < rehint.length) {
+      if (rehint === null || keyLength(word) < keyLength(rehint)) {
         rehint = word;
       }
     }
@@ -259,12 +273,20 @@ function nextHintWord(
   let word: string | null = null;
   for (const candidate of wordSalad.remainingWords) {
     if (!hintedWords.has(candidate)) {
-      if (word === null || candidate.length < word.length) {
+      if (word === null || keyLength(candidate) < keyLength(word)) {
         word = candidate;
       }
     }
   }
-  return word === null ? null : { word, cost: wordSalad.pointsFor(word) };
+  if (word === null) {
+    return null;
+  }
+  // A hint spends the whole key group: submission can only find côte and
+  // côté together, so the reveal prices (and commits) them together.
+  const cost = wordSalad
+    .wordsMatching(word)
+    .reduce((total, sibling) => total + wordSalad.pointsFor(sibling), 0);
+  return { word, cost };
 }
 
 // Split found-and-committed points into earned (green) and lost-to-hints
@@ -293,9 +315,11 @@ function tallyPoints(
 }
 
 // Replay saved words through the engine so every entry is revalidated;
-// stale or corrupt entries simply fail and are dropped.
-function restoreProgress(wordSalad: WordSalad): void {
-  for (const word of loadSavedWords(storeWordSalad(wordSalad))) {
+// stale or corrupt entries simply fail and are dropped. (Saved words are
+// surface forms; replaying one restores its whole key group, exactly as
+// the submission that saved it found the group.)
+function restoreProgress(spec: DictionarySpec, wordSalad: WordSalad): void {
+  for (const word of loadSavedWords(storageKey(spec, wordSalad))) {
     try {
       wordSalad.tryWord(word);
     } catch (_error) {
@@ -304,12 +328,15 @@ function restoreProgress(wordSalad: WordSalad): void {
   }
 }
 
-function generateGameInit(dictionary: readonly string[]): GameInit {
+function generateGameInit(
+  dictionary: readonly string[],
+  spec: DictionarySpec,
+): GameInit {
   try {
-    const wordSalad = generateWordSalad(dictionary);
+    const wordSalad = generateWordSalad(dictionary, {}, spec);
     // An explicitly new game starts with a clean slate, even if the same
     // puzzle was played before.
-    clearSavedProgress(storeWordSalad(wordSalad));
+    clearSavedProgress(storageKey(spec, wordSalad));
     return { wordSalad };
   } catch (_error) {
     return { reason: 'generation-failed' };
@@ -325,24 +352,32 @@ function generateGameInit(dictionary: readonly string[]): GameInit {
 // partial link resolves to a concrete, shareable one. New games are started
 // explicitly via startNewGame, so a refresh resumes; pasting a different
 // puzzle URL is a real navigation and boots through here.
-function createWordSalad(dictionary: readonly string[]): GameInit {
+function createWordSalad(
+  dictionary: readonly string[],
+  spec: DictionarySpec,
+): GameInit {
   const params = new URLSearchParams(window.location.search);
   const lettersParam = params.get('letters');
   const requiredParam = params.get('required');
   const minParam = params.get('min');
 
   if (lettersParam === null && requiredParam === null && minParam === null) {
-    return generateGameInit(dictionary);
+    return generateGameInit(dictionary, spec);
   }
 
-  const letters = lettersParam === null ? null : lettersParam.toUpperCase();
-  const requiredRaw =
-    requiredParam === null ? null : requiredParam.toUpperCase();
+  // URL params fold into play-key space, so a hand-typed accented charset
+  // resolves to the board it means; validity is judged against the
+  // dictionary's own alphabet.
+  const letterPattern = alphabetPattern(spec);
+  const letters = lettersParam === null ? null : spec.fold(lettersParam);
+  const requiredRaw = requiredParam === null ? null : spec.fold(requiredParam);
   const minimumLength = minParam === null ? 4 : Number(minParam);
 
   if (
-    (letters !== null && !/^[A-Z]+$/.test(letters)) ||
-    (requiredRaw !== null && !/^[A-Z]*$/.test(requiredRaw)) ||
+    (letters !== null && !letterPattern.test(letters)) ||
+    (requiredRaw !== null &&
+      requiredRaw !== '' &&
+      !letterPattern.test(requiredRaw)) ||
     !Number.isInteger(minimumLength) ||
     minimumLength < 1
   ) {
@@ -363,21 +398,27 @@ function createWordSalad(dictionary: readonly string[]): GameInit {
       // An omitted `required` derives a good letter; an explicitly empty
       // one (?required=) is a deliberate no-required-letter puzzle.
       const requiredCharacters =
-        required ?? bestRequiredCharacter(dictionary, letters, minimumLength);
+        required ??
+        bestRequiredCharacter(dictionary, letters, minimumLength, spec);
       const wordSalad = loadWordSalad(
         dictionary,
         `${letters}.${requiredCharacters}.${minimumLength}`,
+        spec,
       );
-      restoreProgress(wordSalad);
+      restoreProgress(spec, wordSalad);
       return { wordSalad };
     }
     // No letters: generate a puzzle around the supplied constraints (pinned
     // required letters and/or a custom minimum length), as a fresh game.
-    const wordSalad = generateWordSalad(dictionary, {
-      minimumLength,
-      requiredCharacters: required ?? undefined,
-    });
-    clearSavedProgress(storeWordSalad(wordSalad));
+    const wordSalad = generateWordSalad(
+      dictionary,
+      {
+        minimumLength,
+        requiredCharacters: required ?? undefined,
+      },
+      spec,
+    );
+    clearSavedProgress(storageKey(spec, wordSalad));
     return { wordSalad };
   } catch (_error) {
     return { reason: 'invalid-game-data' };
@@ -387,9 +428,18 @@ function createWordSalad(dictionary: readonly string[]): GameInit {
 // The controller for a game session: owns the WordSalad engine instance and
 // all UI-facing state, and wires up document-level keyboard input. Components
 // stay purely presentational.
-export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
+export function useWordSaladGame(
+  dictionary: readonly string[],
+  spec: DictionarySpec = DEFAULT_DICTIONARY,
+): WordSaladGame {
+  // The dictionary's collation, so surface forms sort as their language
+  // expects everywhere the hook orders words.
+  const collate = useMemo(() => {
+    const collator = new Intl.Collator(spec.lang);
+    return (a: string, b: string) => collator.compare(a, b);
+  }, [spec.lang]);
   const [gameState, setGameState] = useState<{ id: number; init: GameInit }>(
-    () => ({ id: 0, init: createWordSalad(dictionary) }),
+    () => ({ id: 0, init: createWordSalad(dictionary, spec) }),
   );
   const wordSalad =
     'wordSalad' in gameState.init ? gameState.init.wordSalad : null;
@@ -401,10 +451,10 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   const [hintedWords, setHintedWords] = useState<ReadonlySet<string>>(() =>
     wordSalad === null
       ? new Set()
-      : new Set(loadHintedWords(storeWordSalad(wordSalad))),
+      : new Set(loadHintedWords(storageKey(spec, wordSalad))),
   );
   const [foundWords, setFoundWords] = useState<readonly FoundWord[]>(() =>
-    wordSalad === null ? [] : toFoundWords(wordSalad, hintedWords),
+    wordSalad === null ? [] : toFoundWords(wordSalad, hintedWords, collate),
   );
   const [spotlight, setSpotlight] = useState<WordSpotlight | null>(null);
   const [lastSubmission, setLastSubmission] = useState<SubmittedPreview | null>(
@@ -453,12 +503,19 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     } else {
       url.searchParams.set('min', minimumLength);
     }
+    // The dictionary is part of the puzzle's identity, so it rides in the
+    // shareable URL (English stays implicit as the default).
+    if (spec.id === 'en') {
+      url.searchParams.delete('dict');
+    } else {
+      url.searchParams.set('dict', spec.id);
+    }
     // Share-link challenge params are consumed at boot, not kept.
     url.searchParams.delete('score');
     url.searchParams.delete('hints');
     url.hash = '';
     window.history.replaceState(null, '', url.toString());
-  }, [wordSalad]);
+  }, [spec, wordSalad]);
 
   // Blur on any click so that Enter submits the current word instead of
   // re-triggering the last focused button or link. An open modal owns its
@@ -497,9 +554,11 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setHintReveal(null);
     setDeniedControl(null);
 
-    // The word is hinted if it was already committed via a hint reveal; the
-    // engine still records it, but it scores nothing.
-    const isHinted = hintedWords.has(word);
+    // Everything this input names: one key group, found (and hinted, and
+    // scored) together. The input is hinted if its group was committed via
+    // a hint reveal; the engine still records it, but it scores nothing.
+    const matches = wordSalad.wordsMatching(word);
+    const isHinted = matches.some((match) => hintedWords.has(match));
     const preview = wordSalad.previewWord(word);
     // Record the badge as it looked at submit time (before the engine
     // mutates), so the view can animate it away — hinted words show +0.
@@ -526,12 +585,13 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     if (preview.verdict !== 'valid') {
       setFeedback({ kind: 'word-rejected', word, reason: preview });
       // Submitting a word you already found is a way of asking where it is,
-      // so bring it into view rather than only reporting the rejection.
+      // so bring it into view rather than only reporting the rejection. The
+      // drum's rows are surface forms, so spotlight the group's first.
       if (preview.verdict === 'already-found') {
         setSpotlight((previous) => ({
           id: (previous?.id ?? 0) + 1,
           requested: true,
-          word,
+          word: matches[0] ?? word,
         }));
       }
       return;
@@ -566,23 +626,31 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       }
     }
 
-    const gameKey = storeWordSalad(wordSalad);
-    setFoundWords(toFoundWords(wordSalad, hintedWords));
+    const gameKey = storageKey(spec, wordSalad);
+    setFoundWords(toFoundWords(wordSalad, hintedWords, collate));
     setSpotlight((previous) => ({
       id: (previous?.id ?? 0) + 1,
       requested: false,
-      word,
+      word: matches[0] ?? word,
     }));
     saveWords(gameKey, Array.from(wordSalad.foundWords.keys()));
-  }, [hintedWords, inputLetters, tossId, wordSalad]);
+  }, [collate, hintedWords, inputLetters, spec, tossId, wordSalad]);
 
   const appendLetter = useCallback(
     (character: string) => {
-      const letter = character.toUpperCase();
+      // Typed characters fold into play-key space, so an AZERTY é lands as
+      // E (and a typed œ as the two letters OE) instead of being rejected
+      // as foreign.
+      const letters = Array.from(spec.fold(character));
+      const letter = letters.join('') || character.toUpperCase();
 
       // Reject letters outside the salad right away instead of letting the
       // player build a word that can never score.
-      if (wordSalad !== null && !wordSalad.characterSet.has(letter)) {
+      if (
+        wordSalad !== null &&
+        (letters.length === 0 ||
+          letters.some((entry) => !wordSalad.characterSet.has(entry)))
+      ) {
         setLastRejection((previous) => ({
           id: (previous?.id ?? 0) + 1,
           letter,
@@ -607,11 +675,11 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       setFeedback(null);
       setLastAppended((previous) => ({
         id: (previous?.id ?? 0) + 1,
-        letter,
+        letter: letters[0],
       }));
-      setInputLetters((previous) => [...previous, letter]);
+      setInputLetters((previous) => [...previous, ...letters]);
     },
-    [hintReveal, submitWord, wordSalad],
+    [hintReveal, spec, submitWord, wordSalad],
   );
 
   const deleteLetter = useCallback(() => {
@@ -678,7 +746,9 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       return;
     }
 
-    const letters = Array.from(hint.word);
+    // The input carries the play key — the letters one would type — while
+    // the found list will show the real spellings the reveal pays for.
+    const letters = Array.from(wordSalad.keyOf(hint.word));
     setInputLetters(letters);
     // The revealed word replaces whatever was typed, so the last verdict no
     // longer describes what's in the word area.
@@ -715,11 +785,16 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
         setLockout((previous) => ({ id: (previous?.id ?? 0) + 1 }));
       }
 
-      const committed = new Set(hintedWords).add(hint.word);
+      // Commit the whole key group: submission finds côte and côté
+      // together, so the hint pays for them together.
+      const committed = new Set(hintedWords);
+      for (const sibling of wordSalad.wordsMatching(hint.word)) {
+        committed.add(sibling);
+      }
       setHintedWords(committed);
-      saveHintedWords(storeWordSalad(wordSalad), Array.from(committed));
+      saveHintedWords(storageKey(spec, wordSalad), Array.from(committed));
     }
-  }, [hintedWords, wordSalad]);
+  }, [hintedWords, spec, wordSalad]);
 
   // Keyboard input aimed at an unavailable control: the button dips in
   // acknowledgment without firing. Pointer taps get the equivalent for free
@@ -732,7 +807,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
   }, []);
 
   const startNewGame = useCallback(() => {
-    const init = generateGameInit(dictionary);
+    const init = generateGameInit(dictionary, spec);
     setGameState((previous) => ({ id: previous.id + 1, init }));
     setSaladLetters(
       'wordSalad' in init
@@ -760,7 +835,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setTossId(0);
     setDeleteId(0);
     setHintedWords(new Set());
-  }, [dictionary]);
+  }, [dictionary, spec]);
 
   // Same salad, clean slate: rebuild the engine from the same parameters
   // and drop the saved progress.
@@ -768,12 +843,13 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     if (wordSalad === null) {
       return;
     }
-    clearSavedProgress(storeWordSalad(wordSalad));
+    clearSavedProgress(storageKey(spec, wordSalad));
     const fresh = new WordSalad(
       wordSalad.characterSet,
       wordSalad.requiredCharacters,
       wordSalad.minimumLength,
       dictionary,
+      spec.fold,
     );
     setGameState((previous) => ({
       id: previous.id,
@@ -796,7 +872,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setTossId(0);
     setDeleteId(0);
     setHintedWords(new Set());
-  }, [dictionary, wordSalad]);
+  }, [dictionary, spec, wordSalad]);
 
   // A hint is a single action: once the reveal cascade has played out and
   // the player has had a beat to read the word, it submits itself. A manual
@@ -844,7 +920,9 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
         return;
       }
 
-      if (/^[a-zA-Z]$/.test(event.key)) {
+      // Any single letter key, in any script: appendLetter folds it into
+      // play-key space and rejects what the board can't use.
+      if (/^\p{L}$/u.test(event.key)) {
         appendLetter(event.key);
       } else if (event.key === 'Backspace' || event.key === 'Delete') {
         if (inputLetters.length === 0) {
@@ -887,14 +965,17 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     wordSalad,
   ]);
 
-  // Every word in the puzzle, alphabetized once per engine instance. Found
-  // or not, each word owns a fixed slot for the life of the game.
+  // Every word in the puzzle, alphabetized once per engine instance in the
+  // dictionary's own collation. Found or not, each word owns a fixed slot
+  // for the life of the game.
   const allWords = useMemo(
     () =>
       wordSalad === null
         ? []
-        : [...wordSalad.foundWords.keys(), ...wordSalad.remainingWords].sort(),
-    [wordSalad],
+        : [...wordSalad.foundWords.keys(), ...wordSalad.remainingWords].sort(
+            collate,
+          ),
+    [collate, wordSalad],
   );
 
   const wordSlots = useMemo<readonly WordSlot[]>(() => {
@@ -913,7 +994,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       return;
     }
     const points = tallyPoints(wordSalad, hintedWords);
-    saveSummary(storeWordSalad(wordSalad), {
+    saveSummary(storageKey(spec, wordSalad), {
       earned: points.earnedPoints,
       found: foundWords.length,
       hints: hintedWords.size,
@@ -922,7 +1003,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       playedAt: Date.now(),
       total: allWords.length,
     });
-  }, [allWords, foundWords, hintedWords, wordSalad]);
+  }, [allWords, foundWords, hintedWords, spec, wordSalad]);
 
   if (wordSalad === null) {
     return {
@@ -940,7 +1021,9 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       ? null
       : hintedPreview(
           wordSalad.previewWord(inputWord),
-          hintedWords.has(inputWord),
+          wordSalad
+            .wordsMatching(inputWord)
+            .some((match) => hintedWords.has(match)),
         );
 
   const { earnedPoints, lostPoints } = tallyPoints(wordSalad, hintedWords);

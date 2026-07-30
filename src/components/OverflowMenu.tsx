@@ -1,6 +1,7 @@
 import type { KeyboardEvent, RefObject } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
+import { DICTIONARIES } from '../game/dictionaries';
 import type { Locale } from '../i18n';
 import {
   detectLocale,
@@ -23,7 +24,12 @@ interface OverflowMenuProps {
   onHistory: () => void;
   onLocaleOverride: (locale: Locale | null) => void;
   onTheme: (theme: ThemePreference) => void;
+  // Start a new game drawing from another dictionary (a navigation: the
+  // current board stays resumable from History).
+  onWordList: (id: string) => void;
   theme: ThemePreference;
+  // The current dictionary's id — the word-list picker's value.
+  wordList: string;
   // Owned by the parent so it can restore focus here after a dialog opened
   // from the menu closes (the menu items themselves unmount on close).
   triggerRef: RefObject<HTMLButtonElement | null>;
@@ -52,7 +58,9 @@ export function OverflowMenu({
   onHistory,
   onLocaleOverride,
   onTheme,
+  onWordList,
   theme,
+  wordList,
   triggerRef,
 }: OverflowMenuProps) {
   const t = useMessages();
@@ -184,6 +192,33 @@ export function OverflowMenu({
               {item.label}
             </button>
           ))}
+          {/* The word list is a property of the puzzle, not of the device,
+              so it sits with the actions: picking a language starts a new
+              game there (the current board stays resumable from History).
+              Each list is named in its own language. */}
+          <label className={PICKER_ROW_CLASS}>
+            <span className="flex items-center gap-2">
+              <span aria-hidden="true" className={ICON_CLASS}>
+                ☷
+              </span>
+              {t.wordListLabel}
+            </span>
+            <select
+              className="ml-6 cursor-pointer rounded border border-gray-200 bg-transparent py-0.5 pl-1 pr-6 text-sm dark:border-gray-700"
+              onChange={(event) => {
+                if (event.target.value !== wordList) {
+                  onWordList(event.target.value);
+                }
+              }}
+              value={wordList}
+            >
+              {Object.values(DICTIONARIES).map((dictionary) => (
+                <option key={dictionary.id} value={dictionary.id}>
+                  {dictionary.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <div
             className="mx-3 my-1 border-t border-gray-200 dark:border-gray-700"
             role="separator"

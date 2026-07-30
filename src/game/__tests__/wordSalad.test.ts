@@ -201,3 +201,77 @@ describe('WordSalad', () => {
     });
   });
 });
+
+describe('WordSalad with a folding dictionary', () => {
+  // The French fold: accents strip, ligatures expand, keys stay A-Z.
+  const fold = (text: string) =>
+    text
+      .toUpperCase()
+      .replace(/Œ/g, 'OE')
+      .replace(/Æ/g, 'AE')
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '');
+
+  // One key group of four (COTE) plus two singletons, board CEOST.
+  const FRENCH = ['CÔTE', 'CÔTÉ', 'COTE', 'COTÉ', 'ÉTÉS', 'TÊTES'];
+
+  const build = () => new WordSalad(new Set('CEOST'), 'T', 4, FRENCH, fold);
+
+  it('finds every surface form sharing the submitted key at once', () => {
+    const wordSalad = build();
+    expect(wordSalad.remainingWords.size).toBe(6);
+
+    // Four siblings, one point each (key length 4, minimum 4).
+    expect(wordSalad.previewWord('COTE')).toEqual({
+      verdict: 'valid',
+      points: 4,
+    });
+    expect(wordSalad.tryWord('COTE')).toBe(4);
+    expect(Array.from(wordSalad.foundWords.keys()).sort()).toEqual(
+      ['COTE', 'COTÉ', 'CÔTE', 'CÔTÉ'].sort(),
+    );
+    // Each sibling scored as its own word.
+    expect(wordSalad.foundWords.get('CÔTÉ')).toBe(1);
+    expect(wordSalad.previewWord('COTE')).toEqual({
+      verdict: 'already-found',
+    });
+  });
+
+  it('folds typed input, so accented typing matches its key', () => {
+    const wordSalad = build();
+    expect(wordSalad.tryWord('côté')).toBe(4);
+  });
+
+  it('judges validity and points on the key, not the surface form', () => {
+    const wordSalad = build();
+    // ÉTÉS folds to ETES: subset of the board, contains T, length 4.
+    expect(wordSalad.previewWord('ETES')).toEqual({
+      verdict: 'valid',
+      points: 1,
+    });
+    // TÊTES folds to TETES (5 letters): worth 2.
+    expect(wordSalad.pointsFor('TÊTES')).toBe(2);
+    expect(wordSalad.keyOf('TÊTES')).toBe('TETES');
+    expect(wordSalad.wordsMatching('cote')).toEqual([
+      'CÔTE',
+      'CÔTÉ',
+      'COTE',
+      'COTÉ',
+    ]);
+  });
+
+  it('detects pangrams on folded letters', () => {
+    // CŒURS folds to COEURS: 6 distinct letters covering the whole board.
+    const wordSalad = new WordSalad(
+      new Set('CEORSU'),
+      'C',
+      4,
+      ['CŒURS', 'CŒUR'],
+      fold,
+    );
+    expect(wordSalad.pangramWords.has('CŒURS')).toBe(true);
+    // Key length 6 - 4 + 1 + pangram bonus 6.
+    expect(wordSalad.pointsFor('CŒURS')).toBe(9);
+    expect(wordSalad.pointsFor('CŒUR')).toBe(2);
+  });
+});
