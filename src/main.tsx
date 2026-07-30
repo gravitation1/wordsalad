@@ -4,9 +4,13 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from './App';
-import { CATALOGS, MessagesProvider, resolveLocale } from './i18n';
+import { CATALOGS, resolveLocale } from './i18n';
+import { loadLocaleOverride } from './progressStore';
 
-const locale = resolveLocale();
+// App owns the live locale (it can change from the ⋯ menu); this boot-time
+// resolution only covers what renders before or instead of it: the html
+// lang attribute during load, and the dictionary-failure message.
+const locale = resolveLocale(loadLocaleOverride());
 document.documentElement.lang = locale;
 
 async function loadDictionary(): Promise<string[]> {
@@ -32,9 +36,7 @@ void loadDictionary().then(
   (dictionary) => {
     root.render(
       <StrictMode>
-        <MessagesProvider locale={locale}>
-          <App dictionary={dictionary} />
-        </MessagesProvider>
+        <App dictionary={dictionary} />
       </StrictMode>,
     );
   },

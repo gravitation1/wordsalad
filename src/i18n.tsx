@@ -20,6 +20,22 @@ export const SUPPORTED_LOCALES: readonly Locale[] = [
   'zh',
 ];
 
+// Each locale in its own language, for the UI-language picker: a reader who
+// can't parse the current UI language must still recognize their own.
+export const LOCALE_NAMES: Record<Locale, string> = {
+  de: 'Deutsch',
+  en: 'English',
+  es: 'Español',
+  fr: 'Français',
+  it: 'Italiano',
+  ja: '日本語',
+  ko: '한국어',
+  nl: 'Nederlands',
+  pt: 'Português',
+  ru: 'Русский',
+  zh: '中文',
+};
+
 export interface Messages {
   locale: Locale;
   appTitle: string;
@@ -32,6 +48,14 @@ export interface Messages {
   keepPlayingButton: string;
   customGameButton: string;
   moreMenuLabel: string;
+  themeLabel: string;
+  themeSystem: string;
+  themeLight: string;
+  themeDark: string;
+  uiLanguageLabel: string;
+  // Renders the "follow the browser" picker entry; the argument is the
+  // native name (LOCALE_NAMES) of the locale auto-detection would pick.
+  uiLanguageAuto: (nativeName: string) => string;
   // The header's ♪ toggle. Its pressed state carries on/off, so the label
   // names the thing rather than the action.
   soundLabel: string;
@@ -121,6 +145,12 @@ const EN: Messages = {
   keepPlayingButton: 'Keep playing',
   customGameButton: 'Custom game',
   moreMenuLabel: 'More options',
+  themeLabel: 'Theme',
+  themeSystem: 'System',
+  themeLight: 'Light',
+  themeDark: 'Dark',
+  uiLanguageLabel: 'UI language',
+  uiLanguageAuto: (nativeName) => `Auto (${nativeName})`,
   soundLabel: 'Sound',
   customGameTitle: 'Custom game',
   customModeLegend: 'Board',
@@ -263,6 +293,12 @@ const FR: Messages = {
   keepPlayingButton: 'Continuer à jouer',
   customGameButton: 'Partie personnalisée',
   moreMenuLabel: 'Plus d’options',
+  themeLabel: 'Thème',
+  themeSystem: 'Système',
+  themeLight: 'Clair',
+  themeDark: 'Sombre',
+  uiLanguageLabel: 'Langue de l’interface',
+  uiLanguageAuto: (nativeName) => `Auto (${nativeName})`,
   soundLabel: 'Son',
   customGameTitle: 'Partie personnalisée',
   customModeLegend: 'Plateau',
@@ -407,6 +443,12 @@ const ES: Messages = {
   keepPlayingButton: 'Seguir jugando',
   customGameButton: 'Partida personalizada',
   moreMenuLabel: 'Más opciones',
+  themeLabel: 'Tema',
+  themeSystem: 'Sistema',
+  themeLight: 'Claro',
+  themeDark: 'Oscuro',
+  uiLanguageLabel: 'Idioma de la interfaz',
+  uiLanguageAuto: (nativeName) => `Auto (${nativeName})`,
   soundLabel: 'Sonido',
   customGameTitle: 'Partida personalizada',
   customModeLegend: 'Tablero',
@@ -551,6 +593,12 @@ const DE: Messages = {
   keepPlayingButton: 'Weiterspielen',
   customGameButton: 'Eigenes Spiel',
   moreMenuLabel: 'Weitere Optionen',
+  themeLabel: 'Design',
+  themeSystem: 'System',
+  themeLight: 'Hell',
+  themeDark: 'Dunkel',
+  uiLanguageLabel: 'Sprache der Oberfläche',
+  uiLanguageAuto: (nativeName) => `Auto (${nativeName})`,
   soundLabel: 'Ton',
   customGameTitle: 'Eigenes Spiel',
   customModeLegend: 'Feld',
@@ -696,6 +744,12 @@ const IT: Messages = {
   keepPlayingButton: 'Continua a giocare',
   customGameButton: 'Partita personalizzata',
   moreMenuLabel: 'Altre opzioni',
+  themeLabel: 'Tema',
+  themeSystem: 'Sistema',
+  themeLight: 'Chiaro',
+  themeDark: 'Scuro',
+  uiLanguageLabel: 'Lingua dell’interfaccia',
+  uiLanguageAuto: (nativeName) => `Auto (${nativeName})`,
   soundLabel: 'Suono',
   customGameTitle: 'Partita personalizzata',
   customModeLegend: 'Tabellone',
@@ -841,6 +895,12 @@ const PT: Messages = {
   keepPlayingButton: 'Continuar jogando',
   customGameButton: 'Jogo personalizado',
   moreMenuLabel: 'Mais opções',
+  themeLabel: 'Tema',
+  themeSystem: 'Sistema',
+  themeLight: 'Claro',
+  themeDark: 'Escuro',
+  uiLanguageLabel: 'Idioma da interface',
+  uiLanguageAuto: (nativeName) => `Auto (${nativeName})`,
   soundLabel: 'Som',
   customGameTitle: 'Jogo personalizado',
   customModeLegend: 'Tabuleiro',
@@ -985,6 +1045,12 @@ const NL: Messages = {
   keepPlayingButton: 'Verder spelen',
   customGameButton: 'Eigen spel',
   moreMenuLabel: 'Meer opties',
+  themeLabel: 'Thema',
+  themeSystem: 'Systeem',
+  themeLight: 'Licht',
+  themeDark: 'Donker',
+  uiLanguageLabel: 'Taal van de interface',
+  uiLanguageAuto: (nativeName) => `Auto (${nativeName})`,
   soundLabel: 'Geluid',
   customGameTitle: 'Eigen spel',
   customModeLegend: 'Bord',
@@ -1130,6 +1196,12 @@ const JA: Messages = {
   keepPlayingButton: 'プレイを続ける',
   customGameButton: 'カスタムゲーム',
   moreMenuLabel: 'その他のオプション',
+  themeLabel: 'テーマ',
+  themeSystem: 'システム',
+  themeLight: 'ライト',
+  themeDark: 'ダーク',
+  uiLanguageLabel: '表示言語',
+  uiLanguageAuto: (nativeName) => `自動（${nativeName}）`,
   soundLabel: 'サウンド',
   customGameTitle: 'カスタムゲーム',
   customModeLegend: '盤面',
@@ -1264,6 +1336,12 @@ const KO: Messages = {
   keepPlayingButton: '계속 플레이하기',
   customGameButton: '커스텀 게임',
   moreMenuLabel: '더 보기',
+  themeLabel: '테마',
+  themeSystem: '시스템',
+  themeLight: '라이트',
+  themeDark: '다크',
+  uiLanguageLabel: '표시 언어',
+  uiLanguageAuto: (nativeName) => `자동 (${nativeName})`,
   soundLabel: '소리',
   customGameTitle: '커스텀 게임',
   customModeLegend: '보드',
@@ -1398,6 +1476,12 @@ const ZH: Messages = {
   keepPlayingButton: '继续游戏',
   customGameButton: '自定义游戏',
   moreMenuLabel: '更多选项',
+  themeLabel: '主题',
+  themeSystem: '跟随系统',
+  themeLight: '浅色',
+  themeDark: '深色',
+  uiLanguageLabel: '界面语言',
+  uiLanguageAuto: (nativeName) => `自动（${nativeName}）`,
   soundLabel: '声音',
   customGameTitle: '自定义游戏',
   customModeLegend: '棋盘',
@@ -1528,6 +1612,12 @@ const RU: Messages = {
   keepPlayingButton: 'Продолжить игру',
   customGameButton: 'Своя игра',
   moreMenuLabel: 'Ещё',
+  themeLabel: 'Тема',
+  themeSystem: 'Системная',
+  themeLight: 'Светлая',
+  themeDark: 'Тёмная',
+  uiLanguageLabel: 'Язык интерфейса',
+  uiLanguageAuto: (nativeName) => `Авто (${nativeName})`,
   soundLabel: 'Звук',
   customGameTitle: 'Своя игра',
   customModeLegend: 'Поле',
@@ -1670,15 +1760,18 @@ export function detectLocale(
   return 'en';
 }
 
-// The browser's languages decide the locale, but a ?lang= query parameter
-// wins when present (handy for spot-checking translations).
-export function resolveLocale(): Locale {
-  const override = new URLSearchParams(window.location.search).get('lang');
-  return detectLocale(
-    override === null
-      ? navigator.languages
-      : [override, ...navigator.languages],
-  );
+// The browser's languages decide the locale, ahead of them a saved
+// UI-language override (the ⋯-menu setting), and ahead of everything a
+// ?lang= query parameter (handy for spot-checking translations). Candidates
+// all funnel through detectLocale, so an unsupported entry at any level
+// falls through to the next.
+export function resolveLocale(override: string | null = null): Locale {
+  const param = new URLSearchParams(window.location.search).get('lang');
+  return detectLocale([
+    ...(param === null ? [] : [param]),
+    ...(override === null ? [] : [override]),
+    ...navigator.languages,
+  ]);
 }
 
 const MessagesContext = createContext<Messages>(EN);

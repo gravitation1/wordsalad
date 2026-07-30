@@ -2,12 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from '../App';
-import {
-  CATALOGS,
-  detectLocale,
-  MessagesProvider,
-  resolveLocale,
-} from '../i18n';
+import { CATALOGS, detectLocale, resolveLocale } from '../i18n';
 
 const DICTIONARY = ['TEST', 'ROTTED', 'WORSTED', 'WORD', 'REDO', 'ABLE'];
 
@@ -51,6 +46,19 @@ describe('resolveLocale', () => {
     // jsdom reports English browser languages.
     expect(resolveLocale()).toBe('en');
   });
+
+  it('prefers a saved override over the browser languages', () => {
+    expect(resolveLocale('de')).toBe('de');
+  });
+
+  it('lets ?lang= beat a saved override', () => {
+    window.history.replaceState(null, '', '?lang=ru');
+    expect(resolveLocale('de')).toBe('ru');
+  });
+
+  it('falls past an unsupported saved override', () => {
+    expect(resolveLocale('km')).toBe('en');
+  });
 });
 
 describe('plural forms', () => {
@@ -73,9 +81,15 @@ describe('plural forms', () => {
 });
 
 describe('French UI', () => {
+  // The locale rides in on ?lang=, the same override the app documents for
+  // spot-checking translations (App resolves its own catalog internally).
   beforeEach(() => {
     window.localStorage.clear();
-    window.history.replaceState(null, '', '?letters=WORDTES&required=T');
+    window.history.replaceState(
+      null,
+      '',
+      '?letters=WORDTES&required=T&lang=fr',
+    );
   });
 
   afterEach(() => {
@@ -83,11 +97,7 @@ describe('French UI', () => {
   });
 
   it('renders controls, feedback, and the scoreboard in French', () => {
-    render(
-      <MessagesProvider locale="fr">
-        <App dictionary={DICTIONARY} />
-      </MessagesProvider>,
-    );
+    render(<App dictionary={DICTIONARY} />);
 
     expect(screen.getByRole('button', { name: 'Effacer' })).toBeInTheDocument();
     expect(
@@ -108,11 +118,7 @@ describe('French UI', () => {
   });
 
   it('announces letter rejections in French', () => {
-    render(
-      <MessagesProvider locale="fr">
-        <App dictionary={DICTIONARY} />
-      </MessagesProvider>,
-    );
+    render(<App dictionary={DICTIONARY} />);
 
     typeWord('q');
     expect(screen.getByRole('status')).toHaveTextContent(
@@ -124,7 +130,11 @@ describe('French UI', () => {
 describe('Japanese UI', () => {
   beforeEach(() => {
     window.localStorage.clear();
-    window.history.replaceState(null, '', '?letters=WORDTES&required=T');
+    window.history.replaceState(
+      null,
+      '',
+      '?letters=WORDTES&required=T&lang=ja',
+    );
   });
 
   afterEach(() => {
@@ -132,11 +142,7 @@ describe('Japanese UI', () => {
   });
 
   it('renders controls and scores in Japanese', () => {
-    render(
-      <MessagesProvider locale="ja">
-        <App dictionary={DICTIONARY} />
-      </MessagesProvider>,
-    );
+    render(<App dictionary={DICTIONARY} />);
 
     expect(screen.getByRole('button', { name: '削除' })).toBeInTheDocument();
     expect(

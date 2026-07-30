@@ -8,9 +8,11 @@ const HINTED_WORDS_PREFIX = 'wordsalad:hinted:';
 const META_PREFIX = 'wordsalad:meta:';
 // Legacy key from an earlier hint-count design; still cleared on reset.
 const LEGACY_HINTS_PREFIX = 'wordsalad:hints:';
-// The one setting here that belongs to the player rather than to a puzzle,
-// so it has no game key and no reset survives it.
+// Settings that belong to the player rather than to a puzzle, so they have
+// no game key and no reset touches them.
 const SOUND_KEY = 'wordsalad:sound';
+const THEME_KEY = 'wordsalad:theme';
+const LOCALE_KEY = 'wordsalad:locale';
 
 // A compact per-game record for the history view: everything the list and
 // its aggregate statistics need, without re-solving the puzzle.
@@ -149,6 +151,54 @@ export function loadSoundEnabled(): boolean {
 export function saveSoundEnabled(enabled: boolean): void {
   try {
     window.localStorage.setItem(SOUND_KEY, enabled ? 'on' : 'off');
+  } catch (_error) {
+    // The preference lasts as long as the session, then.
+  }
+}
+
+// 'system' means "follow the OS": stored as absence, so a future rename of
+// the default costs nothing and a cleared override leaves no residue.
+export type ThemePreference = 'system' | 'light' | 'dark';
+
+export function loadThemePreference(): ThemePreference {
+  try {
+    const raw = window.localStorage.getItem(THEME_KEY);
+    return raw === 'light' || raw === 'dark' ? raw : 'system';
+  } catch (_error) {
+    return 'system';
+  }
+}
+
+export function saveThemePreference(theme: ThemePreference): void {
+  try {
+    if (theme === 'system') {
+      window.localStorage.removeItem(THEME_KEY);
+    } else {
+      window.localStorage.setItem(THEME_KEY, theme);
+    }
+  } catch (_error) {
+    // The preference lasts as long as the session, then.
+  }
+}
+
+// The UI-language override; null means "follow the browser". Stored as a
+// bare tag and revalidated by the locale resolver on the way in, so a stale
+// value for a dropped locale degrades to the browser's choice.
+export function loadLocaleOverride(): string | null {
+  try {
+    return window.localStorage.getItem(LOCALE_KEY);
+  } catch (_error) {
+    return null;
+  }
+}
+
+export function saveLocaleOverride(locale: string | null): void {
+  try {
+    if (locale === null) {
+      window.localStorage.removeItem(LOCALE_KEY);
+    } else {
+      window.localStorage.setItem(LOCALE_KEY, locale);
+    }
   } catch (_error) {
     // The preference lasts as long as the session, then.
   }

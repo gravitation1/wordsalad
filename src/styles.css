@@ -1,5 +1,35 @@
 @import 'tailwindcss';
 
+/* Rebuild the dark: variant so a manual override can beat the OS: dark
+   applies when <html> is stamped data-theme='dark', or when the OS prefers
+   dark and no light override says otherwise. No attribute means "follow
+   the system" — live, with no JS listeners. (Tailwind's stock variant is
+   the bare media query, which a UI toggle could never win against.) */
+@custom-variant dark {
+  &:where([data-theme='dark'], [data-theme='dark'] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(
+      :root:not([data-theme='light']),
+      :root:not([data-theme='light']) *
+    ) {
+      @slot;
+    }
+  }
+}
+
+/* Native UI (form controls, scrollbars) resolves the same way. */
+:root {
+  color-scheme: light dark;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
 /* Design tokens: change these to restyle the whole game. */
 @theme {
   /* One accent for both themes: teal-600 is dark enough to carry white

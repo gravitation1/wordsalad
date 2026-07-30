@@ -1752,4 +1752,87 @@ describe('App', () => {
       expect(screen.getByRole('button', { name: letter })).toBeInTheDocument();
     }
   });
+
+  it('cycles the theme override from the ⋯ menu and persists it', () => {
+    render(<App dictionary={DICTIONARY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+    const themeRow = () => screen.getByRole('menuitem', { name: /Theme/ });
+
+    // The default follows the OS: no override on <html>, nothing stored.
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+    expect(themeRow()).toHaveTextContent('System');
+
+    // Each tap advances System → Light → Dark → System; the menu stays
+    // open so the change can be watched (and taken back).
+    fireEvent.click(themeRow());
+    expect(document.documentElement.dataset.theme).toBe('light');
+    expect(window.localStorage.getItem('wordsalad:theme')).toBe('light');
+    expect(themeRow()).toHaveTextContent('Light');
+
+    fireEvent.click(themeRow());
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(window.localStorage.getItem('wordsalad:theme')).toBe('dark');
+
+    fireEvent.click(themeRow());
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+    expect(window.localStorage.getItem('wordsalad:theme')).toBeNull();
+  });
+
+  it('restores a saved theme override on boot', () => {
+    window.localStorage.setItem('wordsalad:theme', 'dark');
+    render(<App dictionary={DICTIONARY} />);
+    expect(document.documentElement.dataset.theme).toBe('dark');
+  });
+
+  it('switches the UI language from the ⋯ menu and persists it', () => {
+    render(<App dictionary={DICTIONARY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+
+    const select = screen.getByRole('combobox', { name: 'UI language' });
+    fireEvent.change(select, { target: { value: 'fr' } });
+
+    // The whole app rewords in place — including the menu itself — and
+    // the document advertises the new language.
+    expect(screen.getByRole('menuitem', { name: 'Historique' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Valider' })).toBeVisible();
+    expect(document.documentElement.lang).toBe('fr');
+    expect(window.localStorage.getItem('wordsalad:locale')).toBe('fr');
+
+    // Auto returns to following the browser (English under jsdom).
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Langue de l’interface' }),
+      { target: { value: '' } },
+    );
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeVisible();
+    expect(window.localStorage.getItem('wordsalad:locale')).toBeNull();
+  });
+
+  it('restores a saved UI language on boot', () => {
+    window.localStorage.setItem('wordsalad:locale', 'de');
+    render(<App dictionary={DICTIONARY} />);
+    expect(screen.getByRole('button', { name: 'Tipp' })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('de');
+  });
+
+  it('lets ?lang= outrank the saved UI language for spot-checks', () => {
+    window.localStorage.setItem('wordsalad:locale', 'de');
+    window.history.replaceState(
+      null,
+      '',
+      '?letters=WORDTES&required=T&lang=fr',
+    );
+    render(<App dictionary={DICTIONARY} />);
+    expect(screen.getByRole('button', { name: 'Indice' })).toBeInTheDocument();
+  });
+
+  it('ignores a stale UI-language override for a dropped locale', () => {
+    window.localStorage.setItem('wordsalad:locale', 'tlh');
+    render(<App dictionary={DICTIONARY} />);
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
+    // The picker reports Auto, not a phantom selection.
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+    expect(screen.getByRole('combobox', { name: 'UI language' })).toHaveValue(
+      '',
+    );
+  });
 });

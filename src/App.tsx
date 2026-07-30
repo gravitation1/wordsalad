@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { CustomGameModal } from './components/CustomGameModal';
 import { FeedbackLine } from './components/FeedbackLine';
@@ -9,12 +9,22 @@ import { SaladLetters } from './components/SaladLetters';
 import { Scoreboard } from './components/Scoreboard';
 import { SoundToggle } from './components/SoundToggle';
 import { WordInput } from './components/WordInput';
-import { useMessages } from './i18n';
-import type { HistoryEntry } from './progressStore';
+import type { Locale } from './i18n';
 import {
+  MessagesProvider,
+  resolveLocale,
+  SUPPORTED_LOCALES,
+  useMessages,
+} from './i18n';
+import type { HistoryEntry, ThemePreference } from './progressStore';
+import {
+  loadLocaleOverride,
   loadSoundEnabled,
   loadSummaries,
+  loadThemePreference,
+  saveLocaleOverride,
   saveSoundEnabled,
+  saveThemePreference,
 } from './progressStore';
 import { soundEnabled as playSoundEnabled } from './sound';
 import { useGameSounds } from './useGameSounds';
@@ -28,7 +38,69 @@ interface HistorySnapshot {
   now: number;
 }
 
+interface Settings {
+  localeOverride: Locale | null;
+  onLocaleOverride: (locale: Locale | null) => void;
+  onTheme: (theme: ThemePreference) => void;
+  theme: ThemePreference;
+}
+
+// Owns the device settings (theme, UI language) and provides the resolved
+// message catalog, so a language change rewords the whole app in place.
+// The body lives below the provider because it consumes the catalog itself.
 export function App({ dictionary }: { dictionary: readonly string[] }) {
+  const [theme, setTheme] = useState<ThemePreference>(loadThemePreference);
+  const [localeOverride, setLocaleOverride] = useState<Locale | null>(() => {
+    // Revalidate the stored tag: a stale override for a locale that no
+    // longer exists degrades to following the browser.
+    const stored = loadLocaleOverride();
+    return (SUPPORTED_LOCALES as readonly string[]).includes(stored ?? '')
+      ? (stored as Locale)
+      : null;
+  });
+  const locale = resolveLocale(localeOverride);
+
+  // Reflect the settings onto <html>: data-theme drives the dark: variant
+  // (the boot script in index.html stamps the same attribute before first
+  // paint), and lang follows the resolved locale.
+  useEffect(() => {
+    if (theme === 'system') {
+      delete document.documentElement.dataset.theme;
+    } else {
+      document.documentElement.dataset.theme = theme;
+    }
+  }, [theme]);
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
+  const settings: Settings = {
+    localeOverride,
+    onLocaleOverride: (value) => {
+      setLocaleOverride(value);
+      saveLocaleOverride(value);
+    },
+    onTheme: (value) => {
+      setTheme(value);
+      saveThemePreference(value);
+    },
+    theme,
+  };
+
+  return (
+    <MessagesProvider locale={locale}>
+      <AppBody dictionary={dictionary} settings={settings} />
+    </MessagesProvider>
+  );
+}
+
+function AppBody({
+  dictionary,
+  settings,
+}: {
+  dictionary: readonly string[];
+  settings: Settings;
+}) {
   const t = useMessages();
   const game = useWordSaladGame(dictionary);
   const [history, setHistory] = useState<HistorySnapshot | null>(null);
@@ -110,8 +182,12 @@ export function App({ dictionary }: { dictionary: readonly string[] }) {
         </button>
         <SoundToggle enabled={soundOn} onToggle={toggleSound} />
         <OverflowMenu
+          localeOverride={settings.localeOverride}
           onCustomGame={openCustom}
           onHistory={openHistory}
+          onLocaleOverride={settings.onLocaleOverride}
+          onTheme={settings.onTheme}
+          theme={settings.theme}
           triggerRef={menuTriggerRef}
         />
       </header>
