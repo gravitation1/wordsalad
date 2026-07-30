@@ -36,6 +36,23 @@ their real accented spellings; the game folds them to A–Z for play, as
 French word games traditionally do. A dictionary is selected per puzzle
 with `?dict=fr` and rides along in share links.
 
+The Spanish, Italian, Portuguese (Brazilian), Dutch, and German lists
+follow the same recipe — an authority lexicon intersected with a
+0.3-per-million corpus-frequency floor, minus group-targeting slurs. The
+authority for es/it/pt/de is the corresponding
+[LibreOffice hunspell dictionary](https://github.com/LibreOffice/dictionaries)
+expanded to all inflected forms; for nl it is the
+[OpenTaal word list](https://github.com/OpenTaal/opentaal-wordlist). The
+frequency signal is the OpenSubtitles-derived
+[FrequencyWords](https://github.com/hermitdave/FrequencyWords) counts.
+Spanish keeps Ñ as a first-class board letter; German keeps true case
+(nouns capitalized) and folds Ä/Ö/Ü/ß to AE/OE/UE/SS for play, with common
+person and place names filtered out.
+
+Each derived word list carries its own source license — attribution or
+file-scoped copyleft, none reaching the game code — documented in
+[public/dictionaries/LICENSES.md](public/dictionaries/LICENSES.md).
+
 ## License
 
 [MIT](LICENSE)

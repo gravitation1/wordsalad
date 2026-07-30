@@ -1847,6 +1847,8 @@ describe('App', () => {
     expect(
       within(picker).getByRole('option', { name: 'Français' }),
     ).toBeInTheDocument();
+    // The registry drives the picker: all seven lists appear.
+    expect(within(picker).getAllByRole('option')).toHaveLength(7);
 
     // Choosing one navigates to a fresh game there: bare of puzzle params
     // (a new board generates at boot) but carrying the dictionary.

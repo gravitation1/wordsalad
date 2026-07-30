@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { DICTIONARIES } from '../dictionaries';
 import { WordSaladError } from '../errors';
 import { WordSalad } from '../wordSalad';
 
@@ -273,5 +274,68 @@ describe('WordSalad with a folding dictionary', () => {
     // Key length 6 - 4 + 1 + pangram bonus 6.
     expect(wordSalad.pointsFor('CŒURS')).toBe(9);
     expect(wordSalad.pointsFor('CŒUR')).toBe(2);
+  });
+});
+
+describe('tier-1 dictionary folds', () => {
+  it('keeps Spanish Ñ distinct while folding accents', () => {
+    const { fold } = DICTIONARIES.es;
+    expect(fold('año')).toBe('AÑO');
+    expect(fold('ano')).toBe('ANO');
+    expect(fold('corazón')).toBe('CORAZON');
+    expect(fold('pingüino')).toBe('PINGUINO');
+    // año and ano must never collide.
+    expect(fold('año')).not.toBe(fold('ano'));
+  });
+
+  it('expands German umlauts and sharp s instead of stripping', () => {
+    const { fold } = DICTIONARIES.de;
+    expect(fold('Häuser')).toBe('HAEUSER');
+    expect(fold('Straße')).toBe('STRASSE');
+    expect(fold('schön')).toBe('SCHOEN');
+    expect(fold('über')).toBe('UEBER');
+    // Decomposed input folds identically to precomposed.
+    expect(fold('ähnlich')).toBe(fold('ähnlich'));
+  });
+
+  it('strips Italian, Portuguese, and Dutch accents to A-Z', () => {
+    expect(DICTIONARIES.it.fold('perché')).toBe('PERCHE');
+    expect(DICTIONARIES.it.fold('città')).toBe('CITTA');
+    expect(DICTIONARIES.pt.fold('coração')).toBe('CORACAO');
+    expect(DICTIONARIES.nl.fold('reëel')).toBe('REEEL');
+  });
+
+  it('links German definitions by true case, others by lowercase', () => {
+    expect(DICTIONARIES.de.definitionUrl('Haus', 'en')).toBe(
+      'https://en.wiktionary.org/wiki/Haus#German',
+    );
+    expect(DICTIONARIES.de.definitionUrl('Haus', 'de')).toBe(
+      'https://de.wiktionary.org/wiki/Haus',
+    );
+    expect(DICTIONARIES.es.definitionUrl('AÑOS', 'en')).toBe(
+      'https://en.wiktionary.org/wiki/a%C3%B1os#Spanish',
+    );
+    expect(DICTIONARIES.es.definitionUrl('AÑOS', 'es')).toBe(
+      'https://es.wiktionary.org/wiki/a%C3%B1os',
+    );
+  });
+
+  it('plays a Spanish board with Ñ as a first-class letter', () => {
+    const spec = DICTIONARIES.es;
+    // Board with Ñ: AÑO/AÑOS play; ANO stays a different word.
+    const wordSalad = new WordSalad(
+      new Set('AÑOSCLR'),
+      'Ñ',
+      3,
+      ['AÑO', 'AÑOS', 'ANO', 'CAÑA'],
+      spec.fold,
+    );
+    expect(wordSalad.remainingWords.has('AÑO')).toBe(true);
+    expect(wordSalad.remainingWords.has('ANO')).toBe(false); // missing Ñ
+    expect(wordSalad.tryWord('año')).toBe(1);
+    expect(wordSalad.previewWord('caña')).toEqual({
+      verdict: 'valid',
+      points: 2,
+    });
   });
 });

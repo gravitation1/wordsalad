@@ -30,9 +30,29 @@ export interface DictionarySpec {
 const LATIN_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const LATIN_VOWELS = 'AEIOU';
 
-// Strip combining marks after NFD decomposition: É -> E, Ç -> C.
+// Strip combining marks after NFD decomposition: É -> E, Ç -> C. Input is
+// NFC-normalized first so decomposed text (A + combining umlaut) meets the
+// precomposed replacements the folds run beforehand.
 function stripDiacritics(text: string): string {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+// Wiktionary is the definition host for every non-English list: the only
+// major dictionary family with predictable URLs for every inflected
+// surface form. When the UI language matches the word list, the reader's
+// own edition serves; otherwise the English edition's language section, so
+// a learner reads definitions in the language they chose for the UI.
+function wiktionaryUrl(
+  lang: string,
+  anchor: string,
+  toEntry: (word: string) => string = (word) => word.toLocaleLowerCase(lang),
+): DictionarySpec['definitionUrl'] {
+  return (word, uiLocale) => {
+    const form = encodeURIComponent(toEntry(word));
+    return uiLocale === lang
+      ? `https://${lang}.wiktionary.org/wiki/${form}`
+      : `https://en.wiktionary.org/wiki/${form}#${anchor}`;
+  };
 }
 
 const EN_DICTIONARY: DictionarySpec = {
@@ -47,11 +67,7 @@ const EN_DICTIONARY: DictionarySpec = {
 
 // French folds as the French game tradition does — accents strip, ligatures
 // expand to their letter pairs — so boards stay A–Z while the word list
-// keeps real spellings. Definitions point at Wiktionary: the only major
-// French dictionary with predictable URLs for every surface form, inflected
-// forms included. A French UI reads the Wiktionnaire; any other UI reads
-// the English Wiktionary's French section, so a learner gets definitions in
-// the language they chose to play in.
+// keeps real spellings.
 const FR_DICTIONARY: DictionarySpec = {
   id: 'fr',
   label: 'Français',
@@ -59,20 +75,106 @@ const FR_DICTIONARY: DictionarySpec = {
   letters: LATIN_LETTERS,
   vowels: LATIN_VOWELS,
   fold: (text) =>
-    stripDiacritics(text.toUpperCase().replace(/Œ/g, 'OE').replace(/Æ/g, 'AE')),
-  definitionUrl: (word, uiLocale) => {
-    const form = encodeURIComponent(word.toLocaleLowerCase('fr'));
-    return uiLocale === 'fr'
-      ? `https://fr.wiktionary.org/wiki/${form}`
-      : `https://en.wiktionary.org/wiki/${form}#French`;
-  },
+    stripDiacritics(
+      text
+        .normalize('NFC')
+        .toUpperCase()
+        .replace(/Œ/g, 'OE')
+        .replace(/Æ/g, 'AE'),
+    ),
+  definitionUrl: wiktionaryUrl('fr', 'French'),
 };
 
-// Registered dictionaries, keyed by their ?dict= id. Tier-1 additions
-// (es/it/pt/nl/de) slot in here; es will extend `letters` with Ñ.
+// Spanish folds its accents (Á→A, Ü→U) but keeps Ñ: not a decorated N but
+// the alphabet's own letter — año and ano must never collide. The explicit
+// map (rather than a blanket strip) is what protects it.
+const ES_DICTIONARY: DictionarySpec = {
+  id: 'es',
+  label: 'Español',
+  lang: 'es',
+  letters: `${LATIN_LETTERS}Ñ`,
+  vowels: LATIN_VOWELS,
+  fold: (text) =>
+    text
+      .normalize('NFC')
+      .toUpperCase()
+      .replace(/Á/g, 'A')
+      .replace(/É/g, 'E')
+      .replace(/Í/g, 'I')
+      .replace(/Ó/g, 'O')
+      .replace(/Ú/g, 'U')
+      .replace(/Ü/g, 'U'),
+  definitionUrl: wiktionaryUrl('es', 'Spanish'),
+};
+
+// Italian folds its accents (È→E, À→A), as its own word games do.
+const IT_DICTIONARY: DictionarySpec = {
+  id: 'it',
+  label: 'Italiano',
+  lang: 'it',
+  letters: LATIN_LETTERS,
+  vowels: LATIN_VOWELS,
+  fold: (text) => stripDiacritics(text.normalize('NFC').toUpperCase()),
+  definitionUrl: wiktionaryUrl('it', 'Italian'),
+};
+
+// Dutch is nearly bare A–Z already; the fold clears loanword accents and
+// tremas (café, reëel). IJ is typed as I then J, so nothing else needed.
+const NL_DICTIONARY: DictionarySpec = {
+  id: 'nl',
+  label: 'Nederlands',
+  lang: 'nl',
+  letters: LATIN_LETTERS,
+  vowels: LATIN_VOWELS,
+  fold: (text) => stripDiacritics(text.normalize('NFC').toUpperCase()),
+  definitionUrl: wiktionaryUrl('nl', 'Dutch'),
+};
+
+// Portuguese folds accents and the cedilla (Ã→A, Ç→C).
+const PT_DICTIONARY: DictionarySpec = {
+  id: 'pt',
+  label: 'Português',
+  lang: 'pt',
+  letters: LATIN_LETTERS,
+  vowels: LATIN_VOWELS,
+  fold: (text) => stripDiacritics(text.normalize('NFC').toUpperCase()),
+  definitionUrl: wiktionaryUrl('pt', 'Portuguese'),
+};
+
+// German expands rather than strips: Ä/Ö/Ü become AE/OE/UE and ß becomes
+// SS — the crossword-and-passport transcription — so boards stay A–Z.
+// Its surface forms keep true case (Haus, laufen): German capitalization
+// is meaningful, and a noun's Wiktionary entry lives at its capitalized
+// title, so the entry is the word exactly as stored. toUpperCase alone
+// already turns ß into SS.
+const DE_DICTIONARY: DictionarySpec = {
+  id: 'de',
+  label: 'Deutsch',
+  lang: 'de',
+  letters: LATIN_LETTERS,
+  vowels: LATIN_VOWELS,
+  fold: (text) =>
+    stripDiacritics(
+      text
+        .normalize('NFC')
+        .toUpperCase()
+        .replace(/Ä/g, 'AE')
+        .replace(/Ö/g, 'OE')
+        .replace(/Ü/g, 'UE'),
+    ),
+  definitionUrl: wiktionaryUrl('de', 'German', (word) => word),
+};
+
+// Registered dictionaries, keyed by their ?dict= id — English (the
+// default) first, the rest alphabetical.
 export const DICTIONARIES: Record<string, DictionarySpec> = {
   en: EN_DICTIONARY,
+  de: DE_DICTIONARY,
+  es: ES_DICTIONARY,
   fr: FR_DICTIONARY,
+  it: IT_DICTIONARY,
+  nl: NL_DICTIONARY,
+  pt: PT_DICTIONARY,
 };
 
 export const DEFAULT_DICTIONARY = EN_DICTIONARY;
