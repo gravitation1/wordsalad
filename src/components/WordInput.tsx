@@ -8,6 +8,7 @@ import type {
   WordExit,
   WordExitOutcome,
 } from '../useWordSaladGame';
+import { REVEAL_STAGGER_MS } from '../useWordSaladGame';
 
 interface WordInputProps {
   wordExit: WordExit | null;
@@ -35,10 +36,6 @@ const HINT_BADGE_CLASS =
 // "this one is different".
 const HINT_BADGE_DANGER_CLASS =
   'flex h-5 items-center whitespace-nowrap rounded-full bg-red-500 px-2 text-[11px] font-semibold text-white';
-
-// Letters cascade in when they arrive from a hint; typed letters appear at
-// once. Position i is delayed proportionally so it reads as a reveal.
-const REVEAL_STAGGER_MS = 45;
 
 // The exiting word's letters peel off left to right as it animates away.
 const EXIT_STAGGER_MS = 35;

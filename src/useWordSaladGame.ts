@@ -27,6 +27,17 @@ export type { WordPreview } from './game/wordSalad';
 // Exported so the history view judges past games by the same line.
 export const WIN_THRESHOLD = 0.75;
 
+// Hint-revealed letters cascade into the word area, position i delayed by
+// this much (typed letters appear at once). Lives here rather than in the
+// view because the hint's auto-submit timer must wait out the same cascade.
+export const REVEAL_STAGGER_MS = 45;
+
+// How long one revealed letter's entrance runs (letter-reveal in
+// styles.css), and the reading pause the completed word gets before it
+// submits itself.
+const REVEAL_LETTER_MS = 220;
+const REVEAL_READ_MS = 500;
+
 export type GameFeedback =
   | { kind: 'letter-rejected'; letter: string }
   | { kind: 'scored'; word: string; points: number }
@@ -224,9 +235,10 @@ function hintedPreview(preview: WordPreview, isHinted: boolean): WordPreview {
     : preview;
 }
 
-// The word the next hint reveals, and what it costs. A committed word the
-// player deleted before submitting re-reveals for free — it was already
-// paid for — before any new word is offered. Otherwise it is the shortest
+// The word the next hint reveals, and what it costs. A committed word that
+// never landed (a session closed during the reveal, or a save from before
+// hints submitted themselves) re-reveals for free — it was already paid
+// for — before any new word is offered. Otherwise it is the shortest
 // unfound word not yet committed, at that word's point cost.
 function nextHintWord(
   wordSalad: WordSalad,
@@ -471,6 +483,99 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     };
   }, []);
 
+  const submitWord = useCallback(() => {
+    if (wordSalad === null) {
+      return;
+    }
+
+    const word = inputLetters.join('');
+
+    if (word.length === 0) {
+      return;
+    }
+
+    setHintReveal(null);
+    setDeniedControl(null);
+
+    // The word is hinted if it was already committed via a hint reveal; the
+    // engine still records it, but it scores nothing.
+    const isHinted = hintedWords.has(word);
+    const preview = wordSalad.previewWord(word);
+    // Record the badge as it looked at submit time (before the engine
+    // mutates), so the view can animate it away — hinted words show +0.
+    setLastSubmission((previous) => ({
+      id: (previous?.id ?? 0) + 1,
+      preview: hintedPreview(preview, isHinted),
+    }));
+
+    setInputLetters([]);
+
+    // The word animates out of the word area instead of vanishing: rising
+    // when accepted, sinking when rejected.
+    setWordExit((previous) => ({
+      id: (previous?.id ?? 0) + 1,
+      letters: Array.from(word),
+      outcome:
+        preview.verdict !== 'valid'
+          ? 'rejected'
+          : isHinted
+            ? 'hinted'
+            : 'scored',
+    }));
+
+    if (preview.verdict !== 'valid') {
+      setFeedback({ kind: 'word-rejected', word, reason: preview });
+      // Submitting a word you already found is a way of asking where it is,
+      // so bring it into view rather than only reporting the rejection.
+      if (preview.verdict === 'already-found') {
+        setSpotlight((previous) => ({
+          id: (previous?.id ?? 0) + 1,
+          requested: true,
+          word,
+        }));
+      }
+      return;
+    }
+
+    // Detect the submission that crosses the win line, so the view can
+    // celebrate the moment itself (and never a restored, already-won game).
+    const winPoints = completionToPoints(WIN_THRESHOLD, wordSalad.maxPoints);
+    const earnedBefore = tallyPoints(wordSalad, hintedWords).earnedPoints;
+
+    const awarded = wordSalad.tryWord(word);
+    setFeedback({ kind: 'scored', word, points: isHinted ? 0 : awarded });
+
+    const earnedAfter = tallyPoints(wordSalad, hintedWords).earnedPoints;
+    const crossedWin = earnedBefore < winPoints && earnedAfter >= winPoints;
+    const perfect = earnedAfter === wordSalad.maxPoints;
+    if (crossedWin || perfect) {
+      setCelebration((previous) => ({
+        id: (previous?.id ?? 0) + 1,
+        perfect,
+        tossId,
+      }));
+    } else {
+      // Climbing a rung gets its own (smaller) moment — but the win
+      // celebration owns the submission when both land at once.
+      const levelAfter = getLevel(earnedAfter / wordSalad.maxPoints);
+      if (levelAfter !== getLevel(earnedBefore / wordSalad.maxPoints)) {
+        setRankUp((previous) => ({
+          id: (previous?.id ?? 0) + 1,
+          level: levelAfter,
+        }));
+      }
+    }
+
+    const gameKey = storeWordSalad(wordSalad);
+    setFoundWords(toFoundWords(wordSalad, hintedWords));
+    setSpotlight((previous) => ({
+      id: (previous?.id ?? 0) + 1,
+      requested: false,
+      word,
+    }));
+    saveWords(gameKey, Array.from(wordSalad.foundWords.keys()));
+  }, [hintedWords, inputLetters, tossId, wordSalad]);
+
   const appendLetter = useCallback(
     (character: string) => {
       const letter = character.toUpperCase();
@@ -486,10 +591,15 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
         return;
       }
 
-      // A keystroke ends any hint reveal, so its source tiles stop carrying a
-      // latent press that would re-ripple as later letters are typed. It also
-      // ends the previous word's exit so the ghost never overlaps new letters.
-      setHintReveal(null);
+      // A revealed hint is a submission in waiting: typing lands it right
+      // now — the word can't be unraveled once paid for — and the typed
+      // letter starts the next word from a clean slate. (Landing it also
+      // ends the reveal, so its source tiles stop carrying a latent press
+      // that would re-ripple as later letters are typed.)
+      if (hintReveal !== null) {
+        submitWord();
+      }
+      // End the previous word's exit so the ghost never overlaps new letters.
       setWordExit(null);
       // The feedback line speaks for the word as it stands; editing it makes
       // the last verdict history, and a stale one would misread as the reason
@@ -501,7 +611,7 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
       }));
       setInputLetters((previous) => [...previous, letter]);
     },
-    [wordSalad],
+    [hintReveal, submitWord, wordSalad],
   );
 
   const deleteLetter = useCallback(() => {
@@ -509,26 +619,36 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     if (inputLetters.length === 0) {
       return;
     }
-    setHintReveal(null);
+    // Deleting can't reclaim a revealed hint — the word was paid for the
+    // moment it was revealed — so the edit lands it immediately instead of
+    // leaving it committed but unfound.
+    if (hintReveal !== null) {
+      submitWord();
+      return;
+    }
     setFeedback(null);
     // A fired action supersedes any lingering denial dip, so the button's
     // remount replays the press, not the dip.
     setDeniedControl(null);
     setDeleteId((previous) => previous + 1);
     setInputLetters((previous) => previous.slice(0, -1));
-  }, [inputLetters]);
+  }, [hintReveal, inputLetters, submitWord]);
 
   // Clear the whole input at once (long-press Delete, or Ctrl/Cmd+Backspace).
   const clearInput = useCallback(() => {
     if (inputLetters.length === 0) {
       return;
     }
-    setHintReveal(null);
+    // As with deleteLetter: a revealed hint lands rather than unravels.
+    if (hintReveal !== null) {
+      submitWord();
+      return;
+    }
     setFeedback(null);
     setDeniedControl(null);
     setDeleteId((previous) => previous + 1);
     setInputLetters([]);
-  }, [inputLetters]);
+  }, [hintReveal, inputLetters, submitWord]);
 
   const tossSalad = useCallback(() => {
     if (wordSalad !== null) {
@@ -545,10 +665,10 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     [wordSalad],
   );
 
-  // Reveal the next hint word and commit it: its points are forfeit whether
-  // or not it is submitted. The reveal fills the input so it can still be
-  // submitted (and land in the found list) if wanted. Re-revealing a
-  // committed word the player deleted charges nothing new.
+  // Reveal the next hint word and commit it: its points are forfeit from
+  // this moment. The reveal fills the input and the word then submits
+  // itself (the auto-submit effect below), so a hint is a single action.
+  // Re-revealing a committed word the player deleted charges nothing new.
   const revealHint = useCallback(() => {
     if (wordSalad === null) {
       return;
@@ -678,98 +798,21 @@ export function useWordSaladGame(dictionary: readonly string[]): WordSaladGame {
     setHintedWords(new Set());
   }, [dictionary, wordSalad]);
 
-  const submitWord = useCallback(() => {
-    if (wordSalad === null) {
+  // A hint is a single action: once the reveal cascade has played out and
+  // the player has had a beat to read the word, it submits itself. A manual
+  // submit or an edit lands the word sooner; either clears the reveal, and
+  // this timer with it, so the word never submits twice.
+  useEffect(() => {
+    if (hintReveal === null) {
       return;
     }
-
-    const word = inputLetters.join('');
-
-    if (word.length === 0) {
-      return;
-    }
-
-    setHintReveal(null);
-    setDeniedControl(null);
-
-    // The word is hinted if it was already committed via a hint reveal; the
-    // engine still records it, but it scores nothing.
-    const isHinted = hintedWords.has(word);
-    const preview = wordSalad.previewWord(word);
-    // Record the badge as it looked at submit time (before the engine
-    // mutates), so the view can animate it away — hinted words show +0.
-    setLastSubmission((previous) => ({
-      id: (previous?.id ?? 0) + 1,
-      preview: hintedPreview(preview, isHinted),
-    }));
-
-    setInputLetters([]);
-
-    // The word animates out of the word area instead of vanishing: rising
-    // when accepted, sinking when rejected.
-    setWordExit((previous) => ({
-      id: (previous?.id ?? 0) + 1,
-      letters: Array.from(word),
-      outcome:
-        preview.verdict !== 'valid'
-          ? 'rejected'
-          : isHinted
-            ? 'hinted'
-            : 'scored',
-    }));
-
-    if (preview.verdict !== 'valid') {
-      setFeedback({ kind: 'word-rejected', word, reason: preview });
-      // Submitting a word you already found is a way of asking where it is,
-      // so bring it into view rather than only reporting the rejection.
-      if (preview.verdict === 'already-found') {
-        setSpotlight((previous) => ({
-          id: (previous?.id ?? 0) + 1,
-          requested: true,
-          word,
-        }));
-      }
-      return;
-    }
-
-    // Detect the submission that crosses the win line, so the view can
-    // celebrate the moment itself (and never a restored, already-won game).
-    const winPoints = completionToPoints(WIN_THRESHOLD, wordSalad.maxPoints);
-    const earnedBefore = tallyPoints(wordSalad, hintedWords).earnedPoints;
-
-    const awarded = wordSalad.tryWord(word);
-    setFeedback({ kind: 'scored', word, points: isHinted ? 0 : awarded });
-
-    const earnedAfter = tallyPoints(wordSalad, hintedWords).earnedPoints;
-    const crossedWin = earnedBefore < winPoints && earnedAfter >= winPoints;
-    const perfect = earnedAfter === wordSalad.maxPoints;
-    if (crossedWin || perfect) {
-      setCelebration((previous) => ({
-        id: (previous?.id ?? 0) + 1,
-        perfect,
-        tossId,
-      }));
-    } else {
-      // Climbing a rung gets its own (smaller) moment — but the win
-      // celebration owns the submission when both land at once.
-      const levelAfter = getLevel(earnedAfter / wordSalad.maxPoints);
-      if (levelAfter !== getLevel(earnedBefore / wordSalad.maxPoints)) {
-        setRankUp((previous) => ({
-          id: (previous?.id ?? 0) + 1,
-          level: levelAfter,
-        }));
-      }
-    }
-
-    const gameKey = storeWordSalad(wordSalad);
-    setFoundWords(toFoundWords(wordSalad, hintedWords));
-    setSpotlight((previous) => ({
-      id: (previous?.id ?? 0) + 1,
-      requested: false,
-      word,
-    }));
-    saveWords(gameKey, Array.from(wordSalad.foundWords.keys()));
-  }, [hintedWords, inputLetters, tossId, wordSalad]);
+    const cascade =
+      hintReveal.letters.length * REVEAL_STAGGER_MS + REVEAL_LETTER_MS;
+    const timer = window.setTimeout(submitWord, cascade + REVEAL_READ_MS);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [hintReveal, submitWord]);
 
   useEffect(() => {
     if (wordSalad === null) {

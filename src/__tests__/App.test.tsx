@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '../App';
@@ -1001,17 +1001,54 @@ describe('App', () => {
     expect(currentWord()).toBe('');
   });
 
-  it('reveals the shortest unfound word as a hint, ready to submit', () => {
+  it('reveals the shortest unfound word and submits it by itself', () => {
+    vi.useFakeTimers();
+    try {
+      render(<App dictionary={DICTIONARY} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+      expect(currentWord()).toBe('TEST'); // shortest of TEST/ROTTED/WORSTED
+
+      // A hint is a single action: after the reveal cascade and a beat to
+      // read the word, it submits itself — scoring nothing (it is hinted)
+      // but landing in the found list without a separate Submit press.
+      act(() => {
+        vi.runAllTimers();
+      });
+      expect(currentWord()).toBe('');
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'TEST earned you 0 points!',
+      );
+      expect(screen.getByRole('link', { name: 'TEST*' })).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('lands the revealed word immediately when deletion is attempted', () => {
     render(<App dictionary={DICTIONARY} />);
 
+    // The word was paid for at the reveal, so deleting can't unravel the
+    // pending submission: the edit lands the word on the spot instead.
     fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
-    expect(currentWord()).toBe('TEST'); // shortest of TEST/ROTTED/WORSTED
+    pressKey('Backspace');
 
-    // The revealed word is submittable, but scores nothing (it is hinted).
-    pressKey('Enter');
+    expect(currentWord()).toBe('');
     expect(screen.getByRole('status')).toHaveTextContent(
       'TEST earned you 0 points!',
     );
+    expect(screen.getByRole('link', { name: 'TEST*' })).toBeInTheDocument();
+  });
+
+  it('lands the revealed word and starts fresh when a letter is typed', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+    typeWord('r');
+
+    // TEST landed (hinted) and the typed letter began the next word.
+    expect(currentWord()).toBe('R');
+    expect(screen.getByRole('link', { name: 'TEST*' })).toBeInTheDocument();
   });
 
   it('cascades hinted letters and ripples their source tiles', () => {
@@ -1128,13 +1165,7 @@ describe('App', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText('−1 max')).toBeInTheDocument();
 
-    // Deleting the reveal leaves TEST paid-for but unfound: the next hint
-    // re-reveals it for free, so no cost chip is shown.
-    fireEvent.keyDown(document, { key: 'Backspace', ctrlKey: true });
-    expect(hint()).not.toHaveTextContent('max');
-
-    // Once the paid word is submitted, the next hint is a fresh charge.
-    fireEvent.click(hint()); // re-reveals TEST
+    // Once TEST lands, the next hint is a fresh charge for ROTTED.
     pressKey('Enter');
     expect(hint()).toHaveTextContent('−3 max');
   });
@@ -1164,16 +1195,22 @@ describe('App', () => {
     expect(hint()).toHaveAttribute('data-forfeits-win', 'false');
   });
 
-  it('re-reveals a deleted hint instead of charging for a new word', () => {
+  it('re-reveals a paid-for word from an interrupted session at no charge', () => {
+    // A session that ended during the reveal window leaves the word
+    // committed (paid for) but not yet in the found list.
+    window.localStorage.setItem(
+      'wordsalad:hinted:DEORSTW.T.4',
+      JSON.stringify(['TEST']),
+    );
     render(<App dictionary={DICTIONARY} />);
     const hint = () => screen.getByRole('button', { name: 'Hint' });
 
-    fireEvent.click(hint()); // reveals and commits TEST
-    expect(currentWord()).toBe('TEST');
+    // Already paid for: the offer carries no cost chip.
+    expect(hint()).not.toHaveTextContent('max');
 
-    fireEvent.keyDown(document, { key: 'Backspace', ctrlKey: true });
-    fireEvent.click(hint()); // the word was already paid for: same word
+    fireEvent.click(hint()); // the same word, at no new charge
     expect(currentWord()).toBe('TEST');
+    pressKey('Enter');
 
     // Still only one committed word and one point lost.
     expect(
