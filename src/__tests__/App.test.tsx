@@ -1754,6 +1754,23 @@ describe('App', () => {
     }
   });
 
+  it('reorders (not remounts) the tiles on Toss, so they can fly', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    // The flight animation moves each tile from its old slot to its new
+    // one, which requires the same DOM nodes to survive the shuffle.
+    const before = Object.fromEntries(
+      Array.from('WORDTES', (letter) => [
+        letter,
+        screen.getByRole('button', { name: letter }),
+      ]),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Toss' }));
+    for (const letter of 'WORDTES') {
+      expect(screen.getByRole('button', { name: letter })).toBe(before[letter]);
+    }
+  });
+
   it('cycles the theme override from the ⋯ menu and persists it', () => {
     render(<App dictionary={DICTIONARY} />);
     fireEvent.click(screen.getByRole('button', { name: 'More options' }));
