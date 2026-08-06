@@ -5,6 +5,7 @@ import {
   letterAdded,
   letterDeleted,
   letterRejected,
+  primeAudio,
   rankedUp,
   tossed,
   won,
@@ -48,7 +49,36 @@ function useSignal(
   }, [enabled, id]);
 }
 
+// The signals below fire from effects, which run after the gesture that
+// caused them — too late for iOS, which only lets audio start from inside a
+// user gesture's call stack. So while sound is on, the raw gestures prime
+// the context directly: created and resumed in-stack, it is already running
+// by the time the effects speak. The listeners stay attached rather than
+// firing once, because iOS also suspends the context across phone calls and
+// tab switches, and the next tap is the cure. While sound is off nothing is
+// attached, keeping audio strictly opt-in.
+const UNLOCK_EVENTS = ['pointerup', 'keydown', 'click'] as const;
+
+function useAudioUnlock(enabled: boolean): void {
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    for (const type of UNLOCK_EVENTS) {
+      window.addEventListener(type, primeAudio, { capture: true });
+    }
+    return () => {
+      for (const type of UNLOCK_EVENTS) {
+        window.removeEventListener(type, primeAudio, { capture: true });
+      }
+    };
+  }, [enabled]);
+}
+
 export function useGameSounds(game: WordSaladGame, enabled: boolean): void {
+  useAudioUnlock(enabled);
+
   // A game that failed to build has no signals; the hooks below still run in
   // a fixed order, they just never fire.
   const playing = game.status === 'playing' ? game : null;

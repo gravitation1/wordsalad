@@ -18,6 +18,14 @@ let sweeps = 0;
 // own that clock.
 let clock = 0;
 
+// iOS creates every context suspended until a gesture resumes it; the fake
+// starts the same way so the unlock path is what the tests exercise. The
+// engine keeps one context for the life of the page — the module singleton
+// outlives each test — so its state lives here beside the other counters,
+// where tests can reach it without holding the instance.
+let contextState = 'suspended';
+let resumes = 0;
+
 // Wiring the graph up is not what these tests are about.
 const noop = vi.fn();
 
@@ -35,7 +43,6 @@ function audioParam() {
 }
 
 class FakeAudioContext {
-  state = 'running';
   sampleRate = 44100;
   destination = {};
 
@@ -43,7 +50,17 @@ class FakeAudioContext {
     return clock;
   }
 
+  get state() {
+    return contextState;
+  }
+
+  constructor() {
+    contextState = 'suspended';
+  }
+
   resume() {
+    resumes++;
+    contextState = 'running';
     return Promise.resolve();
   }
 
@@ -128,6 +145,7 @@ describe('sound', () => {
     vi.stubGlobal('AudioContext', FakeAudioContext);
     notes = [];
     sweeps = 0;
+    resumes = 0;
     // Well clear of the previous test's last note.
     clock += 10;
   });
@@ -199,6 +217,32 @@ describe('sound', () => {
     notes = [];
     typeWord('te');
     expect(notes).toHaveLength(0);
+  });
+
+  // The game's sounds play from effects, which run after the gesture that
+  // caused them — outside the call stack where iOS is willing to start
+  // audio. The gesture itself must be what wakes the context.
+  it('resumes a suspended context from the raw gesture while sound is on', () => {
+    window.localStorage.setItem('wordsalad:sound', 'on');
+    render(<App dictionary={DICTIONARY} />);
+
+    contextState = 'suspended';
+    resumes = 0;
+
+    fireEvent.pointerUp(document.body);
+
+    expect(resumes).toBeGreaterThan(0);
+    expect(contextState).toBe('running');
+  });
+
+  it('leaves audio untouched by gestures while sound is off', () => {
+    render(<App dictionary={DICTIONARY} />);
+    resumes = 0;
+
+    fireEvent.pointerUp(document.body);
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(resumes).toBe(0);
   });
 
   it('restores a finished game in silence', () => {

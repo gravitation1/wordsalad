@@ -56,14 +56,20 @@ let audio: Audio | null = null;
 let activeVoices = 0;
 let lastLetterAt = -Infinity;
 
-// The context is built on first use and kept: browsers only allow one to
-// start from a user gesture, and every path into this module is a keystroke,
-// a tap, or the sound toggle itself. Returns null where Web Audio does not
-// exist (jsdom under test, very old browsers) so callers stay silent instead
-// of throwing.
+// The context is built on first use and kept: browsers allow only one to
+// start from a user gesture, so it is created once and revived thereafter.
+// Returns null where Web Audio does not exist (jsdom under test, very old
+// browsers) so callers stay silent instead of throwing.
 function ensureAudio(): Audio | null {
-  const Constructor =
-    typeof window === 'undefined' ? undefined : window.AudioContext;
+  // Older iOS ships Web Audio only under the webkit prefix.
+  const w =
+    typeof window === 'undefined'
+      ? undefined
+      : (window as {
+          AudioContext?: typeof AudioContext;
+          webkitAudioContext?: typeof AudioContext;
+        });
+  const Constructor = w?.AudioContext ?? w?.webkitAudioContext;
 
   if (Constructor === undefined) {
     return null;
@@ -79,14 +85,27 @@ function ensureAudio(): Audio | null {
 
   // A context created before the page has been interacted with starts
   // suspended, and one can be suspended later by the browser (backgrounded
-  // tab). Nudging it on every sound means the first audible event after a
-  // reload is not swallowed. Nothing is lost while suspended: the clock is
-  // stopped too, so scheduled notes simply wait.
-  if (audio.context.state === 'suspended') {
-    void audio.context.resume();
+  // tab, or — reported by Safari as a non-standard 'interrupted' state — a
+  // phone call, which is why this checks for anything but running). Nudging
+  // it on every sound means the first audible event after a reload is not
+  // swallowed. Nothing is lost while suspended: the clock is stopped too, so
+  // scheduled notes simply wait. Resume can reject while an interruption is
+  // still in progress; the next gesture tries again.
+  if (audio.context.state !== 'running') {
+    audio.context.resume().catch(() => undefined);
   }
 
   return audio;
+}
+
+// iOS refuses to start (or resume) audio anywhere but inside a user
+// gesture's call stack, and every game sound fires from a React effect —
+// after the tap, not inside it. Desktop browsers remember that the page has
+// been interacted with; WebKit does not. Called straight from the raw
+// gesture, this touches the context at the one moment iOS will listen, so
+// the notes that follow find it running.
+export function primeAudio(): void {
+  ensureAudio();
 }
 
 interface NoteSpec {
