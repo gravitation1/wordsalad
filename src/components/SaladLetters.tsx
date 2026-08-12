@@ -160,7 +160,7 @@ export function SaladLetters({
     // it, an animating ancestor transform (the board's deal-in) becomes
     // the measuring origin mid-flight and the first toss's takeoff spots
     // land in the wrong coordinate space.
-    <div className="relative flex max-w-[13.5rem] flex-wrap justify-center gap-2 pointer-coarse:max-w-[15.5rem] sm:max-w-none">
+    <div className="letter-rack relative flex max-w-[13.5rem] flex-wrap justify-center gap-2 pointer-coarse:max-w-[15.5rem] sm:max-w-none">
       {letters.map((letter, index) => {
         const isRequired = requiredCharacters.includes(letter);
         const isLive = liveLetters.has(letter);

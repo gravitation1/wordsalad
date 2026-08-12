@@ -3,19 +3,24 @@ import { useEffect, useRef, useState } from 'react';
 import { useMessages } from '../i18n';
 import type {
   Celebration,
+  GameFeedback,
   Lockout,
   RankUp,
   WordSlot,
   WordSpotlight,
 } from '../useWordSaladGame';
 import { WinBurst } from './Confetti';
+import { FeedbackLine } from './FeedbackLine';
 import { LockoutDialog } from './LockoutDialog';
 import { RatingsDialog } from './RatingsDialog';
+import type { WordOrigin } from './tiles';
 import { WinDialog } from './WinDialog';
 import { WordDrum } from './WordDrum';
 
 interface ScoreboardProps {
   celebration: Celebration | null;
+  // The last submission's verdict; it shares the word-list header's row.
+  feedback: GameFeedback | null;
   // Passed through to the word drum's found-word rows.
   definitionUrl: (word: string) => string;
   foldLetter: (letter: string) => string;
@@ -44,6 +49,8 @@ interface ScoreboardProps {
   // prefix into the word area.
   onPrefill: (prefix: string) => void;
   onRestart: () => void;
+  // Passed through to the drum: where a found word flies in from.
+  wordOriginRef: { current: WordOrigin | null };
 }
 
 // The share snippet's miniature bar: earned, lost-to-hints, unclaimed.
@@ -64,6 +71,7 @@ function shareBar(earned: number, lost: number, max: number): string {
 
 export function Scoreboard({
   celebration,
+  feedback,
   definitionUrl,
   foldLetter,
   saladLetters,
@@ -88,6 +96,7 @@ export function Scoreboard({
   onNewGame,
   onPrefill,
   onRestart,
+  wordOriginRef,
 }: ScoreboardProps) {
   const t = useMessages();
   const [isRatingsOpen, setIsRatingsOpen] = useState(false);
@@ -183,7 +192,12 @@ export function Scoreboard({
   };
 
   return (
-    <section className="w-full space-y-3">
+    // A flex column (gap-3 standing in for the old space-y-3) so the drum
+    // can flex: the section receives the app frame's spare height and the
+    // drum, its only stretchy child, drinks it all. min-h-0 keeps the
+    // section able to shrink to that share — its automatic minimum would
+    // otherwise count the drum's full word list, not the window.
+    <section className="scoreboard-panel flex min-h-0 w-full flex-1 flex-col gap-3">
       {/* The fanfare interrupts, then gets out of the way: dismissing the
           modal returns the board to its normal view. Keyed per celebration
           so the perfect (gold) pass remounts and replays the show. */}
@@ -298,7 +312,7 @@ export function Scoreboard({
       </div>
       {/* Green earned points grow from the left; red points lost to hints
           eat in from the right; the marker is the win threshold. */}
-      <div className="relative py-1">
+      <div className="progress-strip relative py-1">
         <div
           aria-label={t.completionLabel}
           aria-valuemax={maxPoints}
@@ -334,8 +348,10 @@ export function Scoreboard({
           title={t.winThresholdLabel(winPoints)}
         />
       </div>
-      {/* relative + inline-block anchor the rank-up burst on the score. */}
-      <div className="relative inline-block">
+      {/* relative anchors the rank-up burst on the score; self-start keeps
+          the row shrink-to-fit now that it is a flex item (a stretched row
+          would center the burst mid-line instead of on the text). */}
+      <div className="relative self-start">
         {/* The win's quiet residue once the modal is gone (and the only
             marker a restored won game shows): gold for a perfect score.
             Outside the ratings button so its accessible name stays the
@@ -404,10 +420,27 @@ export function Scoreboard({
         />
       ) : null}
       {/* The full word map: every word owns an alphabetized slot from the
-          start, anonymous until found. The drum keeps the height fixed. */}
-      <div className="flex items-baseline justify-between gap-4 text-sm text-gray-500 dark:text-gray-400">
-        <span className="font-medium">{t.wordsHeader}</span>
-        <span className="w-16 text-right font-medium">{t.pointsHeader}</span>
+          start, anonymous until found. Its header row doubles as the verdict
+          line: the last submission's feedback (cleared by the next input)
+          borrows the row, landing right above the drum where its word
+          arrives — and costing the app frame no extra height. The labels
+          are visual scaffolding; yielding them while a message is up loses
+          nothing (visibility also hides them from screen readers). */}
+      <div className="grid w-full">
+        <div
+          className={`col-start-1 row-start-1 flex items-baseline justify-between gap-4 text-sm text-gray-500 dark:text-gray-400 ${
+            feedback === null ? '' : 'invisible'
+          }`}
+        >
+          <span className="font-medium">{t.wordsHeader}</span>
+          <span className="w-16 text-right font-medium">{t.pointsHeader}</span>
+        </div>
+        <div className="col-start-1 row-start-1 flex justify-center">
+          <FeedbackLine
+            feedback={feedback}
+            requiredCharacters={requiredCharacters}
+          />
+        </div>
       </div>
       <WordDrum
         definitionUrl={definitionUrl}
@@ -416,6 +449,7 @@ export function Scoreboard({
         spotlight={spotlight}
         requiredCharacters={requiredCharacters}
         slots={wordSlots}
+        wordOriginRef={wordOriginRef}
       />
       {anyHinted ? (
         <p className="text-xs text-gray-400 dark:text-gray-500">

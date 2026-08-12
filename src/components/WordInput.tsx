@@ -9,6 +9,7 @@ import type {
   WordExitOutcome,
 } from '../useWordSaladGame';
 import { REVEAL_STAGGER_MS } from '../useWordSaladGame';
+import type { WordOrigin } from './tiles';
 
 interface WordInputProps {
   wordExit: WordExit | null;
@@ -24,6 +25,9 @@ interface WordInputProps {
   rejection: LetterRejection | null;
   requiredCharacters: string;
   isValidCharacter: (character: string) => boolean;
+  // Written here on every edit; the drum reads it to fly a found word from
+  // its typed spot into its slot.
+  wordOriginRef: { current: WordOrigin | null };
 }
 
 // Faded to sit quietly beside the muted "Hint" label; red as a cost warning
@@ -39,6 +43,21 @@ const HINT_BADGE_DANGER_CLASS =
 
 // The exiting word's letters peel off left to right as it animates away.
 const EXIT_STAGGER_MS = 35;
+
+// Scored and hinted words get no exit ghost here: wherever animation is
+// possible, the drum flies the word from its typed spot into its slot, and
+// a second copy fading out underneath would double it. The input's ghost
+// still sees off rejected words — and every outcome where nothing can fly
+// (no Web Animations API, reduced motion), so no word vanishes unsaluted.
+// The conditions mirror the drum's own flight guards exactly.
+function drumFliesWord(outcome: WordExitOutcome): boolean {
+  return (
+    outcome !== 'rejected' &&
+    typeof Element.prototype.animate === 'function' &&
+    typeof window.matchMedia === 'function' &&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
 
 // Accepted words rise; rejected words sink, tinted like the Submit badge's
 // rejection verdicts (hinted words match their gray +0 badge).
@@ -89,6 +108,7 @@ export function WordInput({
   rejection,
   requiredCharacters,
   isValidCharacter,
+  wordOriginRef,
 }: WordInputProps) {
   const t = useMessages();
   const isRevealing = isHintReveal(hintReveal, inputLetters);
@@ -107,15 +127,19 @@ export function WordInput({
   // The word span is gone by the time its exit ghost mounts, and the word
   // area re-centers around the returning hint button — so the ghost is
   // fixed-positioned at the word's last on-screen spot, captured while the
-  // letters were still laid out.
+  // letters were still laid out. The shared ref also hands the spot (and
+  // the word's height, for the scale morph) to the drum's flight.
   const wordRef = useRef<HTMLSpanElement>(null);
-  const wordOrigin = useRef<{ left: number; top: number } | null>(null);
   useLayoutEffect(() => {
     if (inputLetters.length > 0 && wordRef.current !== null) {
       const rect = wordRef.current.getBoundingClientRect();
-      wordOrigin.current = { left: rect.left, top: rect.top };
+      wordOriginRef.current = {
+        height: rect.height,
+        left: rect.left,
+        top: rect.top,
+      };
     }
-  }, [inputLetters]);
+  }, [inputLetters, wordOriginRef]);
 
   // Places a mounting ghost at the captured spot. A ref callback runs at
   // commit (before paint), where reading refs and positioning imperatively
@@ -124,11 +148,11 @@ export function WordInput({
     if (node === null) {
       return;
     }
-    if (wordOrigin.current === null) {
+    if (wordOriginRef.current === null) {
       node.style.display = 'none';
     } else {
-      node.style.left = `${wordOrigin.current.left}px`;
-      node.style.top = `${wordOrigin.current.top}px`;
+      node.style.left = `${wordOriginRef.current.left}px`;
+      node.style.top = `${wordOriginRef.current.top}px`;
     }
   };
 
@@ -150,7 +174,7 @@ export function WordInput({
   };
 
   return (
-    <p className="flex h-10 items-center text-3xl font-semibold tracking-widest">
+    <p className="word-input flex h-10 items-center text-3xl font-semibold tracking-widest">
       {/* Shakes on every rejection by alternating between two identical
           animations (a name change replays without a remount, which would
           reset the hint button's entrance). The fixed ghosts below must stay
@@ -254,10 +278,11 @@ export function WordInput({
           </span>
         )}
       </span>
-      {/* The submitted word animates away from where it sat — rising when
-          accepted, sinking when rejected — its letters peeling off left to
-          right, while the hint button returns underneath. */}
-      {wordExit === null ? null : (
+      {/* A rejected word sinks away from where it sat, its letters peeling
+          off left to right, while the hint button returns underneath.
+          Accepted words leave no ghost here when the drum can fly them —
+          the word itself travels up into its slot instead. */}
+      {wordExit === null || drumFliesWord(wordExit.outcome) ? null : (
         <span
           aria-hidden="true"
           className="pointer-events-none fixed"

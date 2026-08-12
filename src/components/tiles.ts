@@ -22,6 +22,15 @@ export const TILE_FACE = {
     'border border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
 } as const;
 
+// Where the typed word last sat on screen (viewport coordinates), written
+// by the input on every edit and read by the drum to fly a found word from
+// that spot into its slot.
+export interface WordOrigin {
+  height: number;
+  left: number;
+  top: number;
+}
+
 interface MiniTileOptions {
   // Squeezes long words into the drum's fixed rows and narrow screens.
   compact?: boolean;

@@ -142,7 +142,7 @@ export function GameControls({
   };
 
   return (
-    <div className="grid w-full max-w-xs grid-cols-3 gap-2">
+    <div className="game-controls grid w-full max-w-xs grid-cols-3 gap-2">
       {/* Remounts on every deletion (key) so the button signals it caused
           the deletion — even when triggered by Backspace. aria-disabled
           (not disabled) keeps CSS :active press feedback working on taps in

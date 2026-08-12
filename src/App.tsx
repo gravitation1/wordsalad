@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { CustomGameModal } from './components/CustomGameModal';
-import { FeedbackLine } from './components/FeedbackLine';
 import { GameControls } from './components/GameControls';
 import { HistoryDialog } from './components/HistoryDialog';
 import { OverflowMenu } from './components/OverflowMenu';
 import { SaladLetters } from './components/SaladLetters';
 import { Scoreboard } from './components/Scoreboard';
 import { SoundToggle } from './components/SoundToggle';
+import type { WordOrigin } from './components/tiles';
 import { WordInput } from './components/WordInput';
 import type { DictionarySpec } from './game/dictionaries';
 import { DEFAULT_DICTIONARY } from './game/dictionaries';
@@ -120,6 +120,12 @@ function AppBody({
   const [soundOn, setSoundOn] = useState(loadSoundEnabled);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
 
+  // The typed word's last on-screen spot, shared between the input (which
+  // measures it) and the drum (which flies a found word from there into
+  // its slot). A ref, not state: it changes on every keystroke and nothing
+  // should re-render for it.
+  const wordOriginRef = useRef<WordOrigin | null>(null);
+
   useGameSounds(game, soundOn);
 
   const toggleSound = () => {
@@ -189,8 +195,14 @@ function AppBody({
   }
 
   return (
-    <main className="mx-auto flex max-w-md flex-col items-center gap-5 px-4 py-8">
-      <header className="flex items-baseline gap-3">
+    // The app is one viewport-tall frame at every size: the page never
+    // scrolls, and the word drum flexes to soak up whatever height is left,
+    // so the score, word list, input, tiles and controls are all visible at
+    // once — taps deep in the list land letters in an input that is still
+    // on screen. (dvh, not vh: it tracks the browser toolbar. Safe where
+    // unsupported: height falls back to auto and the page scrolls.)
+    <main className="app-shell mx-auto flex h-dvh max-w-md flex-col items-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:gap-5 sm:py-8">
+      <header className="app-header flex items-baseline gap-3">
         <h1 className="text-sm font-bold uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
           {t.appTitle}
         </h1>
@@ -236,60 +248,25 @@ function AppBody({
           spec={spec}
         />
       ) : null}
-      {/* Remounts on every new game (key) so the board deals in fresh. */}
+      {/* Remounts on every new game (key) so the board deals in fresh.
+          flex-1 hands the app frame's spare height down to the scoreboard
+          (whose drum absorbs it), and min-h-0 lets this view shrink to the
+          frame — without it, the automatic minimum counts the drum's full
+          word list and the frame bursts. Portrait reads chat-style: score
+          and word list up top, composer at the bottom. Roomy landscape can
+          place that composer beside the drum instead. */}
       <div
-        className="game-enter flex w-full flex-col items-center gap-5"
+        className="game-board game-enter flex min-h-0 w-full flex-1 flex-col items-center gap-3 sm:gap-5"
         data-game-id={game.gameId}
         key={game.gameId}
       >
-        <WordInput
-          wordExit={game.wordExit}
-          canHint={game.canHint}
-          isComplete={game.isComplete}
-          isPerfect={game.isPerfect}
-          hintCost={game.hintCost}
-          hintForfeitsWin={game.hintForfeitsWin}
-          hintReveal={game.hintReveal}
-          spentHint={game.spentHint}
-          inputLetters={game.inputLetters}
-          isValidCharacter={game.isValidCharacter}
-          onHint={game.revealHint}
-          rejection={game.lastRejection}
-          requiredCharacters={game.requiredCharacters}
-        />
-        <SaladLetters
-          celebration={game.celebration}
-          hintReveal={game.hintReveal}
-          lastAppended={game.lastAppended}
-          letters={game.saladLetters}
-          liveLetters={game.liveLetters}
-          onLetter={game.appendLetter}
-          requiredCharacters={game.requiredCharacters}
-          tossId={game.tossId}
-        />
-        <GameControls
-          canDelete={game.inputLetters.length > 0}
-          deleteId={game.deleteId}
-          denied={game.deniedControl}
-          lastSubmission={game.lastSubmission}
-          onClearAll={game.clearInput}
-          onDelete={game.deleteLetter}
-          onSubmit={game.submitWord}
-          onToss={game.tossSalad}
-          preview={game.inputPreview}
-          submitReadiness={game.submitReadiness}
-          tossId={game.tossId}
-        />
-        <FeedbackLine
-          feedback={game.feedback}
-          requiredCharacters={game.requiredCharacters}
-        />
         <Scoreboard
           celebration={game.celebration}
           challengeScore={game.challengeScore}
           definitionUrl={(word) => spec.definitionUrl(word, t.locale)}
           foldLetter={spec.fold}
           earnedPercent={game.earnedPercent}
+          feedback={game.feedback}
           requiredCharacters={game.requiredCharacters}
           saladLetters={game.saladLetters}
           earnedPoints={game.earnedPoints}
@@ -309,8 +286,50 @@ function AppBody({
           rankUp={game.rankUp}
           winPoints={game.winPoints}
           winThreshold={game.winThreshold}
+          wordOriginRef={wordOriginRef}
           wordSlots={game.wordSlots}
         />
+        <div className="game-composer flex w-full flex-col items-center gap-3 sm:gap-5">
+          <WordInput
+            wordExit={game.wordExit}
+            canHint={game.canHint}
+            isComplete={game.isComplete}
+            isPerfect={game.isPerfect}
+            hintCost={game.hintCost}
+            hintForfeitsWin={game.hintForfeitsWin}
+            hintReveal={game.hintReveal}
+            spentHint={game.spentHint}
+            inputLetters={game.inputLetters}
+            isValidCharacter={game.isValidCharacter}
+            onHint={game.revealHint}
+            rejection={game.lastRejection}
+            requiredCharacters={game.requiredCharacters}
+            wordOriginRef={wordOriginRef}
+          />
+          <SaladLetters
+            celebration={game.celebration}
+            hintReveal={game.hintReveal}
+            lastAppended={game.lastAppended}
+            letters={game.saladLetters}
+            liveLetters={game.liveLetters}
+            onLetter={game.appendLetter}
+            requiredCharacters={game.requiredCharacters}
+            tossId={game.tossId}
+          />
+          <GameControls
+            canDelete={game.inputLetters.length > 0}
+            deleteId={game.deleteId}
+            denied={game.deniedControl}
+            lastSubmission={game.lastSubmission}
+            onClearAll={game.clearInput}
+            onDelete={game.deleteLetter}
+            onSubmit={game.submitWord}
+            onToss={game.tossSalad}
+            preview={game.inputPreview}
+            submitReadiness={game.submitReadiness}
+            tossId={game.tossId}
+          />
+        </div>
       </div>
     </main>
   );
