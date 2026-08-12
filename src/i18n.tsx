@@ -101,6 +101,10 @@ export interface Messages {
   hintAgainLabel: string;
   hintForfeitsWinLabel: string;
   hintedLegend: string;
+  // An unfound drum row whose starting letters the alphabetized list gives
+  // away; activating the row types them into the word area. The letters
+  // arrive pre-spaced ("C A") so screen readers spell them out.
+  unfoundPrefixLabel: (letters: string) => string;
   lockedOutNote: (reachablePoints: number, winPoints: number) => string;
   lockedOutTitle: string;
   lockedOutShort: string;
@@ -112,6 +116,10 @@ export interface Messages {
   currentWordLabel: string;
   completionLabel: string;
   requiredLetterTitle: string;
+  // Hover/screen-reader note for a dimmed rack tile: no unfound word can
+  // use it next. Phrased as a state, not a prohibition — the tile still
+  // types (the dim is soft).
+  deadLetterNote: string;
   ratingsTitle: string;
   // Screen-reader annotations for the ratings ladder rungs.
   ratingReachedLabel: string;
@@ -202,6 +210,8 @@ const EN: Messages = {
   hintCostLabel: (cost) =>
     `Reveals a word and lowers your max score by ${cost} point${plural('en', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revealed with a hint',
+  unfoundPrefixLabel: (letters) =>
+    `Unfound word starting with ${letters} — fill in these letters`,
   hintAgainLabel: 'Shows your hinted word again — no extra cost',
   hintForfeitsWinLabel:
     'Reveals a word — your best possible score would drop below the win line',
@@ -219,6 +229,7 @@ const EN: Messages = {
   currentWordLabel: 'Current word',
   completionLabel: 'Completion',
   requiredLetterTitle: 'Required letter',
+  deadLetterNote: 'No new word can use this letter next',
   ratingsTitle: 'Ratings',
   ratingReachedLabel: 'Reached',
   ratingNotReachedLabel: 'Not yet reached',
@@ -353,6 +364,8 @@ const FR: Messages = {
   hintCostLabel: (cost) =>
     `Révèle un mot et réduit votre score max de ${cost} point${plural('fr', cost, { one: '', other: 's' })}`,
   hintedLegend: '* révélé par un indice',
+  unfoundPrefixLabel: (letters) =>
+    `Mot non trouvé commençant par ${letters} — saisir ces lettres`,
   hintAgainLabel: 'Réaffiche votre mot d’indice — sans coût supplémentaire',
   hintForfeitsWinLabel:
     'Révèle un mot — votre score maximum possible passerait sous le seuil de victoire',
@@ -370,6 +383,7 @@ const FR: Messages = {
   currentWordLabel: 'Mot en cours',
   completionLabel: 'Progression',
   requiredLetterTitle: 'Lettre obligatoire',
+  deadLetterNote: 'Aucun nouveau mot ne peut utiliser cette lettre ici',
   ratingsTitle: 'Niveaux',
   ratingReachedLabel: 'Atteint',
   ratingNotReachedLabel: 'Pas encore atteint',
@@ -504,6 +518,8 @@ const ES: Messages = {
   hintCostLabel: (cost) =>
     `Revela una palabra y reduce tu puntuación máxima en ${cost} punto${plural('es', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revelada con una pista',
+  unfoundPrefixLabel: (letters) =>
+    `Palabra sin encontrar que empieza por ${letters} — introducir estas letras`,
   hintAgainLabel: 'Vuelve a mostrar la palabra de la pista, sin coste extra',
   hintForfeitsWinLabel:
     'Revela una palabra: tu puntuación máxima posible caería por debajo del umbral de victoria',
@@ -521,6 +537,7 @@ const ES: Messages = {
   currentWordLabel: 'Palabra actual',
   completionLabel: 'Progreso',
   requiredLetterTitle: 'Letra obligatoria',
+  deadLetterNote: 'Ninguna palabra nueva puede usar esta letra aquí',
   ratingsTitle: 'Rangos',
   ratingReachedLabel: 'Alcanzado',
   ratingNotReachedLabel: 'Aún no alcanzado',
@@ -655,6 +672,8 @@ const DE: Messages = {
   hintCostLabel: (cost) =>
     `Deckt ein Wort auf und senkt deinen Höchstpunktestand um ${cost} ${plural('de', cost, { one: 'Punkt', other: 'Punkte' })}`,
   hintedLegend: '* mit einem Tipp aufgedeckt',
+  unfoundPrefixLabel: (letters) =>
+    `Ungefundenes Wort, beginnt mit ${letters} – Buchstaben eintragen`,
   hintAgainLabel:
     'Zeigt dein aufgedecktes Wort erneut — ohne zusätzliche Kosten',
   hintForfeitsWinLabel:
@@ -674,6 +693,8 @@ const DE: Messages = {
   currentWordLabel: 'Aktuelles Wort',
   completionLabel: 'Fortschritt',
   requiredLetterTitle: 'Pflichtbuchstabe',
+  deadLetterNote:
+    'Kein neues Wort kann diesen Buchstaben als Nächstes brauchen',
   ratingsTitle: 'Ränge',
   ratingReachedLabel: 'Erreicht',
   ratingNotReachedLabel: 'Noch nicht erreicht',
@@ -807,6 +828,8 @@ const IT: Messages = {
   hintCostLabel: (cost) =>
     `Rivela una parola e riduce il punteggio massimo di ${cost} ${plural('it', cost, { one: 'punto', other: 'punti' })}`,
   hintedLegend: '* rivelata con un indizio',
+  unfoundPrefixLabel: (letters) =>
+    `Parola non trovata che inizia con ${letters} — inserisci queste lettere`,
   hintAgainLabel:
     'Mostra di nuovo la parola dell’indizio, senza costi aggiuntivi',
   hintForfeitsWinLabel:
@@ -826,6 +849,7 @@ const IT: Messages = {
   currentWordLabel: 'Parola corrente',
   completionLabel: 'Avanzamento',
   requiredLetterTitle: 'Lettera obbligatoria',
+  deadLetterNote: 'Nessuna parola nuova può usare questa lettera qui',
   ratingsTitle: 'Livelli',
   ratingReachedLabel: 'Raggiunto',
   ratingNotReachedLabel: 'Non ancora raggiunto',
@@ -959,6 +983,8 @@ const PT: Messages = {
   hintCostLabel: (cost) =>
     `Revela uma palavra e reduz sua pontuação máxima em ${cost} ponto${plural('pt', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revelada com uma dica',
+  unfoundPrefixLabel: (letters) =>
+    `Palavra não encontrada que começa com ${letters} — preencher estas letras`,
   hintAgainLabel: 'Mostra novamente a palavra da dica, sem custo extra',
   hintForfeitsWinLabel:
     'Revela uma palavra — sua pontuação máxima possível cairia abaixo da linha de vitória',
@@ -976,6 +1002,7 @@ const PT: Messages = {
   currentWordLabel: 'Palavra atual',
   completionLabel: 'Progresso',
   requiredLetterTitle: 'Letra obrigatória',
+  deadLetterNote: 'Nenhuma palavra nova pode usar esta letra aqui',
   ratingsTitle: 'Níveis',
   ratingReachedLabel: 'Alcançado',
   ratingNotReachedLabel: 'Ainda não alcançado',
@@ -1110,6 +1137,8 @@ const NL: Messages = {
   hintCostLabel: (cost) =>
     `Onthult een woord en verlaagt je maximale score met ${cost} ${plural('nl', cost, { one: 'punt', other: 'punten' })}`,
   hintedLegend: '* onthuld met een hint',
+  unfoundPrefixLabel: (letters) =>
+    `Niet gevonden woord dat begint met ${letters} — deze letters invullen`,
   hintAgainLabel: 'Toont je hintwoord opnieuw — zonder extra kosten',
   hintForfeitsWinLabel:
     'Onthult een woord — je maximaal haalbare score zakt dan onder de winstgrens',
@@ -1128,6 +1157,7 @@ const NL: Messages = {
   currentWordLabel: 'Huidig woord',
   completionLabel: 'Voortgang',
   requiredLetterTitle: 'Verplichte letter',
+  deadLetterNote: 'Geen nieuw woord kan deze letter hier gebruiken',
   ratingsTitle: 'Niveaus',
   ratingReachedLabel: 'Bereikt',
   ratingNotReachedLabel: 'Nog niet bereikt',
@@ -1255,6 +1285,8 @@ const JA: Messages = {
   hintCostBadge: (cost) => `最大−${cost}`,
   hintCostLabel: (cost) => `単語を1つ表示し、最大スコアが${cost}点下がります`,
   hintedLegend: '* ヒントで表示',
+  unfoundPrefixLabel: (letters) =>
+    `${letters} で始まる未発見の単語 — この文字を入力`,
   hintAgainLabel: 'ヒントで表示した単語をもう一度表示します（追加コストなし）',
   hintForfeitsWinLabel:
     '単語を1つ表示しますが、最大スコアが勝利ラインを下回ります',
@@ -1271,6 +1303,7 @@ const JA: Messages = {
   currentWordLabel: '入力中の単語',
   completionLabel: '達成度',
   requiredLetterTitle: '必須の文字',
+  deadLetterNote: '次にこの文字を使える新しい単語はありません',
   ratingsTitle: 'ランク',
   ratingReachedLabel: '達成済み',
   ratingNotReachedLabel: '未達成',
@@ -1397,6 +1430,8 @@ const KO: Messages = {
   hintCostLabel: (cost) =>
     `단어 하나를 공개하고 최대 점수가 ${cost}점 낮아집니다`,
   hintedLegend: '* 힌트로 공개',
+  unfoundPrefixLabel: (letters) =>
+    `${letters}(으)로 시작하는 미발견 단어 — 이 글자 입력`,
   hintAgainLabel: '힌트로 공개한 단어를 다시 보여줘요 (추가 비용 없음)',
   hintForfeitsWinLabel:
     '단어를 공개하지만 최대 점수가 승리 기준 아래로 떨어져요',
@@ -1413,6 +1448,7 @@ const KO: Messages = {
   currentWordLabel: '현재 단어',
   completionLabel: '진행도',
   requiredLetterTitle: '필수 글자',
+  deadLetterNote: '다음에 이 글자를 쓸 수 있는 새 단어가 없습니다',
   ratingsTitle: '등급',
   ratingReachedLabel: '달성함',
   ratingNotReachedLabel: '아직 미달성',
@@ -1535,6 +1571,8 @@ const ZH: Messages = {
   hintCostBadge: (cost) => `上限−${cost}`,
   hintCostLabel: (cost) => `揭示一个单词，最高分降低 ${cost} 分`,
   hintedLegend: '* 用提示揭示',
+  unfoundPrefixLabel: (letters) =>
+    `以 ${letters} 开头的未找到单词 — 填入这些字母`,
   hintAgainLabel: '再次显示提示过的单词，无额外扣分',
   hintForfeitsWinLabel: '揭示一个单词，但最高可得分将跌破获胜线',
   lockedOutNote: (reachablePoints, winPoints) =>
@@ -1550,6 +1588,7 @@ const ZH: Messages = {
   currentWordLabel: '当前单词',
   completionLabel: '完成度',
   requiredLetterTitle: '必用字母',
+  deadLetterNote: '没有新单词能在此处使用这个字母',
   ratingsTitle: '等级',
   ratingReachedLabel: '已达到',
   ratingNotReachedLabel: '尚未达到',
@@ -1679,6 +1718,8 @@ const RU: Messages = {
   hintCostLabel: (cost) =>
     `Открывает слово и снижает максимум на ${cost} ${plural('ru', cost, { one: 'очко', few: 'очка', other: 'очков' })}`,
   hintedLegend: '* открыто подсказкой',
+  unfoundPrefixLabel: (letters) =>
+    `Ненайденное слово, начинается с ${letters} — ввести эти буквы`,
   hintAgainLabel:
     'Снова показывает слово из подсказки — без дополнительной платы',
   hintForfeitsWinLabel:
@@ -1697,6 +1738,7 @@ const RU: Messages = {
   currentWordLabel: 'Текущее слово',
   completionLabel: 'Прогресс',
   requiredLetterTitle: 'Обязательная буква',
+  deadLetterNote: 'Ни одно новое слово не может использовать эту букву здесь',
   ratingsTitle: 'Звания',
   ratingReachedLabel: 'Достигнуто',
   ratingNotReachedLabel: 'Ещё не достигнуто',

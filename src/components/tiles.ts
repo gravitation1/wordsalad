@@ -8,6 +8,11 @@ export const TILE_FACE = {
   // The perfect-score gilding, and its solid cousin for punctuation.
   gold: 'border border-amber-400 bg-amber-300 text-amber-900',
   goldSolid: 'bg-amber-400 text-white',
+  // A derived-prefix letter on an unfound row: known but not yet played,
+  // so an outline only — quieter than every filled face, and monochrome
+  // even for required letters, so found rows keep their color.
+  ghost:
+    'border border-dashed border-gray-300 text-gray-400 dark:border-gray-700 dark:text-gray-500',
   // Hinted words are spent: the progress bar's lost gray.
   mutedAccent: 'bg-gray-400 text-white dark:bg-gray-600',
   mutedPlain:
@@ -20,6 +25,8 @@ export const TILE_FACE = {
 interface MiniTileOptions {
   // Squeezes long words into the drum's fixed rows and narrow screens.
   compact?: boolean;
+  // The drum's derived-prefix letters on unfound rows.
+  ghost?: boolean;
   // The drum's hinted state.
   muted?: boolean;
 }
@@ -29,16 +36,18 @@ interface MiniTileOptions {
 export function miniTileClass(
   letter: string,
   requiredCharacters: string,
-  { compact = false, muted = false }: MiniTileOptions = {},
+  { compact = false, ghost = false, muted = false }: MiniTileOptions = {},
 ): string {
   const isRequired = requiredCharacters.includes(letter);
-  const face = muted
-    ? isRequired
-      ? TILE_FACE.mutedAccent
-      : TILE_FACE.mutedPlain
-    : isRequired
-      ? TILE_FACE.accent
-      : TILE_FACE.plain;
+  const face = ghost
+    ? TILE_FACE.ghost
+    : muted
+      ? isRequired
+        ? TILE_FACE.mutedAccent
+        : TILE_FACE.mutedPlain
+      : isRequired
+        ? TILE_FACE.accent
+        : TILE_FACE.plain;
   const size = compact ? 'h-4 w-4 text-[10px]' : 'h-5 w-5 text-[11px]';
   return `flex items-center justify-center rounded font-bold ${size} ${face}`;
 }

@@ -262,6 +262,7 @@ function AppBody({
           hintReveal={game.hintReveal}
           lastAppended={game.lastAppended}
           letters={game.saladLetters}
+          liveLetters={game.liveLetters}
           onLetter={game.appendLetter}
           requiredCharacters={game.requiredCharacters}
           tossId={game.tossId}
@@ -303,6 +304,7 @@ function AppBody({
           maxPoints={game.maxPoints}
           onCustomGame={openCustom}
           onNewGame={game.startNewGame}
+          onPrefill={game.prefillWord}
           onRestart={game.restartGame}
           rankUp={game.rankUp}
           winPoints={game.winPoints}

@@ -13,6 +13,10 @@ interface SaladLettersProps {
   hintReveal: HintReveal | null;
   lastAppended: LetterActivation | null;
   letters: readonly string[];
+  // Letters that could still extend the typed word into a new find. The
+  // rest dim but stay pressable: the dim is information, not a wall —
+  // retyping an already-found word to locate it must keep working.
+  liveLetters: ReadonlySet<string>;
   onLetter: (letter: string) => void;
   requiredCharacters: string;
   tossId: number;
@@ -57,6 +61,7 @@ export function SaladLetters({
   hintReveal,
   lastAppended,
   letters,
+  liveLetters,
   onLetter,
   requiredCharacters,
   tossId,
@@ -158,6 +163,18 @@ export function SaladLetters({
     <div className="relative flex max-w-[13.5rem] flex-wrap justify-center gap-2 pointer-coarse:max-w-[15.5rem] sm:max-w-none">
       {letters.map((letter, index) => {
         const isRequired = requiredCharacters.includes(letter);
+        const isLive = liveLetters.has(letter);
+        // Describes rather than renames (matching the required-letter
+        // note): the accessible name stays the bare letter, and a dimmed
+        // tile carries the dead-letter note alongside — the same fact the
+        // fade shows sighted players.
+        const noteIds =
+          [
+            isRequired ? 'required-letter-note' : null,
+            isLive ? null : 'dead-letter-note',
+          ]
+            .filter((id) => id !== null)
+            .join(' ') || undefined;
         const press = tilePress(letter, lastAppended, hintReveal);
         return (
           // Outermost span: the flight mover, driven imperatively above —
@@ -193,19 +210,18 @@ export function SaladLetters({
               style={{ animationDelay: `${index * 45}ms` }}
             >
               <button
-                // Describes rather than renames: the accessible name stays
-                // the bare letter, matching the visible tile.
-                aria-describedby={
-                  isRequired ? 'required-letter-note' : undefined
-                }
+                aria-describedby={noteIds}
                 // Touch devices get larger tiles: bigger targets and wider
                 // tap-center spacing, the two levers against mis-taps.
                 className={`relative h-12 w-12 touch-manipulation rounded-xl text-xl font-semibold transition active:scale-90 pointer-coarse:h-14 pointer-coarse:w-14 pointer-coarse:text-2xl ${
                   isRequired
                     ? `border border-accent ${TILE_FACE.accent}`
                     : `${TILE_FACE.plain} hover:bg-gray-50 dark:hover:bg-gray-800`
-                } ${press === null ? '' : 'control-press'}`}
+                } ${isLive ? '' : 'opacity-40'} ${
+                  press === null ? '' : 'control-press'
+                }`}
                 data-letter={letter}
+                data-live={isLive ? 'true' : 'false'}
                 data-pressed={
                   lastAppended?.letter === letter ? 'true' : 'false'
                 }
@@ -219,7 +235,15 @@ export function SaladLetters({
                     ? undefined
                     : { animationDelay: `${press.delayMs}ms` }
                 }
-                title={isRequired ? t.requiredLetterTitle : undefined}
+                // The dead state is situational, so its explanation wins
+                // the hover tooltip over the standing required-letter one.
+                title={
+                  !isLive
+                    ? t.deadLetterNote
+                    : isRequired
+                      ? t.requiredLetterTitle
+                      : undefined
+                }
                 type="button"
               >
                 {letter}
@@ -237,6 +261,9 @@ export function SaladLetters({
       })}
       <span className="sr-only" id="required-letter-note">
         {t.requiredLetterTitle}
+      </span>
+      <span className="sr-only" id="dead-letter-note">
+        {t.deadLetterNote}
       </span>
     </div>
   );

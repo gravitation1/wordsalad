@@ -673,6 +673,115 @@ describe('App', () => {
     expect(slots()[2]).toHaveAttribute('data-found', 'false');
   });
 
+  it('reveals the letters a gap logically forces and prefills on tap', () => {
+    // CAECAL sits alone between CACAO and CALL, so once those two are
+    // found, the sort order alone proves it starts with CA.
+    window.history.replaceState(null, '', '?letters=CANOWLE&required=C');
+    render(<App dictionary={['CACAO', 'CAECAL', 'CALL', 'CANAL', 'OCEAN']} />);
+    const prefixRow = () =>
+      screen.getByRole('button', {
+        name: 'Unfound word starting with C A — fill in these letters',
+      });
+
+    // Nothing found yet: no gap is bounded, so every slot stays anonymous.
+    expect(
+      screen.queryByRole('button', { name: /Unfound word/ }),
+    ).not.toBeInTheDocument();
+
+    submitWord('cacao');
+    submitWord('call');
+
+    // Only the bounded gap gained a prefix; the open tail after CALL
+    // still forces nothing and stays inert.
+    expect(
+      screen.getAllByRole('button', { name: /Unfound word/ }),
+    ).toHaveLength(1);
+
+    // Tapping the row types the derived letters into the word area.
+    fireEvent.click(prefixRow());
+    expect(currentWord()).toBe('CA');
+
+    // A word built on the same stem survives a re-tap: the prefix has
+    // nothing to add, and the tap must not destroy typed progress.
+    typeWord('ec');
+    expect(currentWord()).toBe('CAEC');
+    fireEvent.click(prefixRow());
+    expect(currentWord()).toBe('CAEC');
+
+    // A word on a different stem is replaced — the tap asked for CA.
+    fireEvent.keyDown(document, { key: 'Backspace', ctrlKey: true });
+    typeWord('oce');
+    fireEvent.click(prefixRow());
+    expect(currentWord()).toBe('CA');
+
+    // The prefilled letters submit as part of an ordinary word.
+    typeWord('ecal');
+    pressKey('Enter');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'CAECAL earned you 3 points!',
+    );
+    expect(
+      screen.queryByRole('button', { name: /Unfound word/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('dims letters that cannot start or continue a new word', () => {
+    window.history.replaceState(null, '', '?letters=CANOWLE&required=C');
+    render(<App dictionary={['CACAO', 'CAECAL', 'CALL', 'CANAL', 'OCEAN']} />);
+    const tile = (letter: string) =>
+      screen.getByRole('button', { name: letter });
+    const expectLive = (live: string, dimmed: string) => {
+      for (const letter of live) {
+        expect(tile(letter)).toHaveAttribute('data-live', 'true');
+      }
+      for (const letter of dimmed) {
+        expect(tile(letter)).toHaveAttribute('data-live', 'false');
+      }
+    };
+
+    // A fresh board is one unbounded gap: every letter stays live.
+    expectLive('CANOWLE', '');
+    expect(tile('W')).not.toHaveAccessibleDescription();
+
+    submitWord('cacao');
+    submitWord('call');
+    submitWord('canal');
+    submitWord('ocean');
+
+    // Only CAECAL remains, pinned between CACAO and CALL — it must start
+    // with C, so every other opening letter is provably wasted.
+    expectLive('C', 'ANOWLE');
+
+    // The dim is announced, not just painted: a dead tile describes its
+    // state, while the live required letter keeps its standing note.
+    expect(tile('A')).toHaveAccessibleDescription(
+      'No new word can use this letter next',
+    );
+    expect(tile('C')).toHaveAccessibleDescription('Required letter');
+
+    // After C the second letter can only be A; after CA the bounds leave
+    // C, E, or L.
+    typeWord('c');
+    expectLive('A', 'CNOWLE');
+    // A required letter that goes dead carries both notes.
+    expect(tile('C')).toHaveAccessibleDescription(
+      'Required letter No new word can use this letter next',
+    );
+    typeWord('a');
+    expectLive('CEL', 'ANOW');
+
+    // The dim is soft: a dead tile still types (retyping a found word to
+    // locate it must keep working).
+    fireEvent.click(tile('W'));
+    expect(currentWord()).toBe('CAW');
+    pressKey('Backspace');
+
+    // The last find closes the last gap: nothing can start a new word.
+    typeWord('ecal');
+    pressKey('Enter');
+    expectLive('', 'CANOWLE');
+  });
+
   it('scrolls to a word that was already found when it is resubmitted', () => {
     render(<App dictionary={DICTIONARY} />);
     // The row the drum has brought into view.

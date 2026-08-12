@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
+import { useMessages } from '../i18n';
 import type { WordSlot, WordSpotlight } from '../useWordSaladGame';
 import { miniTileClass } from './tiles';
 
@@ -10,6 +11,8 @@ interface WordDrumProps {
   // Surface letter -> play key, so an accented tile (É in CAFÉ) still
   // recognizes itself as the required letter it folds to.
   foldLetter: (letter: string) => string;
+  // Types an unfound row's derived prefix into the word area.
+  onPrefill: (prefix: string) => void;
   // The word to bring into view, if any. A new id re-triggers the scroll,
   // so asking for the same word twice works.
   spotlight: WordSpotlight | null;
@@ -32,10 +35,12 @@ const FADE_PX = 56;
 export function WordDrum({
   definitionUrl,
   foldLetter,
+  onPrefill,
   spotlight,
   requiredCharacters,
   slots,
 }: WordDrumProps) {
+  const t = useMessages();
   const containerRef = useRef<HTMLUListElement>(null);
   const frame = useRef(0);
   const scrollFrame = useRef(0);
@@ -169,9 +174,12 @@ export function WordDrum({
         const found = slot.found;
         return (
           <li
-            // Placeholders are visual scaffolding; screen readers hear only
-            // the found words, as with the old flat table.
-            aria-hidden={found === null ? true : undefined}
+            // Bare placeholders are visual scaffolding; screen readers hear
+            // the found words and the rows with something to say (a derived
+            // prefix carries information and an action).
+            aria-hidden={
+              found === null && slot.prefix === '' ? true : undefined
+            }
             data-found={found === null ? 'false' : 'true'}
             data-spotlight={
               found !== null && found.word === spotlight?.word
@@ -183,10 +191,49 @@ export function WordDrum({
             style={{ height: ROW_HEIGHT }}
           >
             {found === null ? (
-              <div className="flex h-full items-center justify-between gap-4 text-sm text-gray-300 dark:text-gray-700">
-                <span>—</span>
-                <span className="w-16 text-right">?</span>
-              </div>
+              slot.prefix === '' ? (
+                <div className="flex h-full items-center justify-between gap-4 text-sm text-gray-300 dark:text-gray-700">
+                  <span>—</span>
+                  <span className="w-16 text-right">?</span>
+                </div>
+              ) : (
+                // The letters the alphabetized list itself gives away,
+                // spelled in ghost tiles; the tap types them into the word
+                // area, sparing the player the bookkeeping.
+                <button
+                  aria-label={t.unfoundPrefixLabel(
+                    Array.from(slot.prefix).join(' '),
+                  )}
+                  className="flex h-full w-full touch-manipulation items-center justify-between gap-4 text-sm text-gray-300 transition hover:opacity-70 dark:text-gray-700"
+                  onClick={() => {
+                    onPrefill(slot.prefix);
+                  }}
+                  type="button"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`flex items-center ${
+                      slot.prefix.length > 9 ? 'gap-0.5' : 'gap-1'
+                    }`}
+                  >
+                    {Array.from(slot.prefix).map((letter, tileIndex) => (
+                      <span
+                        className={miniTileClass(letter, requiredCharacters, {
+                          compact: slot.prefix.length > 9,
+                          ghost: true,
+                        })}
+                        key={tileIndex}
+                      >
+                        {letter}
+                      </span>
+                    ))}
+                    <span>—</span>
+                  </span>
+                  <span aria-hidden="true" className="w-16 text-right">
+                    ?
+                  </span>
+                </button>
+              )
             ) : (
               <div
                 // Finding a word flips the whole row into place; being taken

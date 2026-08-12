@@ -2,6 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { DictionarySpec } from './game/dictionaries';
 import { alphabetPattern, DEFAULT_DICTIONARY } from './game/dictionaries';
+import type { WordGap } from './game/gapPrefixes';
+import {
+  liveNextLetters,
+  rankedLetters,
+  slotPrefixes,
+  wordGaps,
+  wordListOrder,
+} from './game/gapPrefixes';
 import {
   bestRequiredCharacter,
   generateWordSalad,
@@ -55,10 +63,15 @@ export interface FoundWord {
   hinted: boolean;
 }
 
-// One row of the alphabetized word list. Unfound slots stay anonymous: the
-// view learns that a word exists (and where it sorts), never what it is.
+// One row of the alphabetized word list. Unfound slots stay anonymous —
+// the view learns that a word exists (and where it sorts), never what it
+// is — except for the prefix the ordering itself gives away.
 export interface WordSlot {
   found: FoundWord | null;
+  // The play-key letters the sort order forces on an unfound word (see
+  // gapPrefixes). Empty when nothing is forced, and always for found
+  // slots. Free to show: it reveals nothing a player couldn't derive.
+  prefix: string;
 }
 
 export type SubmitReadiness = 'empty' | 'partial' | 'ready';
@@ -151,6 +164,10 @@ export interface PlayingGame {
   requiredCharacters: string;
   inputLetters: readonly string[];
   isValidCharacter: (character: string) => boolean;
+  // The board letters that could still extend the typed word into a new
+  // (unfound) word, derived the same dictionary-blind way as the slot
+  // prefixes; the rack softly dims the rest.
+  liveLetters: ReadonlySet<string>;
   inputPreview: WordPreview | null;
   submitReadiness: SubmitReadiness;
   lastSubmission: SubmittedPreview | null;
@@ -203,6 +220,9 @@ export interface PlayingGame {
   startNewGame: () => void;
   restartGame: () => void;
   revealHint: () => void;
+  // Fill the word area with an unfound slot's derived prefix (WordSlot's
+  // prefix), replacing anything shorter that was typed.
+  prefillWord: (prefix: string) => void;
 }
 
 export type FailureReason = 'generation-failed' | 'invalid-game-data';
@@ -225,18 +245,18 @@ function storageKey(spec: DictionarySpec, wordSalad: WordSalad): string {
 }
 
 // Hinted (committed) words score nothing, so they show 0 points. Sorting
-// uses the dictionary's own collation so accented surface forms file where
-// their language expects them (côte beside cote, not after Z).
+// uses the word list's one display order (wordListOrder) so this list and
+// the slot map can never disagree about where a word files.
 function toFoundWords(
   wordSalad: WordSalad,
   hintedWords: ReadonlySet<string>,
-  collate: (a: string, b: string) => number,
+  compareWords: (a: string, b: string) => number,
 ): readonly FoundWord[] {
   return Array.from(wordSalad.foundWords, ([word, points]) => ({
     word,
     points: hintedWords.has(word) ? 0 : points,
     hinted: hintedWords.has(word),
-  })).sort((a, b) => collate(a.word, b.word));
+  })).sort((a, b) => compareWords(a.word, b.word));
 }
 
 // A hinted word scores nothing, so its "valid" preview shows 0 points. Valid
@@ -432,12 +452,11 @@ export function useWordSaladGame(
   dictionary: readonly string[],
   spec: DictionarySpec = DEFAULT_DICTIONARY,
 ): WordSaladGame {
-  // The dictionary's collation, so surface forms sort as their language
-  // expects everywhere the hook orders words.
-  const collate = useMemo(() => {
-    const collator = new Intl.Collator(spec.lang);
-    return (a: string, b: string) => collator.compare(a, b);
-  }, [spec.lang]);
+  // The one order every word list in the hook uses: play keys first, the
+  // dictionary's collation among equal keys. Key order is what makes the
+  // gap prefixes below provable, so nothing here may sort words any other
+  // way.
+  const collate = useMemo(() => wordListOrder(spec), [spec]);
   const [gameState, setGameState] = useState<{ id: number; init: GameInit }>(
     () => ({ id: 0, init: createWordSalad(dictionary, spec) }),
   );
@@ -796,6 +815,40 @@ export function useWordSaladGame(
     }
   }, [hintedWords, spec, wordSalad]);
 
+  // Fill the word area with a gap row's derivable prefix. The tap spares
+  // the typing, nothing more — unlike a hint, nothing is paid or
+  // committed, because the letters were already the player's to know.
+  const prefillWord = useCallback(
+    (prefix: string) => {
+      if (wordSalad === null || prefix.length === 0) {
+        return;
+      }
+      // A revealed hint is a submission in waiting: it lands first (the
+      // word can't be unraveled once paid for) and the prefill starts the
+      // next word, exactly as typing over a reveal would.
+      if (hintReveal !== null) {
+        submitWord();
+      } else {
+        const current = inputLetters.join('');
+        // A word already built on this very stem survives the tap; the
+        // prefix has nothing to add, and a re-tap must not destroy it.
+        if (current.length >= prefix.length && current.startsWith(prefix)) {
+          return;
+        }
+      }
+      setFeedback(null);
+      setWordExit(null);
+      // One press signal for the whole fill: the last letter ticks and its
+      // salad tile ripples, as if it had just been typed.
+      setLastAppended((previous) => ({
+        id: (previous?.id ?? 0) + 1,
+        letter: prefix[prefix.length - 1],
+      }));
+      setInputLetters(Array.from(prefix));
+    },
+    [hintReveal, inputLetters, submitWord, wordSalad],
+  );
+
   // Keyboard input aimed at an unavailable control: the button dips in
   // acknowledgment without firing. Pointer taps get the equivalent for free
   // from CSS :active, so only the keyboard paths call this.
@@ -966,8 +1019,8 @@ export function useWordSaladGame(
   ]);
 
   // Every word in the puzzle, alphabetized once per engine instance in the
-  // dictionary's own collation. Found or not, each word owns a fixed slot
-  // for the life of the game.
+  // list's display order. Found or not, each word owns a fixed slot for
+  // the life of the game.
   const allWords = useMemo(
     () =>
       wordSalad === null
@@ -978,10 +1031,63 @@ export function useWordSaladGame(
     [collate, wordSalad],
   );
 
-  const wordSlots = useMemo<readonly WordSlot[]>(() => {
+  // The board's letters in the dictionary's own order, shared by every
+  // derivation below.
+  const boardAlphabet = useMemo(
+    () =>
+      wordSalad === null
+        ? []
+        : rankedLetters(wordSalad.characterSet, spec.lang),
+    [spec.lang, wordSalad],
+  );
+
+  // The slot map and the gaps between finds, rebuilt together: each find
+  // splits a gap in two, so every prefix is recomputed from the fresh
+  // neighbors — the list comes into focus as the game goes.
+  const { wordSlots, gaps } = useMemo(() => {
+    if (wordSalad === null) {
+      return {
+        wordSlots: [] as readonly WordSlot[],
+        gaps: [] as readonly WordGap[],
+      };
+    }
     const found = new Map(foundWords.map((entry) => [entry.word, entry]));
-    return allWords.map((word) => ({ found: found.get(word) ?? null }));
-  }, [allWords, foundWords]);
+    const isFound = (word: string) => found.has(word);
+    const keyOf = (word: string) => wordSalad.keyOf(word);
+    const prefixes = slotPrefixes({
+      words: allWords,
+      isFound,
+      keyOf,
+      alphabet: boardAlphabet,
+      minimumLength: wordSalad.minimumLength,
+    });
+    return {
+      wordSlots: allWords.map((word, index) => ({
+        found: found.get(word) ?? null,
+        prefix: prefixes[index],
+      })),
+      gaps: wordGaps({ words: allWords, isFound, keyOf }),
+    };
+  }, [allWords, boardAlphabet, foundWords, wordSalad]);
+
+  // The board letters that could still extend the typed word into a new
+  // find; the rack dims the rest. A hint reveal suspends the dimming: the
+  // rack is a spectacle during the cascade, not an input surface, and the
+  // revealed word is being committed rather than explored.
+  const liveLetters = useMemo<ReadonlySet<string>>(() => {
+    if (wordSalad === null) {
+      return new Set();
+    }
+    if (hintReveal !== null) {
+      return new Set(wordSalad.characterSet);
+    }
+    return liveNextLetters({
+      gaps,
+      alphabet: boardAlphabet,
+      minimumLength: wordSalad.minimumLength,
+      prefix: inputLetters.join(''),
+    });
+  }, [boardAlphabet, gaps, hintReveal, inputLetters, wordSalad]);
 
   // Record a compact summary for the history view whenever progress
   // changes. Zero-progress games stay out of history (browsing New game
@@ -1051,6 +1157,7 @@ export function useWordSaladGame(
     requiredCharacters: wordSalad.requiredCharacters,
     inputLetters,
     isValidCharacter,
+    liveLetters,
     inputPreview,
     submitReadiness:
       inputPreview === null
@@ -1100,5 +1207,6 @@ export function useWordSaladGame(
     startNewGame,
     restartGame,
     revealHint,
+    prefillWord,
   };
 }

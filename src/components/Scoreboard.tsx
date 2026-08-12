@@ -40,6 +40,9 @@ interface ScoreboardProps {
   rankUp: RankUp | null;
   onCustomGame: () => void;
   onNewGame: () => void;
+  // Passed through to the word drum's unfound rows: types a row's derived
+  // prefix into the word area.
+  onPrefill: (prefix: string) => void;
   onRestart: () => void;
 }
 
@@ -83,6 +86,7 @@ export function Scoreboard({
   rankUp,
   onCustomGame,
   onNewGame,
+  onPrefill,
   onRestart,
 }: ScoreboardProps) {
   const t = useMessages();
@@ -408,6 +412,7 @@ export function Scoreboard({
       <WordDrum
         definitionUrl={definitionUrl}
         foldLetter={foldLetter}
+        onPrefill={onPrefill}
         spotlight={spotlight}
         requiredCharacters={requiredCharacters}
         slots={wordSlots}
