@@ -106,48 +106,49 @@ body {
   }
 }
 
-@media (min-height: 760px) {
-  .app-shell {
-    justify-content: safe center;
-  }
-
-  .game-board {
-    flex: 0 1 auto;
-  }
-
-  .scoreboard-panel {
-    flex: 0 1 auto;
-  }
-
-  .word-drum {
-    flex: 0 1 auto;
-    height: clamp(16rem, 42dvh, 26rem);
-  }
+/* Sizing to the puzzle is not a luxury for tall windows: a board with more
+   screen than words has to shrink at every height, or the surplus opens as
+   a hole inside it. Nothing greedy, so each piece takes what it needs; the
+   shell then centers the whole board and the surplus becomes even margin
+   above and below. When a puzzle does fill the screen there is no surplus
+   and none of this has anything to do — safe center degrades to the top so
+   a long list still starts at the beginning instead of overflowing off it. */
+.app-shell {
+  justify-content: safe center;
 }
 
-@media (min-width: 900px) and (min-height: 760px) {
-  .app-shell {
-    width: 100%;
-    max-width: 44rem;
-    padding-left: clamp(1.25rem, 3vw, 3rem);
-    padding-right: clamp(1.25rem, 3vw, 3rem);
-  }
+.game-board,
+.scoreboard-panel {
+  flex: 0 1 auto;
+}
 
+/* A ceiling, not a fixed height: the rows are a known 32px each, so a
+   puzzle with only a handful of words shrinks the drum to fit them instead
+   of reserving a window it cannot fill. Bottom-anchoring makes an
+   unfillable window all hole — the list sinks to the composer and leaves
+   its own Words/Points header stranded at the top. */
+.word-drum {
+  flex: 0 1 auto;
+  max-height: clamp(16rem, 42dvh, 26rem);
+}
+
+/* A roomy screen buys rows, not width. The shell keeps its one measure at
+   every size: the composer never grows past the seven tiles it needs, so
+   widening only the board above it splits the page into two documents and
+   drags each word an inch further from its score. Height is the axis that
+   actually pays — more of the list at once. */
+@media (min-width: 900px) and (min-height: 760px) {
   .app-header {
     align-self: stretch;
     justify-content: center;
   }
 
   .word-drum {
-    height: clamp(22rem, 54dvh, 36rem);
+    max-height: clamp(22rem, 54dvh, 36rem);
   }
 
   .letter-rack {
     max-width: none;
-  }
-
-  .game-controls {
-    max-width: 22rem;
   }
 }
 
@@ -171,11 +172,22 @@ body {
     gap: clamp(1.5rem, 4vw, 3.5rem);
   }
 
+  /* Centered like the composer beside it. Side by side there is no
+     composer below the list to hug, so a short list has nothing to gain by
+     sinking — it just strands the Words/Points header at the top of the
+     column. */
   .scoreboard-panel {
     grid-column: 2;
     grid-row: 1;
     height: 100%;
+    justify-content: center;
     min-width: 0;
+  }
+
+  /* Shrink to the rows rather than claim the whole column; a list too tall
+     for it still shrinks back to the available height and scrolls. */
+  .word-drum {
+    flex: 0 1 auto;
   }
 
   .game-composer {

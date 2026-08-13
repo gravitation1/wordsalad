@@ -32,8 +32,6 @@ interface ScoreboardProps {
   earnedPoints: number;
   maxPoints: number;
   lostPoints: number;
-  earnedPercent: number;
-  lostPercent: number;
   winThreshold: number;
   winPoints: number;
   level: string;
@@ -81,8 +79,6 @@ export function Scoreboard({
   earnedPoints,
   maxPoints,
   lostPoints,
-  earnedPercent,
-  lostPercent,
   winThreshold,
   winPoints,
   level,
@@ -184,6 +180,20 @@ export function Scoreboard({
   // it (only the animations are reserved for the moment itself).
   const isPerfect = earnedPoints === maxPoints;
 
+  // The bar measures whatever is actually being played for: the win
+  // threshold until it is reached, the full board once it is. Max() guards
+  // the degenerate zero-point puzzle rather than dividing by nothing.
+  const barMax = Math.max(1, hasWon ? maxPoints : winPoints);
+  const earnedWidth = Math.min(1, earnedPoints / barMax);
+  // What hints have taken. Against the full board that is simply what was
+  // spent; against the threshold it is only the part that has eaten into
+  // still-winnable points — nothing while the slack above the threshold
+  // covers it, which is to say nothing until the game is lost.
+  const burnedPoints = hasWon
+    ? lostPoints
+    : Math.max(0, winPoints - (maxPoints - lostPoints));
+  const burnedWidth = Math.min(1 - earnedWidth, burnedPoints / barMax);
+
   // Closing the dialog restores focus to this trigger; blur it so a
   // subsequent Enter submits a word instead of re-opening the dialog.
   const closeRatings = () => {
@@ -258,146 +268,176 @@ export function Scoreboard({
           {t.challengeNote(challengeScore)}
         </p>
       )}
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          {t.foundSummary(foundCount)}
-          {hintCount > 0 ? (
-            <span className="text-gray-400 dark:text-gray-500">
-              {` · ${t.hintsUsed(hintCount, lostPoints)}`}
-            </span>
-          ) : null}
-        </p>
-        {foundCount > 0 ? (
-          <span className="flex items-center gap-3">
+      {/* One thin line: score, rank, and the bar as a hairline beneath it.
+          Before the win the measurement is against the threshold actually
+          being played for. The full board is a number almost nobody clears,
+          so grading against it left the bar near-empty and the rank sour
+          for most of a game. Winning banks the goal and the bar rescales to
+          the whole board, with the threshold left behind as a marker. */}
+      <div className="flex flex-col gap-2">
+        {/* A tight column gap, measured rather than chosen: at 12px the
+            three parts need 360px and a 390px phone gives the band 358,
+            wrapping the actions onto their own line for the sake of two
+            pixels. 8px buys that back. Nothing widens on a roomy screen —
+            ml-auto absorbs the slack, so only score-to-count tightens. */}
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          {/* Shrink-to-fit and relative so the rank-up burst lands on the
+              score itself rather than the middle of the line. */}
+          <div className="relative flex shrink-0 items-baseline">
+            {/* The win's quiet residue once the modal is gone (and the only
+                marker a restored won game shows): gold for a perfect score.
+                Outside the ratings button so its accessible name stays the
+                plain score. */}
+            {hasWon ? (
+              <span
+                className={`mr-1 text-sm font-semibold ${
+                  isPerfect ? 'text-amber-500' : 'text-accent'
+                }`}
+                data-perfect={isPerfect ? 'true' : 'false'}
+                data-testid="won-mark"
+              >
+                <span aria-hidden="true">✓</span>
+                <span className="sr-only">{t.statWon}</span>
+              </span>
+            ) : null}
             <button
-              className="-my-2 flex touch-manipulation items-center gap-1 py-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
+              aria-haspopup="dialog"
+              className="-mx-2 -my-1 touch-manipulation rounded px-2 py-1 text-left text-sm text-gray-600 underline decoration-gray-400/60 decoration-dotted underline-offset-4 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               onClick={() => {
-                void handleShare();
+                setIsRatingsOpen(true);
               }}
+              ref={ratingsButtonRef}
               type="button"
             >
-              {/* Stacked in one grid cell so the confirmation does not
-                  widen the button and reflow the summary beside it. */}
-              <span className="grid">
-                <span
-                  aria-hidden={shareCopied}
-                  className={`col-start-1 row-start-1 flex items-center gap-1 whitespace-nowrap ${
-                    shareCopied ? 'invisible' : ''
-                  }`}
-                >
-                  <span aria-hidden="true">↗</span>
-                  {t.shareButton}
-                </span>
-                <span
-                  aria-hidden={!shareCopied}
-                  className={`col-start-1 row-start-1 flex items-center gap-1 whitespace-nowrap ${
-                    shareCopied ? '' : 'invisible'
-                  }`}
-                >
-                  <span aria-hidden="true">✓</span>
-                  {t.shareCopied}
-                </span>
+              {hasWon
+                ? t.scoreLabel(earnedPoints, maxPoints)
+                : t.scoreToWin(earnedPoints, winPoints)}
+              {' · '}
+              {/* Split-flaps in on a rank-up (keyed remount replays it). */}
+              <span
+                className={
+                  rankUp === null ? undefined : 'rank-flip inline-block'
+                }
+                data-rank-id={rankUp?.id ?? 0}
+                data-testid="rating-name"
+                key={`rank-${rankUp?.id ?? 0}`}
+              >
+                {t.levelName(level)}
               </span>
             </button>
-            <button
-              className="-my-2 flex touch-manipulation items-center gap-1 py-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
-              onClick={onRestart}
-              type="button"
-            >
-              <span aria-hidden="true">⟲</span>
-              {t.restartButton}
-            </button>
-          </span>
-        ) : null}
-      </div>
-      {/* Green earned points grow from the left; red points lost to hints
-          eat in from the right; the marker is the win threshold. */}
-      <div className="progress-strip relative py-1">
-        <div
-          aria-label={t.completionLabel}
-          aria-valuemax={maxPoints}
-          aria-valuemin={0}
-          aria-valuenow={earnedPoints}
-          className={`relative h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800 ${
-            celebration === null
-              ? ''
-              : celebration.perfect
-                ? 'bar-shine-perfect'
-                : 'bar-shine'
-          }`}
-          role="progressbar"
-        >
-          {/* Both fills advance with flat edges — the container's clip rounds
-              the outer ends — so they butt cleanly when they meet. */}
-          <div
-            className="absolute inset-y-0 left-0 bg-accent transition-all"
-            style={{ width: `${earnedPercent * 100}%` }}
-          />
-          {/* Lost-to-hints points are spent, not alarming: the same gray the
-              hinted words wear in the drum and on the +0 badge. */}
-          <div
-            className="absolute inset-y-0 right-0 bg-gray-400 transition-all dark:bg-gray-600"
-            style={{ width: `${lostPercent * 100}%` }}
-          />
+            {rankUp === null ? null : (
+              <span data-testid="rank-burst" key={`burst-${rankUp.id}`}>
+                <WinBurst
+                  letters={saladLetters}
+                  mini
+                  requiredCharacters={requiredCharacters}
+                />
+              </span>
+            )}
+          </div>
+          {/* Secondary now that it shares the score's line: the word count,
+              and what hints have cost. shrink-0 makes it wrap the row rather
+              than compress into an ellipsised stub, so it yields the whole
+              line only when the content genuinely will not fit; max-w-full
+              plus truncate is the last resort for a lone item wider than the
+              band. */}
+          <p className="min-w-0 max-w-full shrink-0 truncate text-xs text-gray-500 dark:text-gray-500">
+            {t.foundSummary(foundCount)}
+            {hintCount > 0 ? (
+              <span className="text-gray-400 dark:text-gray-600">
+                {` · ${t.hintsUsed(hintCount, lostPoints)}`}
+              </span>
+            ) : null}
+          </p>
+          {/* ml-auto rather than the row's justify-between: it keeps the
+              actions hard right on whichever line they end up on. */}
+          {foundCount > 0 ? (
+            <span className="ml-auto flex shrink-0 items-center gap-3">
+              <button
+                className="-my-2 flex touch-manipulation items-center gap-1 py-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
+                onClick={() => {
+                  void handleShare();
+                }}
+                type="button"
+              >
+                {/* Stacked in one grid cell so the confirmation does not
+                  widen the button and reflow the summary beside it. */}
+                <span className="grid">
+                  <span
+                    aria-hidden={shareCopied}
+                    className={`col-start-1 row-start-1 flex items-center gap-1 whitespace-nowrap ${
+                      shareCopied ? 'invisible' : ''
+                    }`}
+                  >
+                    <span aria-hidden="true">↗</span>
+                    {t.shareButton}
+                  </span>
+                  <span
+                    aria-hidden={!shareCopied}
+                    className={`col-start-1 row-start-1 flex items-center gap-1 whitespace-nowrap ${
+                      shareCopied ? '' : 'invisible'
+                    }`}
+                  >
+                    <span aria-hidden="true">✓</span>
+                    {t.shareCopied}
+                  </span>
+                </span>
+              </button>
+              <button
+                className="-my-2 flex touch-manipulation items-center gap-1 py-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
+                onClick={onRestart}
+                type="button"
+              >
+                <span aria-hidden="true">⟲</span>
+                {t.restartButton}
+              </button>
+            </span>
+          ) : null}
         </div>
-        {/* Dark enough to stay visible on top of the gray lost segment. */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-y-0 w-0.5 -translate-x-1/2 rounded bg-gray-700 dark:bg-gray-300"
-          style={{ left: `${winThreshold * 100}%` }}
-          title={t.winThresholdLabel(winPoints)}
-        />
-      </div>
-      {/* relative anchors the rank-up burst on the score; self-start keeps
-          the row shrink-to-fit now that it is a flex item (a stretched row
-          would center the burst mid-line instead of on the text). */}
-      <div className="relative self-start">
-        {/* The win's quiet residue once the modal is gone (and the only
-            marker a restored won game shows): gold for a perfect score.
-            Outside the ratings button so its accessible name stays the
-            plain score. */}
-        {hasWon ? (
-          <span
-            className={`mr-1 text-sm font-semibold ${
-              isPerfect ? 'text-amber-500' : 'text-accent'
+        {/* Green earned points grow from the left; gray points lost to
+            hints eat in from the right. A hairline now, sitting under the
+            score line rather than claiming a row of its own. */}
+        <div className="progress-strip relative py-0.5">
+          <div
+            aria-label={t.completionLabel}
+            aria-valuemax={barMax}
+            aria-valuemin={0}
+            aria-valuenow={Math.min(earnedPoints, barMax)}
+            className={`relative h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800 ${
+              celebration === null
+                ? ''
+                : celebration.perfect
+                  ? 'bar-shine-perfect'
+                  : 'bar-shine'
             }`}
-            data-perfect={isPerfect ? 'true' : 'false'}
-            data-testid="won-mark"
+            role="progressbar"
           >
-            <span aria-hidden="true">✓</span>
-            <span className="sr-only">{t.statWon}</span>
-          </span>
-        ) : null}
-        <button
-          aria-haspopup="dialog"
-          className="-mx-2 -my-1 touch-manipulation rounded px-2 py-1 text-left text-sm text-gray-600 underline decoration-gray-400/60 decoration-dotted underline-offset-4 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-          onClick={() => {
-            setIsRatingsOpen(true);
-          }}
-          ref={ratingsButtonRef}
-          type="button"
-        >
-          {t.scoreLabel(earnedPoints, maxPoints)}
-          {' · '}
-          {/* Split-flaps in on a rank-up (keyed remount replays it). */}
-          <span
-            className={rankUp === null ? undefined : 'rank-flip inline-block'}
-            data-rank-id={rankUp?.id ?? 0}
-            data-testid="rating-name"
-            key={`rank-${rankUp?.id ?? 0}`}
-          >
-            {t.levelName(level)}
-          </span>
-        </button>
-        {rankUp === null ? null : (
-          <span data-testid="rank-burst" key={`burst-${rankUp.id}`}>
-            <WinBurst
-              letters={saladLetters}
-              mini
-              requiredCharacters={requiredCharacters}
+            {/* Both fills advance with flat edges — the container's clip
+                rounds the outer ends — so they butt cleanly when they
+                meet. */}
+            <div
+              className="absolute inset-y-0 left-0 bg-accent transition-all"
+              style={{ width: `${earnedWidth * 100}%` }}
             />
-          </span>
-        )}
+            {/* Lost-to-hints points are spent, not alarming: the same gray
+                the hinted words wear in the drum and on the +0 badge. */}
+            <div
+              className="absolute inset-y-0 right-0 bg-gray-400 transition-all dark:bg-gray-600"
+              style={{ width: `${burnedWidth * 100}%` }}
+            />
+          </div>
+          {/* Only once the win is banked and the bar spans the full board is
+              there a threshold to mark: before that it is the bar's own end.
+              Dark enough to stay visible on top of the gray lost segment. */}
+          {hasWon ? (
+            <div
+              aria-hidden="true"
+              className="absolute inset-y-0 w-0.5 -translate-x-1/2 rounded bg-gray-700 dark:bg-gray-300"
+              style={{ left: `${winThreshold * 100}%` }}
+              title={t.winThresholdLabel(winPoints)}
+            />
+          ) : null}
+        </div>
       </div>
       {/* The lockout modal's quiet residue once dismissed — and the only
           cue a restored locked game shows (it carries no event, so the

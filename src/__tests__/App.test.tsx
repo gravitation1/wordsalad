@@ -636,7 +636,7 @@ describe('App', () => {
     );
     expect(screen.getByText('Found 1 word')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: '1 / 15 points · Meh' }),
+      screen.getByRole('button', { name: '1 / 12 to win · Meh' }),
     ).toBeInTheDocument();
     expect(currentWord()).toBe('');
 
@@ -1077,7 +1077,7 @@ describe('App', () => {
     submitWord('test'); // 1 of 15 points -> Meh
 
     fireEvent.click(
-      screen.getByRole('button', { name: '1 / 15 points · Meh' }),
+      screen.getByRole('button', { name: '1 / 12 to win · Meh' }),
     );
 
     const dialog = screen.getByRole('dialog');
@@ -1103,7 +1103,7 @@ describe('App', () => {
     render(<App dictionary={DICTIONARY} />);
     submitWord('test');
     fireEvent.click(
-      screen.getByRole('button', { name: '1 / 15 points · Meh' }),
+      screen.getByRole('button', { name: '1 / 12 to win · Meh' }),
     );
 
     // Typing must not reach the game behind the modal.

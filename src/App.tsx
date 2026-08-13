@@ -265,7 +265,6 @@ function AppBody({
           challengeScore={game.challengeScore}
           definitionUrl={(word) => spec.definitionUrl(word, t.locale)}
           foldLetter={spec.fold}
-          earnedPercent={game.earnedPercent}
           feedback={game.feedback}
           requiredCharacters={game.requiredCharacters}
           saladLetters={game.saladLetters}
@@ -276,7 +275,6 @@ function AppBody({
           level={game.level}
           lockedOut={game.lockedOut}
           lockout={game.lockout}
-          lostPercent={game.lostPercent}
           lostPoints={game.lostPoints}
           maxPoints={game.maxPoints}
           onCustomGame={openCustom}
