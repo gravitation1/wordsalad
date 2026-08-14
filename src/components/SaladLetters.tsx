@@ -153,14 +153,15 @@ export function SaladLetters({
   });
 
   return (
-    // On small screens the width is capped to four tiles so seven letters
+    // On narrow screens the width is capped to four tiles so seven letters
     // wrap into a balanced, centered 4+3 instead of an awkward 6+1 (the
-    // cap matches the tile size: 4 tiles + 3 gaps at each size).
+    // cap matches the tile size: 4 tiles + 3 gaps at each size); from
+    // 480px up, .letter-rack in styles.css lifts the cap to a single row.
     // `relative` pins the tiles' offsetParent to this container: without
     // it, an animating ancestor transform (the board's deal-in) becomes
     // the measuring origin mid-flight and the first toss's takeoff spots
     // land in the wrong coordinate space.
-    <div className="letter-rack relative flex max-w-[13.5rem] flex-wrap justify-center gap-2 pointer-coarse:max-w-[15.5rem] sm:max-w-none">
+    <div className="letter-rack relative flex max-w-[13.5rem] flex-wrap justify-center gap-2 pointer-coarse:max-w-[15.5rem]">
       {letters.map((letter, index) => {
         const isRequired = requiredCharacters.includes(letter);
         const isLive = liveLetters.has(letter);

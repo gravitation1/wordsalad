@@ -106,45 +106,38 @@ body {
   }
 }
 
-/* Sizing to the puzzle is not a luxury for tall windows: a board with more
-   screen than words has to shrink at every height, or the surplus opens as
-   a hole inside it. Nothing greedy, so each piece takes what it needs; the
-   shell then centers the whole board and the surplus becomes even margin
-   above and below. When a puzzle does fill the screen there is no surplus
-   and none of this has anything to do — safe center degrades to the top so
-   a long list still starts at the beginning instead of overflowing off it. */
-.app-shell {
-  justify-content: safe center;
-}
-
+/* One vertical layout at every size: the board hangs from the header like
+   a document (the shell's default flex-start — no justify rule needed),
+   and surplus height collects at the bottom instead of floating the board
+   toward the middle of a tall window. Nothing greedy, so each piece takes
+   what it needs; inside the drum the rows still bottom-anchor (mt-auto),
+   so a short list keeps hugging the composer that feeds it. */
 .game-board,
 .scoreboard-panel {
   flex: 0 1 auto;
 }
 
-/* A ceiling, not a fixed height: the rows are a known 32px each, so a
-   puzzle with only a handful of words shrinks the drum to fit them instead
-   of reserving a window it cannot fill. Bottom-anchoring makes an
-   unfillable window all hole — the list sinks to the composer and leaves
-   its own Words/Points header stranded at the top. */
+/* A ceiling, not a fixed height — and the same ceiling everywhere: eight
+   of the known 32px rows. The drum is a window onto the list, not the list
+   itself; more rows only push the letters further down the screen. A
+   puzzle with fewer words shrinks the drum to fit them instead of
+   reserving a window it cannot fill, and a screen too short even for eight
+   rows squeezes it through flex shrink toward its three-row floor. */
 .word-drum {
   flex: 0 1 auto;
-  max-height: clamp(16rem, 42dvh, 26rem);
+  max-height: 16rem;
 }
 
-/* A roomy screen buys rows, not width. The shell keeps its one measure at
-   every size: the composer never grows past the seven tiles it needs, so
-   widening only the board above it splits the page into two documents and
-   drags each word an inch further from its score. Height is the axis that
-   actually pays — more of the list at once. */
-@media (min-width: 900px) and (min-height: 760px) {
+/* A roomy screen keeps the shell's one measure: the composer never grows
+   past the seven tiles it needs, so widening only the board above it splits
+   the page into two documents and drags each word an inch further from its
+   score. What width does buy is the tiles' single row — 480px is the
+   narrowest window the seven-tile row fits with margin, and the wrap is
+   width's decision alone so the stack above it never shifts with height. */
+@media (min-width: 480px) {
   .app-header {
     align-self: stretch;
     justify-content: center;
-  }
-
-  .word-drum {
-    max-height: clamp(22rem, 54dvh, 36rem);
   }
 
   .letter-rack {
@@ -160,14 +153,15 @@ body {
     padding-right: clamp(1.25rem, 3vw, 3rem);
   }
 
-  .app-header {
-    align-self: stretch;
-    justify-content: center;
-  }
-
+  /* Both columns are capped near their content (the composer's seven
+     tiles, the drum's longest row) and the pair centers as a unit, so a
+     wide window opens as outer margin — not as a void between the letters
+     and the words they land in. 28rem still clears the coarse-pointer
+     rack's 27.5rem. */
   .game-board {
     display: grid;
-    grid-template-columns: minmax(24rem, 1fr) minmax(20rem, 28rem);
+    grid-template-columns: minmax(24rem, 28rem) minmax(20rem, 28rem);
+    justify-content: center;
     align-items: stretch;
     gap: clamp(1.5rem, 4vw, 3.5rem);
   }
@@ -198,22 +192,8 @@ body {
     justify-content: center;
   }
 
-  .letter-rack {
-    max-width: none;
-  }
-
   .game-controls {
     max-width: 22rem;
-  }
-}
-
-@media (min-width: 1180px) and (max-height: 759px) {
-  .app-shell {
-    max-width: 80rem;
-  }
-
-  .game-board {
-    grid-template-columns: minmax(28rem, 1fr) minmax(24rem, 28rem);
   }
 }
 

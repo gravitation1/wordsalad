@@ -201,7 +201,7 @@ function AppBody({
     // once — taps deep in the list land letters in an input that is still
     // on screen. (dvh, not vh: it tracks the browser toolbar. Safe where
     // unsupported: height falls back to auto and the page scrolls.)
-    <main className="app-shell mx-auto flex h-dvh max-w-md flex-col items-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:gap-5 sm:py-8">
+    <main className="app-shell mx-auto flex h-dvh max-w-md flex-col items-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
       <header className="app-header flex items-baseline gap-3">
         <h1 className="text-sm font-bold uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
           {t.appTitle}
@@ -256,7 +256,7 @@ function AppBody({
           and word list up top, composer at the bottom. Roomy landscape can
           place that composer beside the drum instead. */}
       <div
-        className="game-board game-enter flex min-h-0 w-full flex-1 flex-col items-center gap-3 sm:gap-5"
+        className="game-board game-enter flex min-h-0 w-full flex-1 flex-col items-center gap-3"
         data-game-id={game.gameId}
         key={game.gameId}
       >
@@ -287,7 +287,7 @@ function AppBody({
           wordOriginRef={wordOriginRef}
           wordSlots={game.wordSlots}
         />
-        <div className="game-composer flex w-full flex-col items-center gap-3 sm:gap-5">
+        <div className="game-composer flex w-full flex-col items-center gap-3">
           <WordInput
             wordExit={game.wordExit}
             canHint={game.canHint}
