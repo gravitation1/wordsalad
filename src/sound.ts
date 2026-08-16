@@ -99,11 +99,14 @@ function ensureAudio(): Audio | null {
     return { context, master };
   })();
 
-  // Re-asserted on every touch rather than once at creation: the OS can
-  // reset the session across interruptions, and toggling sound off hands
-  // it back deliberately.
+  // Claimed only when not already ours: WebKit forwards every assignment
+  // to a native session reconfiguration whether or not the value changed,
+  // and this runs on every gesture and note — unguarded, each tap would
+  // pay for a session renegotiation (audible as latency). The preference
+  // is sticky in WebKit, so once set it survives interruptions; the only
+  // re-claim needed is after soundDisabled() hands the session back.
   const session = audioSession();
-  if (session !== undefined) {
+  if (session !== undefined && session.type !== 'playback') {
     session.type = 'playback';
   }
 
@@ -360,6 +363,16 @@ export function won(perfect: boolean): void {
 // which is the gesture browsers require before any audio can start at all.
 export function soundEnabled(): void {
   wordScored(3);
+}
+
+// The page left the screen (app switch, screen lock). Stop rendering so
+// WebKit deactivates the audio session: without this the context renders
+// silence forever, and iOS — told via 'playback' that the page is a media
+// player — keeps the session registered, showing the site on the lock
+// screen with phantom playback controls. The claimed type is kept; the
+// next gesture's resume reactivates the session under it.
+export function suspendAudio(): void {
+  audio?.context.suspend().catch(() => undefined);
 }
 
 // Switching sound off undoes the enable's claims: the audio session goes

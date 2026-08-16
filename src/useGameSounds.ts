@@ -7,6 +7,7 @@ import {
   letterRejected,
   primeAudio,
   rankedUp,
+  suspendAudio,
   tossed,
   won,
   wordRejected,
@@ -65,13 +66,25 @@ function useAudioUnlock(enabled: boolean): void {
       return;
     }
 
+    // The unlock's mirror image: park the context when the page leaves the
+    // screen (app switch, screen lock), so the audio session deactivates
+    // rather than idling as a silent "now playing" media claim. No resume
+    // on return — the next gesture is the unlock, as everywhere else.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        suspendAudio();
+      }
+    };
+
     for (const type of UNLOCK_EVENTS) {
       window.addEventListener(type, primeAudio, { capture: true });
     }
+    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       for (const type of UNLOCK_EVENTS) {
         window.removeEventListener(type, primeAudio, { capture: true });
       }
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [enabled]);
 }

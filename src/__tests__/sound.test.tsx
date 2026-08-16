@@ -266,6 +266,58 @@ describe('sound', () => {
     expect(contextState).toBe('suspended');
   });
 
+  // WebKit renegotiates the native session on every assignment to type,
+  // whether or not the value changed — and priming runs on every gesture.
+  // Unguarded, each tap would pay for that renegotiation as latency
+  // between the press and its sound.
+  it('claims the audio session once, not on every gesture', () => {
+    let sets = 0;
+    let type = 'auto';
+    Object.defineProperty(navigator, 'audioSession', {
+      configurable: true,
+      value: {
+        get type() {
+          return type;
+        },
+        set type(value: string) {
+          type = value;
+          sets++;
+        },
+      },
+    });
+
+    render(<App dictionary={DICTIONARY} />);
+    fireEvent.click(soundToggle());
+    expect(type).toBe('playback');
+    expect(sets).toBe(1);
+
+    typeWord('test');
+    fireEvent.pointerUp(document.body);
+    expect(sets).toBe(1);
+  });
+
+  // A context left running renders silence forever, and iOS — told via
+  // 'playback' that the page is a media player — keeps its session
+  // registered, showing the site on the lock screen with phantom media
+  // controls. Leaving the screen parks the context; the next gesture is
+  // the unlock, as everywhere else.
+  it('parks the context when the page is hidden while sound is on', () => {
+    window.localStorage.setItem('wordsalad:sound', 'on');
+    render(<App dictionary={DICTIONARY} />);
+
+    fireEvent.pointerUp(document.body);
+    expect(contextState).toBe('running');
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden',
+    });
+    fireEvent(document, new Event('visibilitychange'));
+    delete (document as { visibilityState?: unknown }).visibilityState;
+
+    expect(contextState).toBe('suspended');
+  });
+
   it('leaves audio untouched by gestures while sound is off', () => {
     render(<App dictionary={DICTIONARY} />);
     resumes = 0;
