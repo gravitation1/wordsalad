@@ -52,6 +52,22 @@ interface Audio {
   master: GainNode;
 }
 
+// iOS routes a page's audio through an OS audio session, and the default
+// session (ambient) is the one the ring/silent switch mutes. Media elements
+// get 'playback' sessions — which the switch does not touch — and that is
+// why other sites sound on a silenced phone while Web Audio stays mute.
+// Claiming 'playback' honors the ♪ toggle over a switch set long ago: the
+// player just asked for sound. The claim is exclusive on iOS (it can pause
+// backgrounded music), so it is made only while sound is on and handed back
+// when the player toggles it off. Absent everywhere but WebKit; elsewhere
+// the accessor returns undefined and nothing changes.
+function audioSession(): { type: string } | undefined {
+  return typeof navigator === 'undefined'
+    ? undefined
+    : (navigator as Navigator & { audioSession?: { type: string } })
+        .audioSession;
+}
+
 let audio: Audio | null = null;
 let activeVoices = 0;
 let lastLetterAt = -Infinity;
@@ -82,6 +98,14 @@ function ensureAudio(): Audio | null {
     master.connect(context.destination);
     return { context, master };
   })();
+
+  // Re-asserted on every touch rather than once at creation: the OS can
+  // reset the session across interruptions, and toggling sound off hands
+  // it back deliberately.
+  const session = audioSession();
+  if (session !== undefined) {
+    session.type = 'playback';
+  }
 
   // A context created before the page has been interacted with starts
   // suspended, and one can be suspended later by the browser (backgrounded
@@ -336,4 +360,16 @@ export function won(perfect: boolean): void {
 // which is the gesture browsers require before any audio can start at all.
 export function soundEnabled(): void {
   wordScored(3);
+}
+
+// Switching sound off undoes the enable's claims: the audio session goes
+// back to the default (the phone's exclusive playback slot is not held by
+// silence — backgrounded music can have it again) and the context's render
+// loop stops. The context itself is kept; the next enable revives it.
+export function soundDisabled(): void {
+  const session = audioSession();
+  if (session !== undefined) {
+    session.type = 'auto';
+  }
+  audio?.context.suspend().catch(() => undefined);
 }

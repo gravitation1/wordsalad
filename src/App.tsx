@@ -28,7 +28,7 @@ import {
   saveSoundEnabled,
   saveThemePreference,
 } from './progressStore';
-import { soundEnabled as playSoundEnabled } from './sound';
+import { soundDisabled, soundEnabled as playSoundEnabled } from './sound';
 import { useGameSounds } from './useGameSounds';
 import { useWordSaladGame } from './useWordSaladGame';
 
@@ -136,6 +136,10 @@ function AppBody({
       // Answer in the medium being switched on, so the player hears the
       // volume before a word depends on it.
       playSoundEnabled();
+    } else {
+      // Release what enabling claimed (iOS's exclusive audio session, the
+      // running render loop) rather than just going quiet.
+      soundDisabled();
     }
   };
 

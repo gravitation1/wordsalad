@@ -64,6 +64,11 @@ class FakeAudioContext {
     return Promise.resolve();
   }
 
+  suspend() {
+    contextState = 'suspended';
+    return Promise.resolve();
+  }
+
   createGain() {
     return { gain: audioParam(), connect: noop };
   }
@@ -152,6 +157,7 @@ describe('sound', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    delete (navigator as { audioSession?: unknown }).audioSession;
     window.history.replaceState(null, '', window.location.pathname);
   });
 
@@ -233,6 +239,31 @@ describe('sound', () => {
 
     expect(resumes).toBeGreaterThan(0);
     expect(contextState).toBe('running');
+  });
+
+  // iOS mutes the default (ambient) audio session — the one Web Audio
+  // rides in — whenever the ring/silent switch is set, while media
+  // elements play from 'playback' sessions the switch does not touch:
+  // the reason a silenced phone sounds on other sites but not here.
+  // Claiming 'playback' lifts the game out from under the switch once
+  // the player has asked for sound.
+  it('claims the playback audio session while sound is on', () => {
+    const session = { type: 'auto' };
+    Object.defineProperty(navigator, 'audioSession', {
+      configurable: true,
+      value: session,
+    });
+
+    render(<App dictionary={DICTIONARY} />);
+    fireEvent.click(soundToggle());
+    expect(session.type).toBe('playback');
+
+    // Toggling off hands the session back and stops the render loop, so
+    // the game's silence does not hold the phone's exclusive playback
+    // slot against backgrounded music.
+    fireEvent.click(soundToggle());
+    expect(session.type).toBe('auto');
+    expect(contextState).toBe('suspended');
   });
 
   it('leaves audio untouched by gestures while sound is off', () => {
