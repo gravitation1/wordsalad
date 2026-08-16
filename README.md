@@ -27,8 +27,12 @@ least three of six dictionaries, inflections included). It is filtered to
 American, alphabetic words, and a small blocklist is removed: slurs and crude
 vulgarities, plus British and Commonwealth dialect words (NOWT, BAIRN,
 GAZUMP) that read as gotchas rather than words to the American players the
-list is tuned for. The result favors words people actually know over obscure
-but technically-valid entries.
+list is tuned for. Because both sources predate the late 1990s, the list is
+supplemented with contemporary standard vocabulary — tech, food, and societal
+terms (PODCASTING, DEEPFAKE, UMAMI), each verified against Merriam-Webster;
+slang and proper-noun-adjacent coinages are deliberately left out. The result
+favors words people actually know over obscure but technically-valid
+entries.
 
 `public/dictionaries/fr.txt` is derived from
 [Lexique 3.83](http://www.lexique.org) (New, Pallier, Brysbaert; CC BY-SA),
