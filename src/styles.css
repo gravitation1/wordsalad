@@ -43,6 +43,30 @@ body {
   @apply bg-white text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100;
 }
 
+/* A label is a target, not text: without this, a mobile press-and-hold
+   starts selecting the button's caption (loupe, Copy callout) instead of
+   pressing the button. Buttons only — the drum's found words are links to
+   definitions, i.e. real content that must stay selectable. */
+button {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* On the narrowest phones the meta row's thirds squeeze under "New game"'s
+   width and the label folds onto two lines; a smaller type size (the pills
+   keep their min-height) lets the three labels sit one-line again. */
+@media (max-width: 359px) {
+  .meta-actions {
+    gap: 0.375rem;
+  }
+
+  .meta-actions button {
+    font-size: 0.75rem;
+    padding-inline: 0.25rem;
+  }
+}
+
 /* Layout is portrait-first, but landscape has two distinct needs. A short
    sideways phone needs vertical compression; a roomy tablet or desktop can
    spend horizontal space on a two-pane play surface. */
@@ -67,6 +91,15 @@ body {
 
   .scoreboard-panel {
     gap: 0.375rem;
+  }
+
+  /* The meta pills give height back the way the play controls below do. */
+  .meta-actions {
+    gap: 0.375rem;
+  }
+
+  .meta-actions button {
+    min-height: 2.25rem;
   }
 
   .progress-strip {

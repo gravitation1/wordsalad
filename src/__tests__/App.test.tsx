@@ -1513,14 +1513,24 @@ describe('App', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('only offers Restart once there is progress to clear', () => {
+  it('only enables Restart once there is progress to clear', () => {
     render(<App dictionary={DICTIONARY} />);
-    expect(
-      screen.queryByRole('button', { name: 'Restart' }),
-    ).not.toBeInTheDocument();
+    const restart = screen.getByRole('button', { name: 'Restart' });
+    expect(restart).toHaveAttribute('aria-disabled', 'true');
+    // Sharing is equally pointless with nothing found.
+    expect(screen.getByRole('button', { name: 'Share' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    // A tap on the idle button absorbs without resetting anything.
+    fireEvent.click(restart);
 
     submitWord('test');
-    expect(screen.getByRole('button', { name: 'Restart' })).toBeInTheDocument();
+    expect(restart).toHaveAttribute('aria-disabled', 'false');
+    expect(screen.getByRole('button', { name: 'Share' })).toHaveAttribute(
+      'aria-disabled',
+      'false',
+    );
   });
 
   it('restarts the current puzzle, clearing its saved progress', () => {

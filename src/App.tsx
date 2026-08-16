@@ -202,24 +202,12 @@ function AppBody({
     // on screen. (dvh, not vh: it tracks the browser toolbar. Safe where
     // unsupported: height falls back to auto and the page scrolls.)
     <main className="app-shell mx-auto flex h-dvh max-w-md flex-col items-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
-      <header className="app-header flex items-baseline gap-3">
+      {/* Just the identity and the two device toggles: the game actions
+          (New game / Share / Restart) live on the scoreboard's meta row. */}
+      <header className="app-header flex items-center gap-3">
         <h1 className="text-sm font-bold uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
           {t.appTitle}
         </h1>
-        <button
-          className="-m-2 flex touch-manipulation items-center gap-1 p-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
-          onClick={game.startNewGame}
-          type="button"
-        >
-          <span
-            aria-hidden="true"
-            className={`inline-block ${game.gameId > 0 ? 'spin-once' : ''}`}
-            key={game.gameId}
-          >
-            ↻
-          </span>
-          {t.newGameButton}
-        </button>
         <SoundToggle enabled={soundOn} onToggle={toggleSound} />
         <OverflowMenu
           localeOverride={settings.localeOverride}
@@ -266,6 +254,7 @@ function AppBody({
           definitionUrl={(word) => spec.definitionUrl(word, t.locale)}
           foldLetter={spec.fold}
           feedback={game.feedback}
+          gameId={game.gameId}
           requiredCharacters={game.requiredCharacters}
           saladLetters={game.saladLetters}
           earnedPoints={game.earnedPoints}

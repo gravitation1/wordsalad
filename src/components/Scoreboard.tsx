@@ -29,6 +29,8 @@ interface ScoreboardProps {
   requiredCharacters: string;
   wordSlots: readonly WordSlot[];
   spotlight: WordSpotlight | null;
+  // Increments on each New game (never on Restart): spins the ↻ glyph.
+  gameId: number;
   earnedPoints: number;
   maxPoints: number;
   lostPoints: number;
@@ -50,6 +52,17 @@ interface ScoreboardProps {
   // Passed through to the drum: where a found word flies in from.
   wordOriginRef: { current: WordOrigin | null };
 }
+
+// The meta row's pills: the play controls' finger-sized shape in the
+// header's muted voice, so New game / Share / Restart stay secondary to
+// the play loop while being just as easy to hit.
+const ACTION_CLASS =
+  'flex min-h-11 touch-manipulation items-center justify-center gap-1.5 rounded-full border border-gray-300 px-2 text-sm font-medium text-gray-500 transition hover:bg-gray-50 hover:text-gray-700 active:scale-95 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200';
+
+// Same dashed idle look the play controls use for an action that would do
+// nothing right now.
+const ACTION_DISABLED_CLASS =
+  'flex min-h-11 cursor-not-allowed touch-manipulation items-center justify-center gap-1.5 rounded-full border border-dashed border-gray-300 px-2 text-sm font-medium text-gray-300 dark:border-gray-700 dark:text-gray-700';
 
 // The share snippet's miniature bar: earned, lost-to-hints, unclaimed.
 const SHARE_BAR_SEGMENTS = 7;
@@ -76,6 +89,7 @@ export function Scoreboard({
   requiredCharacters,
   wordSlots,
   spotlight,
+  gameId,
   earnedPoints,
   maxPoints,
   lostPoints,
@@ -174,6 +188,9 @@ export function Scoreboard({
   };
 
   const foundCount = wordSlots.filter((slot) => slot.found !== null).length;
+  // Gates Share and Restart: with nothing found there is nothing to share
+  // or to clear.
+  const hasProgress = foundCount > 0;
   const isComplete = foundCount === wordSlots.length;
   const anyHinted = wordSlots.some((slot) => slot.found?.hinted ?? false);
   // The gold treatment is state, not event: a restored perfect game keeps
@@ -208,6 +225,70 @@ export function Scoreboard({
     // section able to shrink to that share — its automatic minimum would
     // otherwise count the drum's full word list, not the window.
     <section className="scoreboard-panel flex min-h-0 w-full flex-1 flex-col gap-3">
+      {/* The meta actions share one finger-sized row (they used to hide as
+          text links in the score line's corner). New game is always live;
+          Share and Restart wake with the first found word — aria-disabled
+          rather than disabled keeps the press feedback working, and the
+          handlers no-op, matching the play controls' convention. */}
+      <div className="meta-actions grid w-full grid-cols-3 gap-2">
+        <button className={ACTION_CLASS} onClick={onNewGame} type="button">
+          {/* The board remounts per game, so a fresh mount with a nonzero
+              id is exactly a New game press — the ↻ replays its spin. */}
+          <span
+            aria-hidden="true"
+            className={`inline-block ${gameId > 0 ? 'spin-once' : ''}`}
+          >
+            ↻
+          </span>
+          {t.newGameButton}
+        </button>
+        <button
+          aria-disabled={!hasProgress}
+          className={hasProgress ? ACTION_CLASS : ACTION_DISABLED_CLASS}
+          onClick={() => {
+            if (hasProgress) {
+              void handleShare();
+            }
+          }}
+          type="button"
+        >
+          {/* Stacked in one grid cell so the copy confirmation does not
+              change the button's width. */}
+          <span className="grid">
+            <span
+              aria-hidden={shareCopied}
+              className={`col-start-1 row-start-1 flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                shareCopied ? 'invisible' : ''
+              }`}
+            >
+              <span aria-hidden="true">↗</span>
+              {t.shareButton}
+            </span>
+            <span
+              aria-hidden={!shareCopied}
+              className={`col-start-1 row-start-1 flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                shareCopied ? '' : 'invisible'
+              }`}
+            >
+              <span aria-hidden="true">✓</span>
+              {t.shareCopied}
+            </span>
+          </span>
+        </button>
+        <button
+          aria-disabled={!hasProgress}
+          className={hasProgress ? ACTION_CLASS : ACTION_DISABLED_CLASS}
+          onClick={() => {
+            if (hasProgress) {
+              onRestart();
+            }
+          }}
+          type="button"
+        >
+          <span aria-hidden="true">⟲</span>
+          {t.restartButton}
+        </button>
+      </div>
       {/* The fanfare interrupts, then gets out of the way: dismissing the
           modal returns the board to its normal view. Keyed per celebration
           so the perfect (gold) pass remounts and replays the show. */}
@@ -275,11 +356,6 @@ export function Scoreboard({
           for most of a game. Winning banks the goal and the bar rescales to
           the whole board, with the threshold left behind as a marker. */}
       <div className="flex flex-col gap-2">
-        {/* A tight column gap, measured rather than chosen: at 12px the
-            three parts need 360px and a 390px phone gives the band 358,
-            wrapping the actions onto their own line for the sake of two
-            pixels. 8px buys that back. Nothing widens on a roomy screen —
-            ml-auto absorbs the slack, so only score-to-count tightens. */}
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           {/* Shrink-to-fit and relative so the rank-up burst lands on the
               score itself rather than the middle of the line. */}
@@ -349,50 +425,6 @@ export function Scoreboard({
               </span>
             ) : null}
           </p>
-          {/* ml-auto rather than the row's justify-between: it keeps the
-              actions hard right on whichever line they end up on. */}
-          {foundCount > 0 ? (
-            <span className="ml-auto flex shrink-0 items-center gap-3">
-              <button
-                className="-my-2 flex touch-manipulation items-center gap-1 py-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
-                onClick={() => {
-                  void handleShare();
-                }}
-                type="button"
-              >
-                {/* Stacked in one grid cell so the confirmation does not
-                  widen the button and reflow the summary beside it. */}
-                <span className="grid">
-                  <span
-                    aria-hidden={shareCopied}
-                    className={`col-start-1 row-start-1 flex items-center gap-1 whitespace-nowrap ${
-                      shareCopied ? 'invisible' : ''
-                    }`}
-                  >
-                    <span aria-hidden="true">↗</span>
-                    {t.shareButton}
-                  </span>
-                  <span
-                    aria-hidden={!shareCopied}
-                    className={`col-start-1 row-start-1 flex items-center gap-1 whitespace-nowrap ${
-                      shareCopied ? '' : 'invisible'
-                    }`}
-                  >
-                    <span aria-hidden="true">✓</span>
-                    {t.shareCopied}
-                  </span>
-                </span>
-              </button>
-              <button
-                className="-my-2 flex touch-manipulation items-center gap-1 py-2 text-xs font-medium text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
-                onClick={onRestart}
-                type="button"
-              >
-                <span aria-hidden="true">⟲</span>
-                {t.restartButton}
-              </button>
-            </span>
-          ) : null}
         </div>
         {/* Green earned points grow from the left; gray points lost to
             hints eat in from the right. A hairline now, sitting under the

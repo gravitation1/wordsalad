@@ -68,8 +68,8 @@ export function OverflowMenu({
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // Glyph icons in the same vocabulary as the header's ↻ (and the
-  // scoreboard's ↗/⟲): ✎ for authoring a puzzle, ↺ for looking back.
+  // Glyph icons in the same vocabulary as the meta row's ↻/↗/⟲: ✎ for
+  // authoring a puzzle, ↺ for looking back.
   const items = [
     { action: onCustomGame, icon: '✎', label: t.customGameButton },
     { action: onHistory, icon: '↺', label: t.historyButton },
@@ -148,15 +148,16 @@ export function OverflowMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={t.moreMenuLabel}
-        className="-m-2 flex touch-manipulation items-center p-2 text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
+        className="-m-1 flex touch-manipulation items-center justify-center p-2.5 text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
         onClick={() => {
           setOpen((previous) => !previous);
         }}
         ref={triggerRef}
         type="button"
       >
-        {/* Full-size glyph (the header's text-xs would render it tiny). */}
-        <span aria-hidden="true" className="text-base leading-none">
+        {/* Sized with the ♪ beside it; the padding (only partly clawed
+            back by the negative margin) keeps the tap target finger-sized. */}
+        <span aria-hidden="true" className="text-xl leading-none">
           ⋯
         </span>
       </button>

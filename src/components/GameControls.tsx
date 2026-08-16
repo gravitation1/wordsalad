@@ -149,7 +149,7 @@ export function GameControls({
           every browser; the action itself already no-ops in the hook. */}
       <button
         aria-disabled={!canDelete}
-        className={`relative select-none ${canDelete ? NEUTRAL_CLASS : DISABLED_CLASS} ${deleteId > 0 ? 'control-press' : ''} ${denyClass(denied, 'delete')}`}
+        className={`relative ${canDelete ? NEUTRAL_CLASS : DISABLED_CLASS} ${deleteId > 0 ? 'control-press' : ''} ${denyClass(denied, 'delete')}`}
         data-delete-id={deleteId}
         data-denied-id={denied?.control === 'delete' ? denied.id : 0}
         key={`delete-${deleteId}`}
