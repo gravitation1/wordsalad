@@ -515,6 +515,31 @@ button {
   }
 }
 
+/* A restarted board's found rows fly up toward the Restart button that
+   wiped them — ghosts of the words, staggered top-first, absorbed by the
+   pill above the drum. */
+@keyframes row-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-28px) scale(0.9);
+  }
+}
+
+.row-exit {
+  animation: row-exit 300ms ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-exit {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 /* A control button presses itself and emits a ring when its action fires,
    even when the action was triggered from the keyboard. */
 @keyframes control-press {

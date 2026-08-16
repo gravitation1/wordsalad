@@ -10,6 +10,14 @@ import { TILE_FACE } from './tiles';
 
 interface SaladLettersProps {
   celebration: Celebration | null;
+  // The New game pill, shared by ref (the word flight's origin pattern,
+  // aimed the other way): a fresh deal flies its tiles out of the button
+  // that dealt them, drawing the line from press to consequence.
+  dealOrigin: { current: HTMLButtonElement | null };
+  // This board arrived via New game — the board remounts per game, so a
+  // mount with a nonzero game id is exactly that. A reload or restore
+  // mounts quietly instead.
+  freshDeal: boolean;
   hintReveal: HintReveal | null;
   lastAppended: LetterActivation | null;
   letters: readonly string[];
@@ -30,6 +38,11 @@ const HINT_STAGGER_MS = 45;
 // rising by a base hop plus a cut of the distance it must cover.
 const TOSS_FLIGHT_MS = 480;
 const TOSS_BASE_LIFT_PX = 14;
+
+// A dealt tile's trip from the New game button to its slot, and the gap
+// between consecutive departures.
+const DEAL_FLIGHT_MS = 380;
+const DEAL_STAGGER_MS = 40;
 
 interface TilePress {
   key: string;
@@ -58,6 +71,8 @@ function tilePress(
 
 export function SaladLetters({
   celebration,
+  dealOrigin,
+  freshDeal,
   hintReveal,
   lastAppended,
   letters,
@@ -67,6 +82,65 @@ export function SaladLetters({
   tossId,
 }: SaladLettersProps) {
   const t = useMessages();
+
+  // A fresh deal flies each tile out of the New game button and into its
+  // slot, staggered like cards leaving a hand. Web Animations like the
+  // toss below — without it (jsdom), and under reduced motion, the tiles
+  // simply appear in place. Runs once per board mount; the guard keeps
+  // later re-renders (letters reorder on toss) from re-dealing.
+  const hasDealt = useRef(false);
+  useLayoutEffect(() => {
+    if (!freshDeal || hasDealt.current) {
+      return;
+    }
+    hasDealt.current = true;
+    if (
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      return;
+    }
+    const origin = dealOrigin.current?.getBoundingClientRect();
+    if (origin === undefined) {
+      return;
+    }
+    const originX = origin.left + origin.width / 2;
+    const originY = origin.top + origin.height / 2;
+    let order = 0;
+    for (const letter of letters) {
+      const node = movers.current.get(letter);
+      const animate = (node as { animate?: HTMLElement['animate'] } | undefined)
+        ?.animate;
+      if (node === undefined || animate === undefined) {
+        continue;
+      }
+      const rect = node.getBoundingClientRect();
+      const dx = originX - (rect.left + rect.width / 2);
+      const dy = originY - (rect.top + rect.height / 2);
+      // The toss's sampled arc, flown from the button: position eased by
+      // hand (linear timing), height on the 4t(1−t) parabola, growing and
+      // fading in along the way.
+      const steps = 8;
+      const frames = Array.from({ length: steps + 1 }, (_, i) => {
+        const t = i / steps;
+        const eased = 1 - (1 - t) ** 2;
+        const hop = 4 * t * (1 - t);
+        return {
+          opacity: Math.min(1, 0.3 + t),
+          transform: `translate(${dx * (1 - eased)}px, ${dy * (1 - eased) - 18 * hop}px) scale(${0.5 + 0.5 * eased})`,
+        };
+      });
+      animate.call(node, frames, {
+        delay: order * DEAL_STAGGER_MS,
+        duration: DEAL_FLIGHT_MS,
+        easing: 'linear',
+        fill: 'backwards',
+      });
+      order++;
+    }
+    // The dependencies never change within a board's life (the guard above
+    // covers replays regardless); listed to keep the contract visible.
+  }, [dealOrigin, freshDeal, letters]);
 
   // The win moment sends a staggered wave through the tiles. It replaces
   // the (long finished) entrance on the same element, and only for the
@@ -204,7 +278,9 @@ export function SaladLetters({
                   ? celebration.id % 2 === 1
                     ? 'tile-cheer'
                     : 'tile-cheer-alt'
-                  : tossId === 0
+                  : // A fresh deal's entrance is the flight from the New
+                    // game button (above); the hop would double it.
+                    tossId === 0 && !freshDeal
                     ? 'letter-toss'
                     : ''
               } inline-block`}

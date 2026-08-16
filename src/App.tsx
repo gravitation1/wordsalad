@@ -119,6 +119,26 @@ function AppBody({
   const [customOpen, setCustomOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(loadSoundEnabled);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  // The New game pill's element, shared with the letter rack: a fresh
+  // deal flies its tiles out of the button that dealt them.
+  const newGameRef = useRef<HTMLButtonElement>(null);
+
+  // The outgoing board's earned-bar fraction, surviving the remount so an
+  // incoming board can drain its bar from where the old one ended. A ref
+  // rolled forward in an effect: when the new board's mount effects read
+  // it, it still holds the previous board's value (this effect, belonging
+  // to the parent, runs after the children's).
+  const lastBarWidth = useRef(0);
+  useEffect(() => {
+    lastBarWidth.current =
+      game.status === 'playing'
+        ? Math.min(
+            1,
+            game.earnedPoints /
+              Math.max(1, game.hasWon ? game.maxPoints : game.winPoints),
+          )
+        : 0;
+  });
 
   // The typed word's last on-screen spot, shared between the input (which
   // measures it) and the drum (which flies a found word from there into
@@ -185,6 +205,11 @@ function AppBody({
     menuTriggerRef.current?.focus();
     menuTriggerRef.current?.blur();
   };
+
+  // The board remounts per game (keyed below), so a board mounting with a
+  // nonzero game id arrived via New game — and performs its deal. A reload
+  // or restore mounts at id 0 and stays quiet.
+  const freshDeal = game.status === 'playing' && game.gameId > 0;
 
   if (game.status === 'error') {
     return (
@@ -254,6 +279,9 @@ function AppBody({
         key={game.gameId}
       >
         <Scoreboard
+          barDrainRef={lastBarWidth}
+          newGameRef={newGameRef}
+          restartExit={game.restartExit}
           celebration={game.celebration}
           challengeScore={game.challengeScore}
           definitionUrl={(word) => spec.definitionUrl(word, t.locale)}
@@ -301,6 +329,8 @@ function AppBody({
           />
           <SaladLetters
             celebration={game.celebration}
+            dealOrigin={newGameRef}
+            freshDeal={freshDeal}
             hintReveal={game.hintReveal}
             lastAppended={game.lastAppended}
             letters={game.saladLetters}

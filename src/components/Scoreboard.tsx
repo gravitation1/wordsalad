@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { useMessages } from '../i18n';
 import type {
@@ -7,6 +8,7 @@ import type {
   GameFeedback,
   Lockout,
   RankUp,
+  RestartExit,
   ShareRequest,
   WordSlot,
   WordSpotlight,
@@ -37,6 +39,17 @@ interface ScoreboardProps {
   // The 3 key, relayed from the game's keyboard handler as a one-shot:
   // sharing needs this component's URL/clipboard machinery.
   shareRequest: ShareRequest | null;
+  // The rows a restart wiped: the drum flies their ghosts up toward the
+  // Restart pill, which rings as it receives them.
+  restartExit: RestartExit | null;
+  // The New game pill's element, shared upward so a fresh deal can fly
+  // its tiles out of the button that dealt them.
+  newGameRef: RefObject<HTMLButtonElement | null>;
+  // The outgoing board's earned-bar fraction, read at mount: a fresh
+  // board's bar starts there and visibly drains to its empty state.
+  // (Restart needs no help — its bar survives the reset and the width
+  // transition plays the drain.)
+  barDrainRef: { current: number };
   earnedPoints: number;
   maxPoints: number;
   lostPoints: number;
@@ -112,6 +125,9 @@ export function Scoreboard({
   spotlight,
   denied,
   shareRequest,
+  restartExit,
+  newGameRef,
+  barDrainRef,
   earnedPoints,
   maxPoints,
   lostPoints,
@@ -133,6 +149,37 @@ export function Scoreboard({
   const t = useMessages();
   const [isRatingsOpen, setIsRatingsOpen] = useState(false);
   const ratingsButtonRef = useRef<HTMLButtonElement>(null);
+
+  // A fresh board's bar drains from where the outgoing board's ended: the
+  // remount destroyed that bar before its width transition could play, so
+  // the incoming one animates the hand-off imperatively (WAAPI, like the
+  // tile flights — a quiet no-op where it's missing, in jsdom, or under
+  // reduced motion). Before paint, so the empty bar never flashes first.
+  const earnedBarRef = useRef<HTMLDivElement>(null);
+  const hasDrained = useRef(false);
+  useLayoutEffect(() => {
+    if (hasDrained.current) {
+      return;
+    }
+    hasDrained.current = true;
+    const from = barDrainRef.current;
+    const node = earnedBarRef.current;
+    const animate = (node as { animate?: HTMLElement['animate'] } | null)
+      ?.animate;
+    if (
+      from <= 0 ||
+      node === null ||
+      animate === undefined ||
+      (typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    ) {
+      return;
+    }
+    animate.call(node, [{ offset: 0, width: `${from * 100}%` }], {
+      duration: 500,
+      easing: 'ease-out',
+    });
+  }, [barDrainRef]);
 
   // The win modal opens on each celebration (the win, and again — gold —
   // for a perfect clear) and stays dismissed once closed, so closing it
@@ -274,7 +321,12 @@ export function Scoreboard({
           the label in the play controls' hint pattern (no leading icons:
           label over hint is already two lines of story). */}
       <div className="meta-actions grid w-full grid-cols-3 gap-2">
-        <button className={ACTION_CLASS} onClick={onNewGame} type="button">
+        <button
+          className={ACTION_CLASS}
+          onClick={onNewGame}
+          ref={newGameRef}
+          type="button"
+        >
           <span className="flex flex-col items-center leading-tight">
             {t.newGameButton}
             <span aria-hidden="true" className={KEYCAP_CLASS}>
@@ -282,10 +334,16 @@ export function Scoreboard({
             </span>
           </span>
         </button>
+        {/* Remounts per restart (key) so the press-and-ring replays: the
+            pill visibly receives the rows the drum flies up at it. */}
         <button
           aria-disabled={!hasProgress}
-          className={`${hasProgress ? ACTION_CLASS : ACTION_DISABLED_CLASS} ${denyClass(denied, 'restart')}`}
+          className={`relative ${hasProgress ? ACTION_CLASS : ACTION_DISABLED_CLASS} ${
+            (restartExit?.id ?? 0) > 0 ? 'control-press' : ''
+          } ${denyClass(denied, 'restart')}`}
           data-denied-id={denied?.control === 'restart' ? denied.id : 0}
+          data-restart-id={restartExit?.id ?? 0}
+          key={`restart-${restartExit?.id ?? 0}`}
           onClick={() => {
             if (hasProgress) {
               onRestart();
@@ -302,6 +360,12 @@ export function Scoreboard({
               2
             </span>
           </span>
+          {(restartExit?.id ?? 0) > 0 ? (
+            <span
+              aria-hidden="true"
+              className="control-ring pointer-events-none absolute inset-0 rounded-full"
+            />
+          ) : null}
         </button>
         <button
           aria-disabled={!hasProgress}
@@ -504,6 +568,7 @@ export function Scoreboard({
                 meet. */}
             <div
               className="absolute inset-y-0 left-0 bg-accent transition-all"
+              ref={earnedBarRef}
               style={{ width: `${earnedWidth * 100}%` }}
             />
             {/* Lost-to-hints points are spent, not alarming: the same gray
@@ -573,6 +638,7 @@ export function Scoreboard({
         definitionUrl={definitionUrl}
         foldLetter={foldLetter}
         onPrefill={onPrefill}
+        restartExit={restartExit}
         spotlight={spotlight}
         requiredCharacters={requiredCharacters}
         slots={wordSlots}

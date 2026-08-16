@@ -1711,6 +1711,24 @@ describe('App', () => {
     );
   });
 
+  // Restart's absorb: ghosts of the wiped rows fly up toward the Restart
+  // pill, which replays its press ring as it receives them — the visual
+  // line from the button to what it took.
+  it('flies the wiped rows toward Restart when the board resets', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const restart = () => screen.getByRole('button', { name: 'Restart' });
+    expect(restart()).toHaveAttribute('data-restart-id', '0');
+    submitWord('test');
+    submitWord('rotted');
+
+    fireEvent.click(restart());
+
+    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
+    expect(screen.getAllByTestId('word-exit-ghost')).toHaveLength(2);
+    expect(restart()).toHaveAttribute('data-restart-id', '1');
+    expect(restart()).toHaveClass('control-press');
+  });
+
   it('resumes the hash game instead of regenerating, until New game is used', () => {
     render(<App dictionary={DICTIONARY} />);
     // The tiny test dictionary cannot satisfy generation (15+ words), so

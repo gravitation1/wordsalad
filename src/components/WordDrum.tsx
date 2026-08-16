@@ -7,7 +7,12 @@ import {
 } from 'react';
 
 import { useMessages } from '../i18n';
-import type { WordSlot, WordSpotlight } from '../useWordSaladGame';
+import type {
+  RestartExit,
+  RestartExitRow,
+  WordSlot,
+  WordSpotlight,
+} from '../useWordSaladGame';
 import type { WordOrigin } from './tiles';
 import { miniTileClass } from './tiles';
 
@@ -15,6 +20,9 @@ interface WordDrumProps {
   // Where a found word's definition lives (dictionary- and UI-language
   // aware; the rows are surface forms, exactly what definitions key on).
   definitionUrl: (word: string) => string;
+  // The rows a restart wiped, as a one-shot: their ghosts fly up out of
+  // the drum toward the Restart pill that took them.
+  restartExit: RestartExit | null;
   // Surface letter -> play key, so an accented tile (É in CAFÉ) still
   // recognizes itself as the required letter it folds to.
   foldLetter: (letter: string) => string;
@@ -70,6 +78,7 @@ export function WordDrum({
   definitionUrl,
   foldLetter,
   onPrefill,
+  restartExit,
   spotlight,
   requiredCharacters,
   slots,
@@ -90,6 +99,44 @@ export function WordDrum({
   // the roll and relaunch the flight of a word already shelved on every
   // subsequent keystroke.
   const handledSpotlight = useRef(0);
+
+  // Restart's absorb: ghosts of the wiped rows, measured over their old
+  // slots (the blanked rows land in the same spots — fixed heights, same
+  // count — and absolute children of the scrolling list ride its content
+  // coordinates, so no scroll math). Flown up toward the Restart pill,
+  // then cleared once the flight is over.
+  const [exitGhosts, setExitGhosts] = useState<{
+    id: number;
+    rows: readonly (RestartExitRow & { top: number })[];
+  } | null>(null);
+  const seenRestart = useRef(restartExit?.id ?? 0);
+  useEffect(() => {
+    const previous = seenRestart.current;
+    seenRestart.current = restartExit?.id ?? 0;
+    if (restartExit === null || restartExit.id <= previous) {
+      return;
+    }
+    const list = containerRef.current;
+    setExitGhosts({
+      id: restartExit.id,
+      rows: restartExit.rows.map((row) => {
+        const node = list?.children.item(row.index);
+        return {
+          ...row,
+          top:
+            node instanceof HTMLElement
+              ? node.offsetTop
+              : row.index * ROW_HEIGHT,
+        };
+      }),
+    });
+    const timer = window.setTimeout(() => {
+      setExitGhosts(null);
+    }, 700);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [restartExit]);
 
   // The drum eases to a word itself rather than asking for a native smooth
   // scroll, which cannot be given a duration (long hops crawled, and the
@@ -506,6 +553,46 @@ export function WordDrum({
             </li>
           );
         })}
+        {/* The wiped rows' ghosts, briefly overlaying their old slots and
+            flying up toward the Restart pill — the same tiles the rows
+            wore, staggered top-first so the nearest leave first. */}
+        {exitGhosts === null
+          ? null
+          : exitGhosts.rows.map((row, rank) => (
+              <div
+                aria-hidden="true"
+                className="row-exit pointer-events-none absolute inset-x-0 flex items-center"
+                data-testid="word-exit-ghost"
+                key={`${exitGhosts.id}-${row.word}`}
+                style={{
+                  animationDelay: `${Math.min(rank * 30, 240)}ms`,
+                  height: ROW_HEIGHT,
+                  top: row.top,
+                }}
+              >
+                <span
+                  className={`flex items-center ${
+                    row.word.length > 9 ? 'gap-0.5' : 'gap-1'
+                  }`}
+                >
+                  {Array.from(row.word).map((letter, tileIndex) => (
+                    <span
+                      className={miniTileClass(
+                        foldLetter(letter),
+                        requiredCharacters,
+                        {
+                          compact: row.word.length > 9,
+                          muted: row.hinted,
+                        },
+                      )}
+                      key={tileIndex}
+                    >
+                      {letter}
+                    </span>
+                  ))}
+                </span>
+              </div>
+            ))}
       </ul>
       {/* The word in flight, dressed exactly as the row it will become —
           the same tiles at the same size — so the landing is a cross-fade

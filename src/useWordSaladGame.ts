@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { DictionarySpec } from './game/dictionaries';
 import { alphabetPattern, DEFAULT_DICTIONARY } from './game/dictionaries';
@@ -154,6 +154,21 @@ export interface ShareRequest {
   id: number;
 }
 
+// One row wiped by a restart: which slot it sat in and what it showed, so
+// the drum can fly a ghost of it toward the Restart button that took it.
+export interface RestartExitRow {
+  index: number;
+  word: string;
+  hinted: boolean;
+}
+
+// Restart's absorb, published as a one-shot: the found rows captured at
+// the moment they were wiped. Null until the first restart with progress.
+export interface RestartExit {
+  id: number;
+  rows: readonly RestartExitRow[];
+}
+
 // True when the event is this digit — by typed character, or by physical
 // position for layouts whose digit row is shifted (French AZERTY's
 // unshifted top row types symbols, so key is never '1'). A letter living
@@ -198,6 +213,7 @@ export interface PlayingGame {
   wordExit: WordExit | null;
   deniedControl: DeniedControl | null;
   shareRequest: ShareRequest | null;
+  restartExit: RestartExit | null;
   celebration: Celebration | null;
   rankUp: RankUp | null;
   lockout: Lockout | null;
@@ -513,6 +529,7 @@ export function useWordSaladGame(
     null,
   );
   const [shareRequest, setShareRequest] = useState<ShareRequest | null>(null);
+  const [restartExit, setRestartExit] = useState<RestartExit | null>(null);
   const [celebration, setCelebration] = useState<Celebration | null>(null);
   const [rankUp, setRankUp] = useState<RankUp | null>(null);
   const [lockout, setLockout] = useState<Lockout | null>(null);
@@ -912,11 +929,31 @@ export function useWordSaladGame(
     setHintedWords(new Set());
   }, [dictionary, spec]);
 
+  // The slot map, mirrored through a ref: restartGame reads it to capture
+  // the rows a restart wipes, but the memo deriving it sits later in this
+  // file — a plain dependency would be read before initialization.
+  const latestWordSlots = useRef<readonly WordSlot[]>([]);
+
   // Same salad, clean slate: rebuild the engine from the same parameters
   // and drop the saved progress.
   const restartGame = useCallback(() => {
     if (wordSalad === null) {
       return;
+    }
+    // Capture what the wipe takes, for the drum to fly out toward the
+    // Restart button — the absorb that makes the button's effect legible.
+    const exitRows = latestWordSlots.current
+      .map((slot: WordSlot, index: number) =>
+        slot.found === null
+          ? null
+          : { index, word: slot.found.word, hinted: slot.found.hinted },
+      )
+      .filter((row): row is RestartExitRow => row !== null);
+    if (exitRows.length > 0) {
+      setRestartExit((previous) => ({
+        id: (previous?.id ?? 0) + 1,
+        rows: exitRows,
+      }));
     }
     clearSavedProgress(storageKey(spec, wordSalad));
     const fresh = new WordSalad(
@@ -1114,6 +1151,10 @@ export function useWordSaladGame(
     };
   }, [allWords, boardAlphabet, foundWords, wordSalad]);
 
+  useEffect(() => {
+    latestWordSlots.current = wordSlots;
+  }, [wordSlots]);
+
   // The board letters that could still extend the typed word into a new
   // find; the rack dims the rest. A hint reveal suspends the dimming: the
   // rack is a spectacle during the cascade, not an input surface, and the
@@ -1244,6 +1285,7 @@ export function useWordSaladGame(
     deleteId,
     gameId: gameState.id,
     shareRequest,
+    restartExit,
     appendLetter,
     deleteLetter,
     clearInput,
