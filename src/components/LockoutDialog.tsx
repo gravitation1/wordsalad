@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 
 import { useMessages } from '../i18n';
+import { matchesDigitKey } from '../useWordSaladGame';
+import { KEYCAP_TINTED_CLASS } from './tiles';
 
 // The loss counterpart to the win modal: too many hints have put the win out
 // of reach. Interrupts once, then gets out of the way — dismissing returns
@@ -45,6 +47,22 @@ export function LockoutDialog({
     }
   }, []);
 
+  // The meta row's digit shortcut follows Restart into the modal: 2 clears
+  // the board and starts over. Document-level like the game's own handler
+  // (which yields while a modal is open), so it works wherever focus sits
+  // within the dialog — and unmounting removes it.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (matchesDigitKey(event, '2')) {
+        onRestart();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onRestart]);
+
   return (
     // Backdrop click closes the dialog. The keyboard equivalent the a11y
     // rules ask for is built into <dialog> itself — Esc fires onClose —
@@ -87,17 +105,21 @@ export function LockoutDialog({
         </p>
         <div className="flex items-center justify-center gap-3">
           <button
-            className="min-h-11 touch-manipulation rounded-full bg-accent px-5 py-2 font-medium text-white transition hover:bg-accent/90 active:scale-95"
+            className="min-h-11 touch-manipulation rounded-full bg-accent px-5 font-medium text-white transition hover:bg-accent/90 active:scale-95"
             onClick={onRestart}
             type="button"
           >
-            <span aria-hidden="true">⟲ </span>
-            {t.restartButton}
+            <span className="flex flex-col items-center leading-tight">
+              {t.restartButton}
+              <span aria-hidden="true" className={KEYCAP_TINTED_CLASS}>
+                2
+              </span>
+            </span>
           </button>
           {/* A cleared board leaves nothing to keep playing for. */}
           {isComplete ? null : (
             <button
-              className="min-h-11 touch-manipulation rounded-full border border-gray-300 px-5 py-2 font-medium transition hover:bg-gray-50 active:scale-95 dark:border-gray-700 dark:hover:bg-gray-800"
+              className="min-h-11 touch-manipulation rounded-full border border-gray-300 px-5 font-medium transition hover:bg-gray-50 active:scale-95 dark:border-gray-700 dark:hover:bg-gray-800"
               onClick={onClose}
               type="button"
             >

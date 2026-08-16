@@ -22,6 +22,27 @@ export const TILE_FACE = {
     'border border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
 } as const;
 
+// A keyboard key drawn as a miniature tile — the game's word for "a thing
+// you press" applied to the keyboard itself, so shortcut hints read as
+// keys rather than stray characters. Hidden without a precise pointer,
+// where keyboard hints mean nothing.
+const KEYCAP_BASE_CLASS =
+  'hidden h-4 min-w-4 items-center justify-center rounded border px-0.5 text-[10px] font-normal leading-none tracking-normal pointer-fine:inline-flex';
+
+// The standard cap: one fixed gray, so caps match exactly across button
+// groups whose own text colors differ (the play row's bright labels, the
+// meta row's muted ones). Its border sits a shade off the pills' own
+// border gray (300/dark:700) in each theme, so the cap's outline never
+// reads as part of the button's stroke.
+export const KEYCAP_CLASS = `${KEYCAP_BASE_CLASS} border-gray-400 text-gray-400 dark:border-gray-500 dark:text-gray-500`;
+
+// The exception, for hosts with a color story of their own — filled CTAs,
+// dashed disabled states, Submit's readiness tint — where the fixed gray
+// would detach from (or outshine) the button: ride its currentColor,
+// dimmed to hint weight, so the cap follows the button's state like the
+// label does.
+export const KEYCAP_TINTED_CLASS = `${KEYCAP_BASE_CLASS} border-current opacity-60`;
+
 // Where the typed word last sat on screen (viewport coordinates), written
 // by the input on every edit and read by the drum to fly a found word from
 // that spot into its slot.

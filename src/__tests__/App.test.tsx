@@ -1574,6 +1574,143 @@ describe('App', () => {
     expect(freshDelete).not.toHaveClass('control-press');
   });
 
+  // The meta row's shortcuts: plain digits, numbered left to right. Digits
+  // are the one key family no dictionary's words can claim, so they never
+  // collide with typing.
+  it('starts a new game from the 1 key', () => {
+    render(<App dictionary={REAL_DICTIONARY} />);
+    expect(screen.getByTestId('game-board')).toHaveAttribute(
+      'data-game-id',
+      '0',
+    );
+
+    pressKey('1');
+
+    expect(screen.getByTestId('game-board')).toHaveAttribute(
+      'data-game-id',
+      '1',
+    );
+  });
+
+  it('restarts the puzzle from the 2 key', () => {
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test');
+    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+
+    pressKey('2');
+
+    // Progress cleared without remounting: same puzzle, same board.
+    expect(screen.getByTestId('game-board')).toHaveAttribute(
+      'data-game-id',
+      '0',
+    );
+    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
+  });
+
+  it('shares from the 3 key once there is something to share', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test');
+
+    pressKey('3');
+
+    expect(
+      await screen.findByRole('button', { name: 'Copied!' }),
+    ).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledTimes(1);
+  });
+
+  // A gated shortcut is acknowledged the way the play controls acknowledge
+  // a denied Backspace or Enter: the pill dips, nothing fires.
+  it('dips the gated pills when 2 or 3 fire without progress', () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    render(<App dictionary={DICTIONARY} />);
+    const restart = () => screen.getByRole('button', { name: 'Restart' });
+    const share = () => screen.getByRole('button', { name: 'Share' });
+    expect(restart()).toHaveAttribute('data-denied-id', '0');
+    expect(share()).toHaveAttribute('data-denied-id', '0');
+
+    pressKey('2');
+    expect(restart()).toHaveAttribute('data-denied-id', '1');
+    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
+
+    pressKey('3');
+    expect(share()).toHaveAttribute('data-denied-id', '2');
+    expect(restart()).toHaveAttribute('data-denied-id', '0');
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  // The digit shortcuts follow their actions into the end-game modals,
+  // which show the same hints their board pills do.
+  it('answers the digit shortcuts inside the win dialog', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted');
+    submitWord('test'); // 12 of 15: the win, and the modal
+    expect(screen.getByTestId('win-banner')).toBeInTheDocument();
+
+    // 3 shares, exactly like the dialog's Share button.
+    pressKey('3');
+    expect(
+      await within(screen.getByTestId('win-banner')).findByRole('button', {
+        name: 'Copied!',
+      }),
+    ).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledTimes(1);
+
+    // 1 deals the next game — with this tiny dictionary generation
+    // deterministically fails, which proves the key reached startNewGame.
+    pressKey('1');
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+
+  it('answers the 2 key inside the lockout dialog', () => {
+    render(<App dictionary={DICTIONARY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // TEST
+    pressKey('Enter');
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // ROTTED
+    expect(screen.getByTestId('lockout-dialog')).toBeInTheDocument();
+
+    pressKey('2');
+
+    expect(screen.queryByTestId('lockout-dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
+  });
+
+  // Layouts whose digit row is shifted (French AZERTY types symbols there
+  // unshifted) still reach the shortcuts through the physical position —
+  // unless that position types a letter, which stays game input.
+  it('matches digit shortcuts by physical position on shifted layouts', () => {
+    render(<App dictionary={REAL_DICTIONARY} />);
+    submitWord('test');
+    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+
+    // AZERTY's unshifted 2 key types 'é' — a letter, so it stays letter
+    // input (rejected on this board) rather than firing Restart: the
+    // found word survives.
+    fireEvent.keyDown(document, { key: 'é', code: 'Digit2' });
+    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+
+    // AZERTY's unshifted 1 key types '&': the position deals a new game.
+    fireEvent.keyDown(document, { key: '&', code: 'Digit1' });
+    expect(screen.getByTestId('game-board')).toHaveAttribute(
+      'data-game-id',
+      '1',
+    );
+  });
+
   it('resumes the hash game instead of regenerating, until New game is used', () => {
     render(<App dictionary={DICTIONARY} />);
     // The tiny test dictionary cannot satisfy generation (15+ words), so

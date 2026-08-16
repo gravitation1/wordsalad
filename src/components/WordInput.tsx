@@ -10,6 +10,7 @@ import type {
 } from '../useWordSaladGame';
 import { REVEAL_STAGGER_MS } from '../useWordSaladGame';
 import type { WordOrigin } from './tiles';
+import { KEYCAP_CLASS } from './tiles';
 
 interface WordInputProps {
   wordExit: WordExit | null;
@@ -240,10 +241,7 @@ export function WordInput({
               ) : null}
               {/* Keyboard shortcut, shown only where there is a real
                   keyboard. */}
-              <span
-                aria-hidden="true"
-                className="hidden h-4 w-4 items-center justify-center rounded border border-gray-300 text-[10px] font-normal leading-none tracking-normal text-gray-400 pointer-fine:inline-flex dark:border-gray-600 dark:text-gray-500"
-              >
+              <span aria-hidden="true" className={KEYCAP_CLASS}>
                 {/* tracking-normal above: inherited letter-spacing trails the
                   glyph and skews it off-center. The half-pixel lift moves the
                   ink to its measured optical center. */}

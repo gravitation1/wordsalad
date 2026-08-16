@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react';
 
 import { useMessages } from '../i18n';
 import type { Celebration } from '../useWordSaladGame';
+import { matchesDigitKey } from '../useWordSaladGame';
 import { Confetti, WinBurst } from './Confetti';
-import { TILE_FACE } from './tiles';
+import { KEYCAP_CLASS, KEYCAP_TINTED_CLASS, TILE_FACE } from './tiles';
 
 // The win moment as a modal: the fanfare interrupts, then gets out of the
 // way — dismissing it returns the board to its normal playing view (the
@@ -57,6 +58,24 @@ export function WinDialog({
       }
     }
   }, []);
+
+  // The meta row's digit shortcuts follow their actions into the modal: 1
+  // deals the next game, 3 shares. Document-level like the game's own
+  // handler (which yields while a modal is open), so they work wherever
+  // focus sits within the dialog — and unmounting removes them.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (matchesDigitKey(event, '1')) {
+        onNewGame();
+      } else if (matchesDigitKey(event, '3')) {
+        onShare();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onNewGame, onShare]);
 
   // The victory phrase as per-word tile groups, with a running index so the
   // vault stagger flows across word boundaries.
@@ -177,7 +196,7 @@ export function WinDialog({
         </p>
         <div className="flex items-center justify-center gap-3">
           <button
-            className={`min-h-11 touch-manipulation rounded-full px-5 py-2 font-medium text-white transition active:scale-95 ${
+            className={`min-h-11 touch-manipulation rounded-full px-5 font-medium text-white transition active:scale-95 ${
               perfect
                 ? 'bg-amber-400 hover:bg-amber-400/90'
                 : 'bg-accent hover:bg-accent/90'
@@ -185,35 +204,43 @@ export function WinDialog({
             onClick={onNewGame}
             type="button"
           >
-            {t.newGameButton}
+            <span className="flex flex-col items-center leading-tight">
+              {t.newGameButton}
+              <span aria-hidden="true" className={KEYCAP_TINTED_CLASS}>
+                1
+              </span>
+            </span>
           </button>
           <button
-            className="min-h-11 touch-manipulation rounded-full border border-gray-300 px-5 py-2 font-medium transition hover:bg-gray-50 active:scale-95 dark:border-gray-700 dark:hover:bg-gray-800"
+            className="min-h-11 touch-manipulation rounded-full border border-gray-300 px-5 font-medium transition hover:bg-gray-50 active:scale-95 dark:border-gray-700 dark:hover:bg-gray-800"
             onClick={onShare}
             type="button"
           >
-            {/* Both labels sit in the same grid cell, so the button is
-                always as wide as the longer of the two and the row never
-                reflows when the copy lands. Only the shown one names the
-                button. */}
-            <span className="grid">
-              <span
-                aria-hidden={shareCopied}
-                className={`col-start-1 row-start-1 whitespace-nowrap ${
-                  shareCopied ? 'invisible' : ''
-                }`}
-              >
-                <span aria-hidden="true">↗ </span>
-                {t.shareButton}
+            <span className="flex flex-col items-center leading-tight">
+              {/* Both labels sit in the same grid cell, so the button is
+                  always as wide as the longer of the two and the row never
+                  reflows when the copy lands. Only the shown one names the
+                  button. */}
+              <span className="grid">
+                <span
+                  aria-hidden={shareCopied}
+                  className={`col-start-1 row-start-1 whitespace-nowrap text-center ${
+                    shareCopied ? 'invisible' : ''
+                  }`}
+                >
+                  {t.shareButton}
+                </span>
+                <span
+                  aria-hidden={!shareCopied}
+                  className={`col-start-1 row-start-1 whitespace-nowrap text-center ${
+                    shareCopied ? '' : 'invisible'
+                  }`}
+                >
+                  {t.shareCopied}
+                </span>
               </span>
-              <span
-                aria-hidden={!shareCopied}
-                className={`col-start-1 row-start-1 whitespace-nowrap ${
-                  shareCopied ? '' : 'invisible'
-                }`}
-              >
-                <span aria-hidden="true">✓ </span>
-                {t.shareCopied}
+              <span aria-hidden="true" className={KEYCAP_CLASS}>
+                3
               </span>
             </span>
           </button>

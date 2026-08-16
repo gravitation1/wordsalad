@@ -3,9 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useMessages } from '../i18n';
 import type {
   Celebration,
+  DeniedControl,
   GameFeedback,
   Lockout,
   RankUp,
+  ShareRequest,
   WordSlot,
   WordSpotlight,
 } from '../useWordSaladGame';
@@ -14,6 +16,7 @@ import { FeedbackLine } from './FeedbackLine';
 import { LockoutDialog } from './LockoutDialog';
 import { RatingsDialog } from './RatingsDialog';
 import type { WordOrigin } from './tiles';
+import { KEYCAP_CLASS, KEYCAP_TINTED_CLASS } from './tiles';
 import { WinDialog } from './WinDialog';
 import { WordDrum } from './WordDrum';
 
@@ -29,8 +32,11 @@ interface ScoreboardProps {
   requiredCharacters: string;
   wordSlots: readonly WordSlot[];
   spotlight: WordSpotlight | null;
-  // Increments on each New game (never on Restart): spins the ↻ glyph.
-  gameId: number;
+  // A gated meta shortcut to acknowledge with a dip on its pill.
+  denied: DeniedControl | null;
+  // The 3 key, relayed from the game's keyboard handler as a one-shot:
+  // sharing needs this component's URL/clipboard machinery.
+  shareRequest: ShareRequest | null;
   earnedPoints: number;
   maxPoints: number;
   lostPoints: number;
@@ -57,12 +63,27 @@ interface ScoreboardProps {
 // header's muted voice, so New game / Share / Restart stay secondary to
 // the play loop while being just as easy to hit.
 const ACTION_CLASS =
-  'flex min-h-11 touch-manipulation items-center justify-center gap-1.5 rounded-full border border-gray-300 px-2 text-sm font-medium text-gray-500 transition hover:bg-gray-50 hover:text-gray-700 active:scale-95 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200';
+  'flex min-h-11 touch-manipulation items-center justify-center rounded-full border border-gray-300 px-2 text-sm font-medium text-gray-500 transition hover:bg-gray-50 hover:text-gray-700 active:scale-95 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200';
 
 // Same dashed idle look the play controls use for an action that would do
-// nothing right now.
+// nothing right now — including their press feedback: aria-disabled (not
+// disabled) keeps CSS :active working, so a tap dips in acknowledgment.
 const ACTION_DISABLED_CLASS =
-  'flex min-h-11 cursor-not-allowed touch-manipulation items-center justify-center gap-1.5 rounded-full border border-dashed border-gray-300 px-2 text-sm font-medium text-gray-300 dark:border-gray-700 dark:text-gray-700';
+  'flex min-h-11 cursor-not-allowed touch-manipulation items-center justify-center rounded-full border border-dashed border-gray-300 px-2 text-sm font-medium text-gray-300 transition active:scale-95 dark:border-gray-700 dark:text-gray-700';
+
+// A gated shortcut aimed at this pill (2 or 3 with nothing found): dip in
+// acknowledgment, exactly as the play controls do for a denied Backspace
+// or Enter. The identical animations alternate by denial parity so
+// repeated denials replay without remounting the button.
+function denyClass(
+  denied: DeniedControl | null,
+  control: DeniedControl['control'],
+): string {
+  if (denied?.control !== control) {
+    return '';
+  }
+  return denied.id % 2 === 1 ? 'control-deny' : 'control-deny-alt';
+}
 
 // The share snippet's miniature bar: earned, lost-to-hints, unclaimed.
 const SHARE_BAR_SEGMENTS = 7;
@@ -89,7 +110,8 @@ export function Scoreboard({
   requiredCharacters,
   wordSlots,
   spotlight,
-  gameId,
+  denied,
+  shareRequest,
   earnedPoints,
   maxPoints,
   lostPoints,
@@ -187,6 +209,23 @@ export function Scoreboard({
     }
   };
 
+  // Answer the 3 key, relayed by the game hook as a one-shot id. The
+  // latest-callback ref mirrors useGameSounds' useSignal, and the seen ref
+  // starts at the current id so a remounting board (new game) never
+  // replays a request from before its time.
+  const shareRun = useRef(handleShare);
+  useEffect(() => {
+    shareRun.current = handleShare;
+  });
+  const seenShare = useRef(shareRequest?.id ?? 0);
+  useEffect(() => {
+    const previous = seenShare.current;
+    seenShare.current = shareRequest?.id ?? 0;
+    if (shareRequest !== null && shareRequest.id > previous) {
+      void shareRun.current();
+    }
+  }, [shareRequest]);
+
   const foundCount = wordSlots.filter((slot) => slot.found !== null).length;
   // Gates Share and Restart: with nothing found there is nothing to share
   // or to clear.
@@ -230,54 +269,23 @@ export function Scoreboard({
           Share and Restart wake with the first found word — aria-disabled
           rather than disabled keeps the press feedback working, and the
           handlers no-op, matching the play controls' convention. */}
+      {/* Each pill answers a plain digit, numbered left to right — the one
+          key family no dictionary's words can claim — and shows it below
+          the label in the play controls' hint pattern (no leading icons:
+          label over hint is already two lines of story). */}
       <div className="meta-actions grid w-full grid-cols-3 gap-2">
         <button className={ACTION_CLASS} onClick={onNewGame} type="button">
-          {/* The board remounts per game, so a fresh mount with a nonzero
-              id is exactly a New game press — the ↻ replays its spin. */}
-          <span
-            aria-hidden="true"
-            className={`inline-block ${gameId > 0 ? 'spin-once' : ''}`}
-          >
-            ↻
-          </span>
-          {t.newGameButton}
-        </button>
-        <button
-          aria-disabled={!hasProgress}
-          className={hasProgress ? ACTION_CLASS : ACTION_DISABLED_CLASS}
-          onClick={() => {
-            if (hasProgress) {
-              void handleShare();
-            }
-          }}
-          type="button"
-        >
-          {/* Stacked in one grid cell so the copy confirmation does not
-              change the button's width. */}
-          <span className="grid">
-            <span
-              aria-hidden={shareCopied}
-              className={`col-start-1 row-start-1 flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                shareCopied ? 'invisible' : ''
-              }`}
-            >
-              <span aria-hidden="true">↗</span>
-              {t.shareButton}
-            </span>
-            <span
-              aria-hidden={!shareCopied}
-              className={`col-start-1 row-start-1 flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                shareCopied ? '' : 'invisible'
-              }`}
-            >
-              <span aria-hidden="true">✓</span>
-              {t.shareCopied}
+          <span className="flex flex-col items-center leading-tight">
+            {t.newGameButton}
+            <span aria-hidden="true" className={KEYCAP_CLASS}>
+              1
             </span>
           </span>
         </button>
         <button
           aria-disabled={!hasProgress}
-          className={hasProgress ? ACTION_CLASS : ACTION_DISABLED_CLASS}
+          className={`${hasProgress ? ACTION_CLASS : ACTION_DISABLED_CLASS} ${denyClass(denied, 'restart')}`}
+          data-denied-id={denied?.control === 'restart' ? denied.id : 0}
           onClick={() => {
             if (hasProgress) {
               onRestart();
@@ -285,8 +293,55 @@ export function Scoreboard({
           }}
           type="button"
         >
-          <span aria-hidden="true">⟲</span>
-          {t.restartButton}
+          <span className="flex flex-col items-center leading-tight">
+            {t.restartButton}
+            <span
+              aria-hidden="true"
+              className={hasProgress ? KEYCAP_CLASS : KEYCAP_TINTED_CLASS}
+            >
+              2
+            </span>
+          </span>
+        </button>
+        <button
+          aria-disabled={!hasProgress}
+          className={`${hasProgress ? ACTION_CLASS : ACTION_DISABLED_CLASS} ${denyClass(denied, 'share')}`}
+          data-denied-id={denied?.control === 'share' ? denied.id : 0}
+          onClick={() => {
+            if (hasProgress) {
+              void handleShare();
+            }
+          }}
+          type="button"
+        >
+          <span className="flex flex-col items-center leading-tight">
+            {/* Stacked in one grid cell so the copy confirmation does not
+                change the button's width. */}
+            <span className="grid">
+              <span
+                aria-hidden={shareCopied}
+                className={`col-start-1 row-start-1 whitespace-nowrap text-center ${
+                  shareCopied ? 'invisible' : ''
+                }`}
+              >
+                {t.shareButton}
+              </span>
+              <span
+                aria-hidden={!shareCopied}
+                className={`col-start-1 row-start-1 whitespace-nowrap text-center ${
+                  shareCopied ? '' : 'invisible'
+                }`}
+              >
+                {t.shareCopied}
+              </span>
+            </span>
+            <span
+              aria-hidden="true"
+              className={hasProgress ? KEYCAP_CLASS : KEYCAP_TINTED_CLASS}
+            >
+              3
+            </span>
+          </span>
         </button>
       </div>
       {/* The fanfare interrupts, then gets out of the way: dismissing the

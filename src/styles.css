@@ -93,13 +93,15 @@ button {
     gap: 0.375rem;
   }
 
-  /* The meta pills give height back the way the play controls below do. */
+  /* Both button rows give height back together, to the same floor —
+     2.5rem is the play buttons' content height (label over keycap), the
+     lowest the pair can go while staying equal. */
   .meta-actions {
     gap: 0.375rem;
   }
 
   .meta-actions button {
-    min-height: 2.25rem;
+    min-height: 2.5rem;
   }
 
   .progress-strip {
@@ -134,8 +136,7 @@ button {
   }
 
   .game-controls button {
-    min-height: 2.75rem;
-    padding-block: 0.375rem;
+    min-height: 2.5rem;
   }
 }
 
@@ -842,22 +843,8 @@ button {
   animation: game-enter 300ms ease-out;
 }
 
-@keyframes spin-once {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.spin-once {
-  animation: spin-once 400ms ease-in-out;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .game-enter,
-  .spin-once {
+  .game-enter {
     animation: none;
   }
 }

@@ -7,6 +7,7 @@ import type {
   SubmittedPreview,
   WordPreview,
 } from '../useWordSaladGame';
+import { KEYCAP_CLASS, KEYCAP_TINTED_CLASS } from './tiles';
 
 interface GameControlsProps {
   canDelete: boolean;
@@ -25,7 +26,7 @@ interface GameControlsProps {
 const LONG_PRESS_MS = 450;
 
 const BASE_CLASS =
-  'min-h-11 w-full touch-manipulation rounded-full border px-2 py-2 font-medium transition active:scale-95';
+  'min-h-11 w-full touch-manipulation rounded-full border px-2 font-medium transition active:scale-95';
 
 const NEUTRAL_CLASS = `${BASE_CLASS} border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800`;
 
@@ -61,11 +62,6 @@ function badgeClass(preview: WordPreview): string {
   }
   return BADGE_CLASS[preview.verdict];
 }
-
-// Keyboard hints only make sense on devices with a precise pointer (i.e.
-// not phones/tablets), detected purely via CSS media query.
-const HINT_CLASS =
-  'hidden pointer-fine:block text-xs font-normal leading-none opacity-60';
 
 // A keyboard action aimed at this control while it was unavailable: dip in
 // acknowledgment without a ring. The two identical animations alternate by
@@ -165,7 +161,10 @@ export function GameControls({
       >
         <span className="flex flex-col items-center leading-tight">
           {t.deleteButton}
-          <span aria-hidden="true" className={HINT_CLASS}>
+          <span
+            aria-hidden="true"
+            className={canDelete ? KEYCAP_CLASS : KEYCAP_TINTED_CLASS}
+          >
             ⌫
           </span>
         </span>
@@ -187,7 +186,7 @@ export function GameControls({
       >
         <span className="flex flex-col items-center leading-tight">
           {t.tossButton}
-          <span aria-hidden="true" className={HINT_CLASS}>
+          <span aria-hidden="true" className={KEYCAP_CLASS}>
             ␣
           </span>
         </span>
@@ -210,7 +209,7 @@ export function GameControls({
       >
         <span className="flex flex-col items-center leading-tight">
           {t.submitButton}
-          <span aria-hidden="true" className={HINT_CLASS}>
+          <span aria-hidden="true" className={KEYCAP_TINTED_CLASS}>
             ⏎
           </span>
         </span>

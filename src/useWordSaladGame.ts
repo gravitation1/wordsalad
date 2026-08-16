@@ -139,11 +139,31 @@ export interface Lockout {
 }
 
 // A keyboard action that landed on an unavailable control (Backspace or
-// Enter with an empty word). The control acknowledges it with a press dip
-// but fires nothing — the same feedback a tap on it gives via CSS :active.
+// Enter with an empty word; 2 or 3 with nothing found). The control
+// acknowledges it with a press dip but fires nothing — the same feedback a
+// tap on it gives via CSS :active.
 export interface DeniedControl {
   id: number;
-  control: 'delete' | 'submit';
+  control: 'delete' | 'submit' | 'share' | 'restart';
+}
+
+// The 3 key asked to share. Sharing lives outside this hook (it reads the
+// URL and drives the share sheet/clipboard), so the keystroke is published
+// as a one-shot signal for the scoreboard to act on.
+export interface ShareRequest {
+  id: number;
+}
+
+// True when the event is this digit — by typed character, or by physical
+// position for layouts whose digit row is shifted (French AZERTY's
+// unshifted top row types symbols, so key is never '1'). A letter living
+// on a digit position (AZERTY's é on the 2 key) is never claimed: letters
+// are game input everywhere the game listens.
+export function matchesDigitKey(event: KeyboardEvent, digit: string): boolean {
+  return (
+    event.key === digit ||
+    (event.code === `Digit${digit}` && !/^\p{L}$/u.test(event.key))
+  );
 }
 
 // How a submitted word left the board: scored, hinted (accepted but worth
@@ -177,6 +197,7 @@ export interface PlayingGame {
   spentHint: SpentHint | null;
   wordExit: WordExit | null;
   deniedControl: DeniedControl | null;
+  shareRequest: ShareRequest | null;
   celebration: Celebration | null;
   rankUp: RankUp | null;
   lockout: Lockout | null;
@@ -491,6 +512,7 @@ export function useWordSaladGame(
   const [deniedControl, setDeniedControl] = useState<DeniedControl | null>(
     null,
   );
+  const [shareRequest, setShareRequest] = useState<ShareRequest | null>(null);
   const [celebration, setCelebration] = useState<Celebration | null>(null);
   const [rankUp, setRankUp] = useState<RankUp | null>(null);
   const [lockout, setLockout] = useState<Lockout | null>(null);
@@ -999,6 +1021,25 @@ export function useWordSaladGame(
           event.preventDefault();
           revealHint();
         }
+      } else if (matchesDigitKey(event, '1')) {
+        // The meta row's shortcuts: plain digits, numbered left to right —
+        // digits are the one key family no dictionary's words can claim.
+        startNewGame();
+      } else if (matchesDigitKey(event, '2')) {
+        // Restart and Share stay gated exactly like their buttons — with
+        // nothing found there is nothing to clear or share — and a gated
+        // keystroke dips the pill in acknowledgment.
+        if (foundWords.length > 0) {
+          restartGame();
+        } else {
+          denyControl('restart');
+        }
+      } else if (matchesDigitKey(event, '3')) {
+        if (foundWords.length > 0) {
+          setShareRequest((previous) => ({ id: (previous?.id ?? 0) + 1 }));
+        } else {
+          denyControl('share');
+        }
       }
     };
 
@@ -1011,8 +1052,11 @@ export function useWordSaladGame(
     clearInput,
     deleteLetter,
     denyControl,
+    foundWords,
     inputLetters,
+    restartGame,
     revealHint,
+    startNewGame,
     submitWord,
     tossSalad,
     wordSalad,
@@ -1199,6 +1243,7 @@ export function useWordSaladGame(
     tossId,
     deleteId,
     gameId: gameState.id,
+    shareRequest,
     appendLetter,
     deleteLetter,
     clearInput,

@@ -250,6 +250,7 @@ function AppBody({
       <div
         className="game-board game-enter flex min-h-0 w-full flex-1 flex-col items-center gap-3"
         data-game-id={game.gameId}
+        data-testid="game-board"
         key={game.gameId}
       >
         <Scoreboard
@@ -258,7 +259,8 @@ function AppBody({
           definitionUrl={(word) => spec.definitionUrl(word, t.locale)}
           foldLetter={spec.fold}
           feedback={game.feedback}
-          gameId={game.gameId}
+          denied={game.deniedControl}
+          shareRequest={game.shareRequest}
           requiredCharacters={game.requiredCharacters}
           saladLetters={game.saladLetters}
           earnedPoints={game.earnedPoints}
