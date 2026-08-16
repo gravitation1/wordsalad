@@ -24,9 +24,11 @@ ENABLE list (Enhanced North American Benchmark Lexicon, mirrored at
 restricted to the common-word list
 [12dicts `3of6all`](http://wordlist.aspell.net/12dicts/) (words appearing in at
 least three of six dictionaries, inflections included). It is filtered to
-American, alphabetic words, and a small blocklist of slurs and crude
-vulgarities is removed. The result favors words people actually know over
-obscure but technically-valid entries.
+American, alphabetic words, and a small blocklist is removed: slurs and crude
+vulgarities, plus British and Commonwealth dialect words (NOWT, BAIRN,
+GAZUMP) that read as gotchas rather than words to the American players the
+list is tuned for. The result favors words people actually know over obscure
+but technically-valid entries.
 
 `public/dictionaries/fr.txt` is derived from
 [Lexique 3.83](http://www.lexique.org) (New, Pallier, Brysbaert; CC BY-SA),
