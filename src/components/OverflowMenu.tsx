@@ -23,6 +23,10 @@ interface OverflowMenuProps {
   onCustomGame: () => void;
   onHistory: () => void;
   onLocaleOverride: (locale: Locale | null) => void;
+  // Toggles the game sounds; the row stays open like the other settings —
+  // its feedback is the confirmation chime and the strike over the note.
+  onSound: () => void;
+  soundOn: boolean;
   onTheme: (theme: ThemePreference) => void;
   // Start a new game drawing from another dictionary (a navigation: the
   // current board stays resumable from History).
@@ -57,6 +61,8 @@ export function OverflowMenu({
   onCustomGame,
   onHistory,
   onLocaleOverride,
+  onSound,
+  soundOn,
   onTheme,
   onWordList,
   theme,
@@ -119,8 +125,9 @@ export function OverflowMenu({
     if (event.target instanceof HTMLSelectElement) {
       return;
     }
-    // The buttons cycle with the arrows; the select stays out of the ring.
-    const count = items.length + 1;
+    // The buttons cycle with the arrows (the two action items, then the
+    // sound and theme rows); the selects stay out of the ring.
+    const count = items.length + 2;
     const active = itemRefs.current.findIndex(
       (element) => element === document.activeElement,
     );
@@ -224,6 +231,31 @@ export function OverflowMenu({
             className="mx-3 my-1 border-t border-gray-200 dark:border-gray-700"
             role="separator"
           />
+          {/* Sound sits with the device settings, and — like them — keeps
+              the menu open: its feedback is the confirmation chime, and
+              the strike appearing over the note. */}
+          <button
+            aria-checked={soundOn}
+            className={ROW_CLASS}
+            onClick={onSound}
+            ref={(element) => {
+              itemRefs.current[items.length] = element;
+            }}
+            role="menuitemcheckbox"
+            type="button"
+          >
+            <span aria-hidden="true" className={ICON_CLASS}>
+              {/* The mute strike leans against the note's flag so it reads
+                  as a strike rather than part of the glyph. */}
+              <span className="relative inline-block">
+                ♪
+                {soundOn ? null : (
+                  <span className="absolute left-1/2 top-1/2 h-px w-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-current" />
+                )}
+              </span>
+            </span>
+            {t.soundLabel}
+          </button>
           {/* Theme cycles in place — System → Light → Dark — showing the
               state it is in, not the one it would switch to. */}
           <button
@@ -233,7 +265,7 @@ export function OverflowMenu({
               onTheme(NEXT_THEME[theme]);
             }}
             ref={(element) => {
-              itemRefs.current[items.length] = element;
+              itemRefs.current[items.length + 1] = element;
             }}
             role="menuitem"
             type="button"

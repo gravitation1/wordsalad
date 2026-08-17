@@ -134,8 +134,14 @@ function submitWord(word: string): void {
   pressKey('Enter');
 }
 
+// Sound lives in the ⋯ menu now; open it on the way if it isn't up.
+// Toggling keeps the menu open (a settings row), so repeated calls find
+// it already showing.
 function soundToggle(): HTMLElement {
-  return screen.getByRole('button', { name: 'Sound' });
+  if (screen.queryByRole('menu') === null) {
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+  }
+  return screen.getByRole('menuitemcheckbox', { name: 'Sound' });
 }
 
 function enableSound(): void {
@@ -164,7 +170,7 @@ describe('sound', () => {
   it('makes no sound until the player asks for it', () => {
     render(<App dictionary={DICTIONARY} />);
 
-    expect(soundToggle()).toHaveAttribute('aria-pressed', 'false');
+    expect(soundToggle()).toHaveAttribute('aria-checked', 'false');
 
     typeWord('test');
     pressKey('Enter');
@@ -207,7 +213,7 @@ describe('sound', () => {
     fireEvent.click(soundToggle());
 
     expect(notes).toHaveLength(2);
-    expect(soundToggle()).toHaveAttribute('aria-pressed', 'true');
+    expect(soundToggle()).toHaveAttribute('aria-checked', 'true');
     expect(window.localStorage.getItem('wordsalad:sound')).toBe('on');
   });
 
@@ -215,7 +221,7 @@ describe('sound', () => {
     window.localStorage.setItem('wordsalad:sound', 'on');
     render(<App dictionary={DICTIONARY} />);
 
-    expect(soundToggle()).toHaveAttribute('aria-pressed', 'true');
+    expect(soundToggle()).toHaveAttribute('aria-checked', 'true');
 
     fireEvent.click(soundToggle());
     expect(window.localStorage.getItem('wordsalad:sound')).toBe('off');

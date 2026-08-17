@@ -6,7 +6,6 @@ import { HistoryDialog } from './components/HistoryDialog';
 import { OverflowMenu } from './components/OverflowMenu';
 import { SaladLetters } from './components/SaladLetters';
 import { Scoreboard } from './components/Scoreboard';
-import { SoundToggle } from './components/SoundToggle';
 import type { WordOrigin } from './components/tiles';
 import { WordInput } from './components/WordInput';
 import type { DictionarySpec } from './game/dictionaries';
@@ -231,18 +230,20 @@ function AppBody({
     // on screen. (dvh, not vh: it tracks the browser toolbar. Safe where
     // unsupported: height falls back to auto and the page scrolls.)
     <main className="app-shell mx-auto flex h-dvh max-w-md flex-col items-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
-      {/* Just the identity and the two device toggles: the game actions
-          (New game / Share / Restart) live on the scoreboard's meta row. */}
+      {/* Just the identity and the ⋯ menu: the game actions live on the
+          scoreboard's meta row, and the settings (sound included) in the
+          menu. */}
       <header className="app-header flex items-center gap-3">
         <h1 className="text-sm font-bold uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
           {t.appTitle}
         </h1>
-        <SoundToggle enabled={soundOn} onToggle={toggleSound} />
         <OverflowMenu
           localeOverride={settings.localeOverride}
           onCustomGame={openCustom}
           onHistory={openHistory}
           onLocaleOverride={settings.onLocaleOverride}
+          onSound={toggleSound}
+          soundOn={soundOn}
           onTheme={settings.onTheme}
           onWordList={switchWordList}
           theme={settings.theme}
