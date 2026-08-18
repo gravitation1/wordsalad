@@ -611,7 +611,7 @@ export function WordDrum({
   }, [items]);
 
   // True when the item at this index is the word a fresh find just landed
-  // in — the neighbor test that tells a brick to play its split.
+  // in — the neighbor test that tells a brick its identity just changed.
   const spotlightWordAt = (index: number): boolean => {
     if (spotlight === null || spotlight.requested) {
       return false;
@@ -622,6 +622,10 @@ export function WordDrum({
     const item = items[index];
     return item.kind === 'word' && item.found.word === spotlight.word;
   };
+
+  // Whether material stands at this index at all.
+  const brickAt = (index: number): boolean =>
+    index >= 0 && index < items.length && items[index].kind === 'brick';
 
   return (
     <>
@@ -656,14 +660,24 @@ export function WordDrum({
             // the word is in flight), then part from its center and seal
             // their caps once it lands. Alternating names replay a repeat
             // split of a surviving brick without a remount.
+            //
+            // Only a genuine split, though: the halves meet mid-row, so
+            // each one's reach is a promise that the other half is coming
+            // to meet it. A word landing at the list's head or tail — or
+            // against a word already found — leaves material on one side
+            // only, and there the same animation reads as the block
+            // briefly swelling and squaring its cap against nothing. Such
+            // a block was trimmed, not cut, and says so by holding still.
+            const splitBelow = spotlightWordAt(index + 1) && brickAt(index + 2);
+            const splitAbove = spotlightWordAt(index - 1) && brickAt(index - 2);
             const cleave =
               spotlight === null
                 ? ''
-                : spotlightWordAt(index + 1)
+                : splitBelow
                   ? spotlight.id % 2 === 1
                     ? 'block-cleave-bottom'
                     : 'block-cleave-bottom-alt'
-                  : spotlightWordAt(index - 1)
+                  : splitAbove
                     ? spotlight.id % 2 === 1
                       ? 'block-cleave-top'
                       : 'block-cleave-top-alt'
@@ -681,13 +695,16 @@ export function WordDrum({
                 ? ''
                 : ' transition group-hover:border-gray-300 group-hover:bg-gray-200 dark:group-hover:border-gray-700 dark:group-hover:bg-gray-800'
             }${cleave === '' ? '' : ` ${cleave}`}`;
-            // Exactly the bricks the cleave touches are the ones whose
-            // identity just changed: a find splits its own gap and leaves
-            // every other one alone. Their counts flash as the caps seal.
+            // Exactly the bricks the landing word touches are the ones
+            // whose identity just changed: a find works on its own gap
+            // and leaves every other one alone. Their counts flash as the
+            // block settles — whether it was cut in two or merely
+            // trimmed, it no longer says what it used to.
             const relabel =
-              cleave === ''
+              spotlight === null ||
+              !(spotlightWordAt(index + 1) || spotlightWordAt(index - 1))
                 ? ''
-                : spotlight !== null && spotlight.id % 2 === 1
+                : spotlight.id % 2 === 1
                   ? ' block-relabel'
                   : ' block-relabel-alt';
             return (

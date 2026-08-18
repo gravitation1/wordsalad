@@ -636,7 +636,7 @@ describe('App', () => {
     );
     expect(screen.getByText('Found 1 word')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: '1 / 12 to win · Meh' }),
+      screen.getByRole('button', { name: '1 / 12 points to win · Meh' }),
     ).toBeInTheDocument();
     expect(currentWord()).toBe('');
 
@@ -723,6 +723,46 @@ describe('App', () => {
     expect(
       screen.queryByRole('button', { name: /unfound word/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it('answers a second block with its own stem, even a shorter one', () => {
+    // CACAO · CAECAL · CALL · CANAL · CANOE · CLEAN · COLA. Finding CACAO,
+    // CANAL and COLA leaves two bounded gaps: CAECAL/CALL, whose bounds
+    // force CA, and CANOE/CLEAN, where only C is forced.
+    window.history.replaceState(null, '', '?letters=CANOWLE&required=C');
+    render(
+      <App
+        dictionary={[
+          'CACAO',
+          'CAECAL',
+          'CALL',
+          'CANAL',
+          'CANOE',
+          'CLEAN',
+          'COLA',
+        ]}
+      />,
+    );
+    submitWord('cacao');
+    submitWord('canal');
+    submitWord('cola');
+    const block = (letters: string) =>
+      screen.getByRole('button', {
+        name: `2 unfound words start with ${letters} — fill in these letters`,
+      });
+
+    fireEvent.click(block('C A'));
+    expect(currentWord()).toBe('CA');
+
+    // The shorter stem belongs to a different block, so it wins: the
+    // letters the last tap left are the tap's, not typed work to protect.
+    fireEvent.click(block('C'));
+    expect(currentWord()).toBe('C');
+
+    // Typed progress is still safe — the input has moved off the stem.
+    typeWord('an');
+    fireEvent.click(block('C'));
+    expect(currentWord()).toBe('CAN');
   });
 
   it('dims letters that cannot start or continue a new word', () => {
@@ -1077,7 +1117,7 @@ describe('App', () => {
     submitWord('test'); // 1 of 15 points -> Meh
 
     fireEvent.click(
-      screen.getByRole('button', { name: '1 / 12 to win · Meh' }),
+      screen.getByRole('button', { name: '1 / 12 points to win · Meh' }),
     );
 
     const dialog = screen.getByRole('dialog');
@@ -1103,7 +1143,7 @@ describe('App', () => {
     render(<App dictionary={DICTIONARY} />);
     submitWord('test');
     fireEvent.click(
-      screen.getByRole('button', { name: '1 / 12 to win · Meh' }),
+      screen.getByRole('button', { name: '1 / 12 points to win · Meh' }),
     );
 
     // Typing must not reach the game behind the modal.

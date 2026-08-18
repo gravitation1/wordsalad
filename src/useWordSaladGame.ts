@@ -503,6 +503,11 @@ export function useWordSaladGame(
     wordSalad === null ? [] : shuffled(Array.from(wordSalad.characterSet)),
   );
   const [inputLetters, setInputLetters] = useState<readonly string[]>([]);
+  // The stem the last block tap laid down. While the input still reads
+  // exactly this, it is the tap's letters rather than the player's work —
+  // which is what lets another block replace them (see prefillWord). Any
+  // edit, in either direction, moves the input off it.
+  const prefilledStem = useRef<string | null>(null);
   const [feedback, setFeedback] = useState<GameFeedback | null>(null);
   const [hintedWords, setHintedWords] = useState<ReadonlySet<string>>(() =>
     wordSalad === null
@@ -871,10 +876,21 @@ export function useWordSaladGame(
         const current = inputLetters.join('');
         // A word already built on this very stem survives the tap; the
         // prefix has nothing to add, and a re-tap must not destroy it.
-        if (current.length >= prefix.length && current.startsWith(prefix)) {
+        // Letters a tap put there are not that work, though: asking one
+        // block for CI and then another for C must answer with C, not sit
+        // on the longer stem as if the player had typed it.
+        if (
+          current !== prefilledStem.current &&
+          current.length >= prefix.length &&
+          current.startsWith(prefix)
+        ) {
           return;
         }
       }
+      // Untouched, this marks the input as the tap's doing rather than the
+      // player's; any edit moves the input off it, and it is then typed
+      // work again.
+      prefilledStem.current = prefix;
       setFeedback(null);
       setWordExit(null);
       // One press signal for the whole fill: the last letter ticks and its

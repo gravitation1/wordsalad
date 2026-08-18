@@ -291,7 +291,7 @@ const EN: Messages = {
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} point${plural('en', maxPoints, { one: '', other: 's' })}`,
   scoreToWin: (earnedPoints, winPoints) =>
-    `${earnedPoints} / ${winPoints} to win`,
+    `${earnedPoints} / ${winPoints} point${plural('en', winPoints, { one: '', other: 's' })} to win`,
 };
 
 const LEVELS_FR: Record<string, string> = {
@@ -452,7 +452,7 @@ const FR: Messages = {
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} point${plural('fr', maxPoints, { one: '', other: 's' })}`,
   scoreToWin: (earnedPoints, winPoints) =>
-    `${earnedPoints} / ${winPoints} pour gagner`,
+    `${earnedPoints} / ${winPoints} point${plural('fr', winPoints, { one: '', other: 's' })} pour gagner`,
 };
 
 const LEVELS_ES: Record<string, string> = {
@@ -613,7 +613,7 @@ const ES: Messages = {
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} punto${plural('es', maxPoints, { one: '', other: 's' })}`,
   scoreToWin: (earnedPoints, winPoints) =>
-    `${earnedPoints} / ${winPoints} para ganar`,
+    `${earnedPoints} / ${winPoints} punto${plural('es', winPoints, { one: '', other: 's' })} para ganar`,
 };
 
 const LEVELS_DE: Record<string, string> = {
@@ -776,7 +776,7 @@ const DE: Messages = {
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} ${plural('de', maxPoints, { one: 'Punkt', other: 'Punkte' })}`,
   scoreToWin: (earnedPoints, winPoints) =>
-    `${earnedPoints} / ${winPoints} zum Sieg`,
+    `${earnedPoints} / ${winPoints} ${plural('de', winPoints, { one: 'Punkt', other: 'Punkte' })} zum Sieg`,
 };
 
 const LEVELS_IT: Record<string, string> = {
@@ -938,7 +938,7 @@ const IT: Messages = {
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} ${plural('it', maxPoints, { one: 'punto', other: 'punti' })}`,
   scoreToWin: (earnedPoints, winPoints) =>
-    `${earnedPoints} / ${winPoints} per vincere`,
+    `${earnedPoints} / ${winPoints} ${plural('it', winPoints, { one: 'punto', other: 'punti' })} per vincere`,
 };
 
 const LEVELS_PT: Record<string, string> = {
@@ -1099,7 +1099,7 @@ const PT: Messages = {
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} ponto${plural('pt', maxPoints, { one: '', other: 's' })}`,
   scoreToWin: (earnedPoints, winPoints) =>
-    `${earnedPoints} / ${winPoints} para vencer`,
+    `${earnedPoints} / ${winPoints} ponto${plural('pt', winPoints, { one: '', other: 's' })} para vencer`,
 };
 
 const LEVELS_NL: Record<string, string> = {
@@ -1261,7 +1261,7 @@ const NL: Messages = {
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} ${plural('nl', maxPoints, { one: 'punt', other: 'punten' })}`,
   scoreToWin: (earnedPoints, winPoints) =>
-    `${earnedPoints} / ${winPoints} om te winnen`,
+    `${earnedPoints} / ${winPoints} ${plural('nl', winPoints, { one: 'punt', other: 'punten' })} om te winnen`,
 };
 
 const LEVELS_JA: Record<string, string> = {
@@ -1408,7 +1408,7 @@ const JA: Messages = {
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints}ポイント`,
   scoreToWin: (earnedPoints, winPoints) =>
-    `勝利まで ${earnedPoints} / ${winPoints}`,
+    `勝利まで ${earnedPoints} / ${winPoints}ポイント`,
 };
 
 const LEVELS_KO: Record<string, string> = {
@@ -1555,7 +1555,7 @@ const KO: Messages = {
   foundSummary: (words) => `단어 ${words}개`,
   scoreLabel: (earnedPoints, maxPoints) => `${earnedPoints} / ${maxPoints}점`,
   scoreToWin: (earnedPoints, winPoints) =>
-    `승리까지 ${earnedPoints} / ${winPoints}`,
+    `승리까지 ${earnedPoints} / ${winPoints}점`,
 };
 
 const LEVELS_ZH: Record<string, string> = {
@@ -1858,7 +1858,7 @@ const RU: Messages = {
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} ${plural('ru', maxPoints, { one: 'очко', few: 'очка', other: 'очков' })}`,
   scoreToWin: (earnedPoints, winPoints) =>
-    `${earnedPoints} / ${winPoints} до победы`,
+    `${earnedPoints} / ${winPoints} ${plural('ru', winPoints, { few: 'очка', one: 'очко', other: 'очков' })} до победы`,
 };
 
 export const CATALOGS: Record<Locale, Messages> = {

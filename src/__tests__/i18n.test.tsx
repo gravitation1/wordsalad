@@ -113,7 +113,7 @@ describe('French UI', () => {
     );
     expect(screen.getByText('1 mot trouvé')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: '1 / 12 pour gagner · Bof' }),
+      screen.getByRole('button', { name: '1 / 12 points pour gagner · Bof' }),
     ).toBeInTheDocument();
   });
 
@@ -157,7 +157,9 @@ describe('Japanese UI', () => {
     );
     expect(screen.getByText('1個の単語')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: '勝利まで 1 / 12 · いまいち' }),
+      screen.getByRole('button', {
+        name: '勝利まで 1 / 12ポイント · いまいち',
+      }),
     ).toBeInTheDocument();
   });
 });
