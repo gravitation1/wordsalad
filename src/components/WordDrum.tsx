@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import {
   useCallback,
   useEffect,
@@ -75,23 +76,10 @@ const FADE_PX = 56;
 // gets one body instead of one indistinguishable row per word.
 type DrumItem =
   | { kind: 'word'; slotIndex: number; found: FoundWord }
-  | {
-      kind: 'brick';
-      start: number;
-      count: number;
-      prefix: string;
-      rows: number;
-    };
+  | { kind: 'brick'; start: number; count: number; prefix: string };
 
 // The beat between newly forced letters as they settle into a brick.
 const TILE_ARRIVAL_MS = 70;
-
-// Bounded mass: a brick's height grows with its count so remaining work
-// keeps a felt size, but is capped so its metadata can never scroll out
-// of reach — the count text carries the precise fact either way.
-function brickRows(count: number): number {
-  return count <= 2 ? 1 : count <= 7 ? 2 : 3;
-}
 
 // The flight takes at least this long even when the drum has no rolling to
 // do — a word snapping instantly into a nearby slot reads as a glitch.
@@ -150,25 +138,12 @@ export function WordDrum({
         // Uniform per gap: every slot of a run carries the gap's one
         // prefix (see slotPrefixes), so the first speaks for all.
         prefix: slots[index].prefix,
-        rows: brickRows(end - index),
         start: index,
       });
       index = end;
     }
     return list;
   }, [slots]);
-
-  // Each item's content offset — bricks vary in height, so the scroll
-  // math is a prefix sum rather than index * ROW_HEIGHT.
-  const itemTops = useMemo(() => {
-    const tops: number[] = [];
-    let y = 0;
-    for (const item of items) {
-      tops.push(y);
-      y += (item.kind === 'word' ? 1 : item.rows) * ROW_HEIGHT;
-    }
-    return tops;
-  }, [items]);
 
   // Where the found rows sat, refreshed whenever the list changes shape:
   // the drum's own box plus each row's offset within the scrolling content.
@@ -443,8 +418,14 @@ export function WordDrum({
     handledSpotlight.current = spotlight.id;
     // Center the slot in the window the drum currently has (it flexes with
     // the viewport; jsdom measures 0, so fall back to the design height).
+    // The row's own offset is the authority on where it sits: bricks take
+    // whatever height the window has left over, so there is no arithmetic
+    // that could predict it — and by now the list has already been laid
+    // out with the new word in place.
     const height = container.clientHeight || DRUM_HEIGHT;
-    const centered = itemTops[index] - (height - ROW_HEIGHT) / 2;
+    const row = container.querySelector('[data-spotlight="true"]');
+    const rowTop = row instanceof HTMLElement ? row.offsetTop : 0;
+    const centered = rowTop - (height - ROW_HEIGHT) / 2;
     if (
       container.clientHeight === 0 ||
       typeof container.scrollTo !== 'function'
@@ -473,7 +454,7 @@ export function WordDrum({
     const scrollDuration =
       distance === 0 ? 0 : Math.min(650, Math.max(280, distance * 0.45));
     const origin = wordOriginRef.current;
-    const slotRow = container.querySelector('[data-spotlight="true"]');
+    const slotRow = row;
     // The Web Animations API is a progressive enhancement (jsdom, for one,
     // lacks it); without it the row simply settles in after the roll. The
     // input's exit ghost mirrors these guards, so exactly one of the two
@@ -518,7 +499,7 @@ export function WordDrum({
       );
     }
     easeScrollTo(container, target, scrollDuration);
-  }, [easeScrollTo, items, itemTops, spotlight, wordOriginRef]);
+  }, [easeScrollTo, items, spotlight, wordOriginRef]);
 
   // What each brick last said, so the drum can tell a shrunken block from
   // one that now names more than it could before. A narrowed gap forces
@@ -642,8 +623,13 @@ export function WordDrum({
         // themselves reach back over the padding (negative insets below),
         // so they keep the drum's full width. Rows move with the padding,
         // so the flight's landing measurement needs no correction.
-        className="word-drum relative flex min-h-24 w-full flex-1 flex-col overflow-y-auto overscroll-contain px-2 [scrollbar-width:none]"
+        className="word-drum relative flex min-h-24 w-full flex-col overflow-y-auto overscroll-contain px-2 [scrollbar-width:none]"
         data-testid="word-drum"
+        // The window this puzzle reserves, in rows: as many as the whole
+        // list could ever occupy, capped in CSS at the eight-row ceiling.
+        // Reserved up front so finding a word never resizes the drum and
+        // pushes the letters and buttons down the screen (see .word-drum).
+        style={{ '--drum-slots': slots.length } as CSSProperties}
         onScroll={handleScroll}
         ref={containerRef}
       >
@@ -709,18 +695,25 @@ export function WordDrum({
                   : ' block-relabel-alt';
             return (
               <li
-                // shrink-0: fixed-height items must overflow into scroll,
-                // not compress to fit.
-                className={`relative shrink-0${anchored}`}
+                className={`relative${anchored}`}
                 // The run's first slot, stable for as long as the run
                 // keeps its head: how the effect above finds this brick's
                 // tiles again after a find rewrote the list.
                 data-brick-start={item.start}
                 data-count={item.count}
-                data-rows={item.rows}
                 data-testid="word-brick"
                 key={`brick-${String(item.start)}`}
-                style={{ height: item.rows * ROW_HEIGHT }}
+                // The material takes up whatever the found rows leave, in
+                // proportion to how much it buries — so the window is full
+                // from the first deal and stays exactly full as words are
+                // cut out of it, and a block's size tells you how much of
+                // the list is still in there. One row is the floor, so a
+                // brick can always state its count.
+                style={{
+                  flexBasis: ROW_HEIGHT,
+                  flexGrow: item.count,
+                  minHeight: ROW_HEIGHT,
+                }}
               >
                 {item.prefix === '' ? (
                   // The count belongs to the Words column the header names;

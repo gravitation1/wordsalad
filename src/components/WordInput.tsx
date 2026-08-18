@@ -5,15 +5,23 @@ import type {
   HintReveal,
   LetterRejection,
   SpentHint,
+  SubmittedPreview,
   WordExit,
   WordExitOutcome,
+  WordPreview,
 } from '../useWordSaladGame';
 import { REVEAL_STAGGER_MS } from '../useWordSaladGame';
 import type { WordOrigin } from './tiles';
 import { KEYCAP_CLASS } from './tiles';
+import type { BadgeSpot } from './VerdictBadge';
+import { VerdictBadge, VerdictGhost } from './VerdictBadge';
 
 interface WordInputProps {
   wordExit: WordExit | null;
+  // The staged word's standing verdict, and the one just submitted, whose
+  // badge floats away from where it stood.
+  preview: WordPreview | null;
+  lastSubmission: SubmittedPreview | null;
   canHint: boolean;
   isComplete: boolean;
   isPerfect: boolean;
@@ -103,6 +111,8 @@ export function WordInput({
   hintCost,
   hintForfeitsWin,
   hintReveal,
+  lastSubmission,
+  preview,
   spentHint,
   inputLetters,
   onHint,
@@ -130,6 +140,9 @@ export function WordInput({
   // fixed-positioned at the word's last on-screen spot, captured while the
   // letters were still laid out. The shared ref also hands the spot (and
   // the word's height, for the scale morph) to the drum's flight.
+  // Where the verdict pill last stood, so its ghost can fly from that exact
+  // spot after the word — and the pill with it — has gone.
+  const badgeSpotRef = useRef<BadgeSpot | null>(null);
   const wordRef = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
     if (inputLetters.length > 0 && wordRef.current !== null) {
@@ -175,7 +188,10 @@ export function WordInput({
   };
 
   return (
-    <p className="word-input flex h-10 items-center text-3xl font-semibold tracking-widest">
+    // relative + full width so the verdict can hang at the line's right
+    // edge, in the drum's points column, without disturbing the word's
+    // centering.
+    <p className="word-input relative flex h-10 w-full items-center justify-center text-3xl font-semibold tracking-widest">
       {/* Shakes on every rejection by alternating between two identical
           animations (a name change replays without a remount, which would
           reset the hint button's entrance). The fixed ghosts below must stay
@@ -267,14 +283,26 @@ export function WordInput({
           >
             ✓
           </span>
-        ) : (
+        ) : inputLetters.length === 0 ? (
+          // Only ever an invitation to an empty line: letters always append
+          // at the end and delete from the end, so a caret beside a staged
+          // word marks the one position it could possibly be, and pulses
+          // for attention next to a badge that is actually saying
+          // something. Once letters exist, the verdict is the trailing mark.
           <span
             aria-hidden="true"
             className="animate-pulse font-light text-gray-400"
           >
             |
           </span>
-        )}
+        ) : null}
+        {/* What the staged letters are worth, or why they are worth nothing
+            yet — carried at the word's own trailing edge, where the eye
+            already is. Inside the shake wrapper, so a rejected word takes
+            its verdict with it. Screen readers hear this as Submit's
+            description instead: the word is a live region, and a fresh
+            verdict per keystroke would talk over the typing. */}
+        <VerdictBadge preview={preview} spotRef={badgeSpotRef} />
       </span>
       {/* A rejected word sinks away from where it sat, its letters peeling
           off left to right, while the hint button returns underneath.
@@ -311,6 +339,10 @@ export function WordInput({
           {t.hintCostBadge(spentHint.cost)}
         </span>
       )}
+      {/* The submitted word's verdict, floating up from where the pill was
+          standing. Out here with the other fixed ghosts: the shake
+          wrapper's transform would become its containing block. */}
+      <VerdictGhost lastSubmission={lastSubmission} spotRef={badgeSpotRef} />
     </p>
   );
 }

@@ -1371,19 +1371,19 @@ describe('App', () => {
     expect(screen.getByText('· 1 hint (−1 pt)')).toBeInTheDocument();
   });
 
-  it('shows +0 on Submit for a hinted word, not its point value', () => {
+  it('shows +0 for a hinted word, not its point value', () => {
     render(<App dictionary={DICTIONARY} />);
-    const submit = () => screen.getByRole('button', { name: 'Submit' });
+    const verdict = () => screen.getByTestId('verdict');
 
     // A self-typed word shows its real value.
     typeWord('worsted'); // pangram worth 11
-    expect(submit()).toHaveTextContent('+11');
+    expect(verdict()).toHaveTextContent('+11');
     fireEvent.keyDown(document, { key: 'Backspace', ctrlKey: true });
 
     // A hinted (committed) word in the input shows +0 instead of its value.
     fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // reveals TEST
-    expect(submit()).toHaveTextContent('+0');
-    expect(submit()).not.toHaveTextContent('+1');
+    expect(verdict()).toHaveTextContent('+0');
+    expect(verdict()).not.toHaveTextContent('+1');
   });
 
   it('takes a hint with "?" only when the word area is empty', () => {
@@ -1769,41 +1769,27 @@ describe('App', () => {
     expect(restart()).toHaveClass('control-press');
   });
 
-  // Bounded mass: a brick's height grows with what it buries so the
-  // remaining work keeps a felt size, but is capped so its metadata can
-  // never scroll out of reach.
-  it('sizes a brick by its count, up to a cap', () => {
-    const heights = () =>
-      screen
-        .getAllByTestId('word-brick')
-        .map((brick) => brick.getAttribute('data-rows'));
+  // The window is reserved from the first deal — as many rows as the whole
+  // list could ever need — and the blocks take up whatever the found rows
+  // leave, in proportion to how much each buries. So the drum is always
+  // exactly full, and finding a word never resizes it under the composer.
+  it('sizes blocks by what they bury, so the window is always full', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const grow = () =>
+      screen.getAllByTestId('word-brick').map((brick) => brick.style.flexGrow);
 
-    // Three words: the middle tier. Cleaving it leaves one-word bricks,
-    // which take the smallest.
-    const view = render(<App dictionary={DICTIONARY} />);
-    expect(heights()).toEqual(['2']);
-    submitWord('test'); // the middle slot of ROTTED · TEST · WORSTED
-    expect(heights()).toEqual(['1', '1']);
-    view.unmount();
+    // Three words, all buried in one block, in a window reserved for three.
+    expect(
+      screen.getByTestId('word-drum').style.getPropertyValue('--drum-slots'),
+    ).toBe('3');
+    expect(grow()).toEqual(['3']);
 
-    // Far more words than tiers: the tallest brick still stops at the cap.
-    render(
-      <App
-        dictionary={[
-          'TEST',
-          'TOTS',
-          'TORE',
-          'TOES',
-          'TROD',
-          'TREES',
-          'TOWED',
-          'TOTTER',
-          'TWEED',
-        ]}
-      />,
-    );
-    expect(screen.getByTestId('word-brick')).toHaveAttribute('data-count', '8');
-    expect(heights()).toEqual(['3']);
+    // ROTTED · TEST · WORSTED: the find takes a row of its own and leaves a
+    // one-word block on either side, which together give back exactly the
+    // row it took.
+    submitWord('test');
+    expect(grow()).toEqual(['1', '1']);
+    expect(screen.getByTestId('word-slot')).toHaveStyle({ height: '32px' });
   });
 
   it('resumes the hash game instead of regenerating, until New game is used', () => {
@@ -1864,9 +1850,10 @@ describe('App', () => {
     expect(currentWord()).toBe('T');
   });
 
-  it('previews the current word on the Submit button badge', () => {
+  it('previews the current word beside the staged word', () => {
     render(<App dictionary={DICTIONARY} />);
     const submit = () => screen.getByRole('button', { name: 'Submit' });
+    const verdict = () => screen.getByTestId('verdict');
     const clearInput = () => {
       while (currentWord().length > 0) {
         pressKey('Backspace');
@@ -1875,20 +1862,20 @@ describe('App', () => {
 
     typeWord('tes');
     expect(submit()).toHaveAttribute('data-verdict', 'too-short');
-    expect(submit()).toHaveTextContent('…');
+    expect(verdict()).toHaveTextContent('…');
 
     typeWord('t');
     expect(submit()).toHaveAttribute('data-verdict', 'valid');
-    expect(submit()).toHaveTextContent('+1');
+    expect(verdict()).toHaveTextContent('+1');
 
     clearInput();
     typeWord('worsted');
-    expect(submit()).toHaveTextContent('+11');
+    expect(verdict()).toHaveTextContent('+11');
 
     clearInput();
     typeWord('toss');
     expect(submit()).toHaveAttribute('data-verdict', 'not-a-word');
-    expect(submit()).toHaveTextContent('?');
+    expect(verdict()).toHaveTextContent('?');
 
     clearInput();
     typeWord('word');
@@ -1898,21 +1885,24 @@ describe('App', () => {
     submitWord('test');
     typeWord('test');
     expect(submit()).toHaveAttribute('data-verdict', 'already-found');
-    expect(submit()).toHaveTextContent('✓');
+    expect(verdict()).toHaveTextContent('✓');
   });
 
-  it('floats the submitted badge off the button', () => {
+  it('floats the submitted badge off the staged word', () => {
     render(<App dictionary={DICTIONARY} />);
-    const submit = () => screen.getByRole('button', { name: 'Submit' });
 
     submitWord('test');
-    // The input has cleared, but the ghost badge carries the submitted
-    // word's verdict while it animates away.
-    expect(submit()).toHaveAttribute('data-readiness', 'empty');
-    expect(submit()).toHaveTextContent('+1');
+    // The input has cleared — no live verdict — but the ghost badge carries
+    // the submitted word's verdict while it animates away.
+    expect(screen.getByRole('button', { name: 'Submit' })).toHaveAttribute(
+      'data-readiness',
+      'empty',
+    );
+    expect(screen.queryByTestId('verdict')).not.toBeInTheDocument();
+    expect(screen.getByTestId('verdict-ghost')).toHaveTextContent('+1');
 
     submitWord('toss');
-    expect(submit()).toHaveTextContent('?');
+    expect(screen.getByTestId('verdict-ghost')).toHaveTextContent('?');
   });
 
   it('animates the submitted word out of the word area', () => {

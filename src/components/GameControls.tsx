@@ -4,7 +4,6 @@ import { useMessages } from '../i18n';
 import type {
   DeniedControl,
   SubmitReadiness,
-  SubmittedPreview,
   WordPreview,
 } from '../useWordSaladGame';
 import { KEYCAP_CLASS, KEYCAP_TINTED_CLASS } from './tiles';
@@ -13,7 +12,6 @@ interface GameControlsProps {
   canDelete: boolean;
   deleteId: number;
   denied: DeniedControl | null;
-  lastSubmission: SubmittedPreview | null;
   onClearAll: () => void;
   onDelete: () => void;
   onSubmit: () => void;
@@ -41,28 +39,6 @@ const SUBMIT_CLASS: Record<SubmitReadiness, string> = {
   ready: `${BASE_CLASS} border-accent bg-accent text-white hover:bg-accent/90`,
 };
 
-const BADGE_BASE_CLASS =
-  'absolute -right-2 -top-2 flex h-6 min-w-6 items-center justify-center rounded-full border px-1 text-xs font-bold';
-
-const BADGE_CLASS: Record<WordPreview['verdict'], string> = {
-  'already-found': `${BADGE_BASE_CLASS} border-orange-300 bg-white text-orange-600 dark:bg-gray-950 dark:text-orange-400`,
-  'invalid-letters': `${BADGE_BASE_CLASS} border-red-300 bg-white text-red-500 dark:border-red-400/40 dark:bg-gray-950 dark:text-red-400`,
-  'missing-required': `${BADGE_BASE_CLASS} border-orange-300 bg-white text-orange-600 dark:bg-gray-950 dark:text-orange-400`,
-  'not-a-word': `${BADGE_BASE_CLASS} border-orange-300 bg-white text-orange-600 dark:bg-gray-950 dark:text-orange-400`,
-  'too-short': `${BADGE_BASE_CLASS} border-orange-300 bg-white text-orange-600 dark:bg-gray-950 dark:text-orange-400`,
-  valid: `${BADGE_BASE_CLASS} border-accent bg-white text-accent dark:bg-gray-950`,
-};
-
-// A hinted word is valid but worth 0 points: neutral, not the "+N" green.
-const HINTED_BADGE_CLASS = `${BADGE_BASE_CLASS} border-gray-300 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-500`;
-
-function badgeClass(preview: WordPreview): string {
-  if (preview.verdict === 'valid' && preview.points === 0) {
-    return HINTED_BADGE_CLASS;
-  }
-  return BADGE_CLASS[preview.verdict];
-}
-
 // A keyboard action aimed at this control while it was unavailable: dip in
 // acknowledgment without a ring. The two identical animations alternate by
 // denial parity so repeated denials replay without remounting the button
@@ -77,28 +53,10 @@ function denyClass(
   return denied.id % 2 === 1 ? 'control-deny' : 'control-deny-alt';
 }
 
-function badgeText(preview: WordPreview): string {
-  switch (preview.verdict) {
-    case 'already-found':
-      return '✓';
-    case 'invalid-letters':
-      return '✕';
-    case 'missing-required':
-      return preview.requiredCharacters;
-    case 'not-a-word':
-      return '?';
-    case 'too-short':
-      return '…';
-    case 'valid':
-      return `+${preview.points}`;
-  }
-}
-
 export function GameControls({
   canDelete,
   deleteId,
   denied,
-  lastSubmission,
   onClearAll,
   onDelete,
   onSubmit,
@@ -213,21 +171,6 @@ export function GameControls({
             ⏎
           </span>
         </span>
-        {preview === null ? null : (
-          <span aria-hidden="true" className={badgeClass(preview)}>
-            {badgeText(preview)}
-          </span>
-        )}
-        {lastSubmission === null ? null : (
-          // Remounts on every submission (key) to replay the animation.
-          <span
-            aria-hidden="true"
-            className={`badge-fly-away pointer-events-none ${badgeClass(lastSubmission.preview)}`}
-            key={lastSubmission.id}
-          >
-            {badgeText(lastSubmission.preview)}
-          </span>
-        )}
       </button>
       {/* The verdict badge in words, as Submit's accessible description —
           outside the button so it doesn't join the accessible name. */}

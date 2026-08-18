@@ -151,14 +151,18 @@ button {
   flex: 0 1 auto;
 }
 
-/* A ceiling, not a fixed height — and the same ceiling everywhere: eight
-   of the known 32px rows. The drum is a window onto the list, not the list
-   itself; more rows only push the letters further down the screen. A
-   puzzle with fewer words shrinks the drum to fit them instead of
-   reserving a window it cannot fill, and a screen too short even for eight
-   rows squeezes it through flex shrink toward its three-row floor. */
+/* A window reserved up front, not one that grows: eight of the known 32px
+   rows, or the whole list where it is shorter than that (--drum-slots, set
+   from the puzzle's word count). The drum is a window onto the list, not
+   the list itself; letting it grow with the finds pushed the word being
+   typed — and the letters and buttons under it — down the screen with
+   every discovery. Nothing is reserved that this puzzle could never fill:
+   the blocks inside take up whatever the found rows leave, so the window
+   is exactly full from the first deal onward. A screen too short even for
+   the reserved rows squeezes it through flex shrink toward the three-row
+   floor, where the list scrolls instead. */
 .word-drum {
-  flex: 0 1 auto;
+  flex: 0 1 min(16rem, calc(var(--drum-slots, 8) * 2rem));
   max-height: 16rem;
 }
 

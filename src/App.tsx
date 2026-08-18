@@ -320,6 +320,8 @@ function AppBody({
             hintCost={game.hintCost}
             hintForfeitsWin={game.hintForfeitsWin}
             hintReveal={game.hintReveal}
+            lastSubmission={game.lastSubmission}
+            preview={game.inputPreview}
             spentHint={game.spentHint}
             inputLetters={game.inputLetters}
             isValidCharacter={game.isValidCharacter}
@@ -344,7 +346,6 @@ function AppBody({
             canDelete={game.inputLetters.length > 0}
             deleteId={game.deleteId}
             denied={game.deniedControl}
-            lastSubmission={game.lastSubmission}
             onClearAll={game.clearInput}
             onDelete={game.deleteLetter}
             onSubmit={game.submitWord}
