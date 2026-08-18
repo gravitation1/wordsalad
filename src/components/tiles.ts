@@ -45,11 +45,13 @@ export const KEYCAP_TINTED_CLASS = `${KEYCAP_BASE_CLASS} border-current opacity-
 
 // Where the typed word last sat on screen (viewport coordinates), written
 // by the input on every edit and read by the drum to fly a found word from
-// that spot into its slot.
+// that spot into its slot. Width and height bound the flight's launch
+// size: the ghost may not outgrow the letters it replaces.
 export interface WordOrigin {
   height: number;
   left: number;
   top: number;
+  width: number;
 }
 
 interface MiniTileOptions {

@@ -354,19 +354,34 @@ export function WordDrum({
     if (animate === undefined) {
       return;
     }
+    // Any earlier flight's animations must stop BEFORE the tiles are
+    // measured: a live transform scales what getBoundingClientRect
+    // reports, and a launch computed from a mid-animation box launches at
+    // the wrong size. (StrictMode's dev remount re-runs this very callback
+    // on a node it already animated, which is exactly that trap.)
+    for (const animation of flightAnimations.current) {
+      animation.cancel();
+    }
     const tiles = node.firstElementChild?.getBoundingClientRect();
+    // Launch no larger than the letters being replaced. Matching their
+    // height alone made the ghost wider than the word (tile boxes carry
+    // padding the bare letters don't), so it briefly swelled over whatever
+    // trailed the word — the verdict pill — before shrinking. The word is
+    // bound for a 32px row regardless: its journey only ever shrinks it,
+    // so the width cap costs nothing and the takeoff stays inside the
+    // word's own footprint.
     const scale =
-      tiles !== undefined && tiles.height > 0
-        ? path.from.height / tiles.height
+      tiles !== undefined && tiles.height > 0 && tiles.width > 0
+        ? Math.min(
+            path.from.height / tiles.height,
+            path.from.width / tiles.width,
+          )
         : 1.6;
     const dx = path.from.left - path.toLeft;
     const dy =
       path.from.top + path.from.height / 2 - (path.toTop + ROW_HEIGHT / 2);
     const handoffDuration = path.duration + SLOT_REVEAL_MS;
     const handoffOffset = path.duration / handoffDuration;
-    for (const animation of flightAnimations.current) {
-      animation.cancel();
-    }
     flightAnimations.current = [
       animate.call(
         node,

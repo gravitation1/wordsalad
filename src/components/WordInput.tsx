@@ -151,6 +151,7 @@ export function WordInput({
         height: rect.height,
         left: rect.left,
         top: rect.top,
+        width: rect.width,
       };
     }
   }, [inputLetters, wordOriginRef]);
