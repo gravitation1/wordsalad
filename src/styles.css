@@ -518,6 +518,167 @@ button {
 /* A restarted board's found rows fly up toward the Restart button that
    wiped them — ghosts of the words, staggered top-first, absorbed by the
    pill above the drum. */
+/* The block slabs' material: a faint 45° hairline hatch, drafting
+   notation for solid, uncut matter. The slab is drawn as per-row segments
+   (fixed 32px rows), and the hatch's horizontal period is 8px — 32 is a
+   multiple, so each segment's pattern continues the last one's seamlessly.
+   The 5.657px stop is that period measured along the gradient axis
+   (8 / √2). */
+.block-hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgb(15 23 42 / 4.5%) 0,
+    rgb(15 23 42 / 4.5%) 1px,
+    transparent 1px,
+    transparent 5.657px
+  );
+  @variant dark {
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgb(148 163 184 / 5.5%) 0,
+      rgb(148 163 184 / 5.5%) 1px,
+      transparent 1px,
+      transparent 5.657px
+    );
+  }
+}
+
+/* A found word cleaves its block, and the slab narrates it: the two
+   halves start extended toward each other, together still covering the
+   landing row (backwards fill keeps the slab visually unbroken while the
+   word is in flight — they meet invisibly at the row's center), then part
+   from that center and seal their fresh caps around it. The animation
+   lives on the slab alone — row content never moves, so it cannot read as
+   layout jitter. Two identical animations per direction so a repeat cleave
+   of the same row replays by swapping names, without a remount.
+
+   The parting and the flight are one motion, not two beats: the delay
+   chains onto the drum's --spotlight-delay minus half this duration, so
+   the block is already opening as the word closes in and is moving
+   fastest at the instant it arrives — the same eased curve the flight
+   itself travels on, which is what ties the two together. (Waiting for
+   the landing instead left a dead beat, and the split read as a separate
+   event.) The cap's hairline edge starts transparent — while the halves
+   still span the landing row, a visible edge at their meeting point would
+   draw a seam across an unbroken slab — and fades in as they part. */
+@keyframes block-cleave-top {
+  from {
+    border-top-color: transparent;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    top: -16px;
+  }
+}
+
+@keyframes block-cleave-top-alt {
+  from {
+    border-top-color: transparent;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    top: -16px;
+  }
+}
+
+@keyframes block-cleave-bottom {
+  from {
+    border-bottom-color: transparent;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    bottom: -16px;
+  }
+}
+
+@keyframes block-cleave-bottom-alt {
+  from {
+    border-bottom-color: transparent;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    bottom: -16px;
+  }
+}
+
+.block-cleave-top,
+.block-cleave-top-alt,
+.block-cleave-bottom,
+.block-cleave-bottom-alt {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  animation-delay: calc(var(--spotlight-delay, 0ms) - 210ms);
+  animation-fill-mode: backwards;
+}
+
+.block-cleave-top {
+  animation-name: block-cleave-top;
+}
+
+.block-cleave-top-alt {
+  animation-name: block-cleave-top-alt;
+}
+
+.block-cleave-bottom {
+  animation-name: block-cleave-bottom;
+}
+
+.block-cleave-bottom-alt {
+  animation-name: block-cleave-bottom-alt;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block-cleave-top,
+  .block-cleave-top-alt,
+  .block-cleave-bottom,
+  .block-cleave-bottom-alt {
+    animation: none;
+  }
+}
+
+/* The halves a cleave leaves behind are new things, not smaller copies of
+   what they replaced: each wears a fresh count, and the narrowed gap can
+   force letters the old block could not name (the drum lights those tiles
+   itself — only it knows which are newly derivable). The count steps to a
+   stronger tone as the caps seal, then settles back to its resting gray:
+   colour alone, so a label that has just changed says so without moving.
+   Two names so consecutive finds relabelling the same block replay
+   without a remount. */
+@keyframes block-relabel {
+  from {
+    color: var(--relabel-tone);
+  }
+}
+
+@keyframes block-relabel-alt {
+  from {
+    color: var(--relabel-tone);
+  }
+}
+
+.block-relabel,
+.block-relabel-alt {
+  --relabel-tone: var(--color-gray-600);
+  animation-duration: 520ms;
+  animation-timing-function: ease-out;
+  animation-delay: calc(var(--spotlight-delay, 0ms) + 180ms);
+
+  @variant dark {
+    --relabel-tone: var(--color-gray-300);
+  }
+}
+
+.block-relabel {
+  animation-name: block-relabel;
+}
+
+.block-relabel-alt {
+  animation-name: block-relabel-alt;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block-relabel,
+  .block-relabel-alt {
+    animation: none;
+  }
+}
+
 @keyframes row-exit {
   from {
     opacity: 1;

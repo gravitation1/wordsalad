@@ -101,10 +101,12 @@ export interface Messages {
   hintAgainLabel: string;
   hintForfeitsWinLabel: string;
   hintedLegend: string;
-  // An unfound drum row whose starting letters the alphabetized list gives
-  // away; activating the row types them into the word area. The letters
-  // arrive pre-spaced ("C A") so screen readers spell them out.
-  unfoundPrefixLabel: (letters: string) => string;
+  // A drum brick's word count, worn as its visible text ("6 words").
+  unfoundCountLabel: (count: number) => string;
+  // A brick whose starting letters the alphabetized list gives away;
+  // activating it types them into the word area. The letters arrive
+  // pre-spaced ("C A") so screen readers spell them out.
+  unfoundBlockLabel: (count: number, letters: string) => string;
   lockedOutNote: (reachablePoints: number, winPoints: number) => string;
   lockedOutTitle: string;
   lockedOutShort: string;
@@ -213,8 +215,13 @@ const EN: Messages = {
   hintCostLabel: (cost) =>
     `Reveals a word and lowers your max score by ${cost} point${plural('en', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revealed with a hint',
-  unfoundPrefixLabel: (letters) =>
-    `Unfound word starting with ${letters} — fill in these letters`,
+  unfoundCountLabel: (count) =>
+    `${count} ${plural('en', count, { one: 'word', other: 'words' })}`,
+  unfoundBlockLabel: (count, letters) =>
+    `${plural('en', count, {
+      one: 'One unfound word starts',
+      other: `${count} unfound words start`,
+    })} with ${letters} — fill in these letters`,
   hintAgainLabel: 'Shows your hinted word again — no extra cost',
   hintForfeitsWinLabel:
     'Reveals a word — your best possible score would drop below the win line',
@@ -369,8 +376,13 @@ const FR: Messages = {
   hintCostLabel: (cost) =>
     `Révèle un mot et réduit votre score max de ${cost} point${plural('fr', cost, { one: '', other: 's' })}`,
   hintedLegend: '* révélé par un indice',
-  unfoundPrefixLabel: (letters) =>
-    `Mot non trouvé commençant par ${letters} — saisir ces lettres`,
+  unfoundCountLabel: (count) =>
+    `${count} ${plural('fr', count, { one: 'mot', other: 'mots' })}`,
+  unfoundBlockLabel: (count, letters) =>
+    `${plural('fr', count, {
+      one: 'Un mot non trouvé commence',
+      other: `${count} mots non trouvés commencent`,
+    })} par ${letters} — saisir ces lettres`,
   hintAgainLabel: 'Réaffiche votre mot d’indice — sans coût supplémentaire',
   hintForfeitsWinLabel:
     'Révèle un mot — votre score maximum possible passerait sous le seuil de victoire',
@@ -525,8 +537,13 @@ const ES: Messages = {
   hintCostLabel: (cost) =>
     `Revela una palabra y reduce tu puntuación máxima en ${cost} punto${plural('es', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revelada con una pista',
-  unfoundPrefixLabel: (letters) =>
-    `Palabra sin encontrar que empieza por ${letters} — introducir estas letras`,
+  unfoundCountLabel: (count) =>
+    `${count} ${plural('es', count, { one: 'palabra', other: 'palabras' })}`,
+  unfoundBlockLabel: (count, letters) =>
+    `${plural('es', count, {
+      one: 'Una palabra sin encontrar empieza',
+      other: `${count} palabras sin encontrar empiezan`,
+    })} por ${letters} — introducir estas letras`,
   hintAgainLabel: 'Vuelve a mostrar la palabra de la pista, sin coste extra',
   hintForfeitsWinLabel:
     'Revela una palabra: tu puntuación máxima posible caería por debajo del umbral de victoria',
@@ -681,8 +698,13 @@ const DE: Messages = {
   hintCostLabel: (cost) =>
     `Deckt ein Wort auf und senkt deinen Höchstpunktestand um ${cost} ${plural('de', cost, { one: 'Punkt', other: 'Punkte' })}`,
   hintedLegend: '* mit einem Tipp aufgedeckt',
-  unfoundPrefixLabel: (letters) =>
-    `Ungefundenes Wort, beginnt mit ${letters} – Buchstaben eintragen`,
+  unfoundCountLabel: (count) =>
+    `${count} ${plural('de', count, { one: 'Wort', other: 'Wörter' })}`,
+  unfoundBlockLabel: (count, letters) =>
+    `${plural('de', count, {
+      one: 'Ein ungefundenes Wort beginnt',
+      other: `${count} ungefundene Wörter beginnen`,
+    })} mit ${letters} – Buchstaben eintragen`,
   hintAgainLabel:
     'Zeigt dein aufgedecktes Wort erneut — ohne zusätzliche Kosten',
   hintForfeitsWinLabel:
@@ -839,8 +861,13 @@ const IT: Messages = {
   hintCostLabel: (cost) =>
     `Rivela una parola e riduce il punteggio massimo di ${cost} ${plural('it', cost, { one: 'punto', other: 'punti' })}`,
   hintedLegend: '* rivelata con un indizio',
-  unfoundPrefixLabel: (letters) =>
-    `Parola non trovata che inizia con ${letters} — inserisci queste lettere`,
+  unfoundCountLabel: (count) =>
+    `${count} ${plural('it', count, { one: 'parola', other: 'parole' })}`,
+  unfoundBlockLabel: (count, letters) =>
+    `${plural('it', count, {
+      one: 'Una parola non trovata inizia',
+      other: `${count} parole non trovate iniziano`,
+    })} con ${letters} — inserisci queste lettere`,
   hintAgainLabel:
     'Mostra di nuovo la parola dell’indizio, senza costi aggiuntivi',
   hintForfeitsWinLabel:
@@ -996,8 +1023,13 @@ const PT: Messages = {
   hintCostLabel: (cost) =>
     `Revela uma palavra e reduz sua pontuação máxima em ${cost} ponto${plural('pt', cost, { one: '', other: 's' })}`,
   hintedLegend: '* revelada com uma dica',
-  unfoundPrefixLabel: (letters) =>
-    `Palavra não encontrada que começa com ${letters} — preencher estas letras`,
+  unfoundCountLabel: (count) =>
+    `${count} ${plural('pt', count, { one: 'palavra', other: 'palavras' })}`,
+  unfoundBlockLabel: (count, letters) =>
+    `${plural('pt', count, {
+      one: 'Uma palavra não encontrada começa',
+      other: `${count} palavras não encontradas começam`,
+    })} com ${letters} — preencher estas letras`,
   hintAgainLabel: 'Mostra novamente a palavra da dica, sem custo extra',
   hintForfeitsWinLabel:
     'Revela uma palavra — sua pontuação máxima possível cairia abaixo da linha de vitória',
@@ -1152,8 +1184,13 @@ const NL: Messages = {
   hintCostLabel: (cost) =>
     `Onthult een woord en verlaagt je maximale score met ${cost} ${plural('nl', cost, { one: 'punt', other: 'punten' })}`,
   hintedLegend: '* onthuld met een hint',
-  unfoundPrefixLabel: (letters) =>
-    `Niet gevonden woord dat begint met ${letters} — deze letters invullen`,
+  unfoundCountLabel: (count) =>
+    `${count} ${plural('nl', count, { one: 'woord', other: 'woorden' })}`,
+  unfoundBlockLabel: (count, letters) =>
+    `${plural('nl', count, {
+      one: 'Eén niet gevonden woord begint',
+      other: `${count} niet gevonden woorden beginnen`,
+    })} met ${letters} — deze letters invullen`,
   hintAgainLabel: 'Toont je hintwoord opnieuw — zonder extra kosten',
   hintForfeitsWinLabel:
     'Onthult een woord — je maximaal haalbare score zakt dan onder de winstgrens',
@@ -1302,8 +1339,9 @@ const JA: Messages = {
   hintCostBadge: (cost) => `最大−${cost}`,
   hintCostLabel: (cost) => `単語を1つ表示し、最大スコアが${cost}点下がります`,
   hintedLegend: '* ヒントで表示',
-  unfoundPrefixLabel: (letters) =>
-    `${letters} で始まる未発見の単語 — この文字を入力`,
+  unfoundCountLabel: (count) => `${count}語`,
+  unfoundBlockLabel: (count, letters) =>
+    `${letters} で始まる未発見の単語 ${count}語 — この文字を入力`,
   hintAgainLabel: 'ヒントで表示した単語をもう一度表示します（追加コストなし）',
   hintForfeitsWinLabel:
     '単語を1つ表示しますが、最大スコアが勝利ラインを下回ります',
@@ -1449,8 +1487,9 @@ const KO: Messages = {
   hintCostLabel: (cost) =>
     `단어 하나를 공개하고 최대 점수가 ${cost}점 낮아집니다`,
   hintedLegend: '* 힌트로 공개',
-  unfoundPrefixLabel: (letters) =>
-    `${letters}(으)로 시작하는 미발견 단어 — 이 글자 입력`,
+  unfoundCountLabel: (count) => `단어 ${count}개`,
+  unfoundBlockLabel: (count, letters) =>
+    `${letters}(으)로 시작하는 미발견 단어 ${count}개 — 이 글자 입력`,
   hintAgainLabel: '힌트로 공개한 단어를 다시 보여줘요 (추가 비용 없음)',
   hintForfeitsWinLabel:
     '단어를 공개하지만 최대 점수가 승리 기준 아래로 떨어져요',
@@ -1592,8 +1631,9 @@ const ZH: Messages = {
   hintCostBadge: (cost) => `上限−${cost}`,
   hintCostLabel: (cost) => `揭示一个单词，最高分降低 ${cost} 分`,
   hintedLegend: '* 用提示揭示',
-  unfoundPrefixLabel: (letters) =>
-    `以 ${letters} 开头的未找到单词 — 填入这些字母`,
+  unfoundCountLabel: (count) => `${count} 个单词`,
+  unfoundBlockLabel: (count, letters) =>
+    `以 ${letters} 开头的未找到单词 ${count} 个 — 填入这些字母`,
   hintAgainLabel: '再次显示提示过的单词，无额外扣分',
   hintForfeitsWinLabel: '揭示一个单词，但最高可得分将跌破获胜线',
   lockedOutNote: (reachablePoints, winPoints) =>
@@ -1741,8 +1781,14 @@ const RU: Messages = {
   hintCostLabel: (cost) =>
     `Открывает слово и снижает максимум на ${cost} ${plural('ru', cost, { one: 'очко', few: 'очка', other: 'очков' })}`,
   hintedLegend: '* открыто подсказкой',
-  unfoundPrefixLabel: (letters) =>
-    `Ненайденное слово, начинается с ${letters} — ввести эти буквы`,
+  unfoundCountLabel: (count) =>
+    `${count} ${plural('ru', count, { few: 'слова', one: 'слово', other: 'слов' })}`,
+  unfoundBlockLabel: (count, letters) =>
+    `${count} ${plural('ru', count, {
+      few: 'ненайденных слова начинаются',
+      one: 'ненайденное слово начинается',
+      other: 'ненайденных слов начинаются',
+    })} с ${letters} — ввести эти буквы`,
   hintAgainLabel:
     'Снова показывает слово из подсказки — без дополнительной платы',
   hintForfeitsWinLabel:

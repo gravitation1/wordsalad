@@ -2,12 +2,14 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 
 import { useMessages } from '../i18n';
 import type {
+  FoundWord,
   RestartExit,
   RestartExitRow,
   WordSlot,
@@ -66,6 +68,31 @@ const DRUM_HEIGHT = ROW_HEIGHT * VISIBLE_ROWS;
 // How deep the edge fade grows once content is scrolled out behind it.
 const FADE_PX = 56;
 
+// The drum's rendering units: found words as single rows, and each run of
+// unfound slots collapsed into one brick that states its two public facts
+// — forced prefix and word count — outright. Rows inside a run are
+// informationally identical (they share the gap's one prefix), so the run
+// gets one body instead of one indistinguishable row per word.
+type DrumItem =
+  | { kind: 'word'; slotIndex: number; found: FoundWord }
+  | {
+      kind: 'brick';
+      start: number;
+      count: number;
+      prefix: string;
+      rows: number;
+    };
+
+// The beat between newly forced letters as they settle into a brick.
+const TILE_ARRIVAL_MS = 70;
+
+// Bounded mass: a brick's height grows with its count so remaining work
+// keeps a felt size, but is capped so its metadata can never scroll out
+// of reach — the count text carries the precise fact either way.
+function brickRows(count: number): number {
+  return count <= 2 ? 1 : count <= 7 ? 2 : 3;
+}
+
 // The flight takes at least this long even when the drum has no rolling to
 // do — a word snapping instantly into a nearby slot reads as a glitch.
 const MIN_FLIGHT_MS = 350;
@@ -100,36 +127,101 @@ export function WordDrum({
   // subsequent keystroke.
   const handledSpotlight = useRef(0);
 
-  // Restart's absorb: ghosts of the wiped rows, measured over their old
-  // slots (the blanked rows land in the same spots — fixed heights, same
-  // count — and absolute children of the scrolling list ride its content
-  // coordinates, so no scroll math). Flown up toward the Restart pill,
-  // then cleared once the flight is over.
+  // Slots folded into the drum's rendering units. A find replaces one
+  // brick with up to three items (brick · word · brick), so item indices
+  // shift between renders while a found word's slotIndex never does.
+  const items = useMemo(() => {
+    const list: DrumItem[] = [];
+    let index = 0;
+    while (index < slots.length) {
+      const found = slots[index].found;
+      if (found !== null) {
+        list.push({ found, kind: 'word', slotIndex: index });
+        index += 1;
+        continue;
+      }
+      let end = index;
+      while (end < slots.length && slots[end].found === null) {
+        end += 1;
+      }
+      list.push({
+        count: end - index,
+        kind: 'brick',
+        // Uniform per gap: every slot of a run carries the gap's one
+        // prefix (see slotPrefixes), so the first speaks for all.
+        prefix: slots[index].prefix,
+        rows: brickRows(end - index),
+        start: index,
+      });
+      index = end;
+    }
+    return list;
+  }, [slots]);
+
+  // Each item's content offset — bricks vary in height, so the scroll
+  // math is a prefix sum rather than index * ROW_HEIGHT.
+  const itemTops = useMemo(() => {
+    const tops: number[] = [];
+    let y = 0;
+    for (const item of items) {
+      tops.push(y);
+      y += (item.kind === 'word' ? 1 : item.rows) * ROW_HEIGHT;
+    }
+    return tops;
+  }, [items]);
+
+  // Where the found rows sat, refreshed whenever the list changes shape:
+  // the drum's own box plus each row's offset within the scrolling content.
+  // A restart wipes every found word at once, collapsing the drum to a
+  // single brick — by the time the ghosts mount there is nothing left to
+  // measure, so the layout they fly from is remembered rather than read.
+  const rowLayout = useRef<{
+    drumBottom: number;
+    drumLeft: number;
+    drumTop: number;
+    drumWidth: number;
+    scrollTop: number;
+    tops: ReadonlyMap<number, number>;
+  } | null>(null);
+
+  // Restart's absorb: ghosts of the wiped rows, flown up toward the
+  // Restart pill, then cleared once the flight is over. Fixed to the
+  // viewport rather than parked in the list: the collapsed drum is far too
+  // short to hold them, and its edge-fade mask would paint them out.
+  // A layout effect, declared ahead of the capture below, so it reads the
+  // layout as it stood before the wipe.
   const [exitGhosts, setExitGhosts] = useState<{
     id: number;
-    rows: readonly (RestartExitRow & { top: number })[];
+    rows: readonly (RestartExitRow & { left: number; top: number })[];
+    width: number;
   } | null>(null);
   const seenRestart = useRef(restartExit?.id ?? 0);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const previous = seenRestart.current;
     seenRestart.current = restartExit?.id ?? 0;
-    if (restartExit === null || restartExit.id <= previous) {
+    const layout = rowLayout.current;
+    if (restartExit === null || restartExit.id <= previous || layout === null) {
       return;
     }
-    const list = containerRef.current;
-    setExitGhosts({
-      id: restartExit.id,
-      rows: restartExit.rows.map((row) => {
-        const node = list?.children.item(row.index);
-        return {
-          ...row,
-          top:
-            node instanceof HTMLElement
-              ? node.offsetTop
-              : row.index * ROW_HEIGHT,
-        };
-      }),
-    });
+    // Only the rows the player could actually see leave ghosts — one
+    // scrolled out of the drum would otherwise fly across the scoreboard
+    // above it. jsdom measures every box as zero, where the visible band
+    // cannot be told from an empty one, so there the test is skipped.
+    const measurable = layout.drumBottom > layout.drumTop;
+    const rows = restartExit.rows
+      .map((row) => ({
+        ...row,
+        left: layout.drumLeft,
+        top:
+          layout.drumTop + (layout.tops.get(row.index) ?? 0) - layout.scrollTop,
+      }))
+      .filter(
+        (row) =>
+          !measurable ||
+          (row.top + ROW_HEIGHT > layout.drumTop &&
+            row.top < layout.drumBottom),
+      );
+    setExitGhosts({ id: restartExit.id, rows, width: layout.drumWidth });
     const timer = window.setTimeout(() => {
       setExitGhosts(null);
     }, 700);
@@ -137,6 +229,31 @@ export function WordDrum({
       window.clearTimeout(timer);
     };
   }, [restartExit]);
+
+  // The layout the ghosts above will need, captured after every reshaping
+  // of the list. Declared after that effect so a restart's commit still
+  // finds the outgoing layout in place.
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (container === null) {
+      return;
+    }
+    const rect = container.getBoundingClientRect();
+    const tops = new Map<number, number>();
+    for (const node of container.querySelectorAll('[data-slot-index]')) {
+      if (node instanceof HTMLElement) {
+        tops.set(Number(node.dataset.slotIndex), node.offsetTop);
+      }
+    }
+    rowLayout.current = {
+      drumBottom: rect.bottom,
+      drumLeft: rect.left,
+      drumTop: rect.top,
+      drumWidth: rect.width,
+      scrollTop: container.scrollTop,
+      tops,
+    };
+  }, [items]);
 
   // The drum eases to a word itself rather than asking for a native smooth
   // scroll, which cannot be given a duration (long hops crawled, and the
@@ -194,6 +311,12 @@ export function WordDrum({
   }, []);
 
   const handleScroll = useCallback(() => {
+    const container = containerRef.current;
+    // Keeps the remembered layout's scroll offset live, so a restart after
+    // scrolling still knows where on screen the rows had come to rest.
+    if (container !== null && rowLayout.current !== null) {
+      rowLayout.current.scrollTop = container.scrollTop;
+    }
     cancelAnimationFrame(frame.current);
     frame.current = requestAnimationFrame(updateEdgeFade);
   }, [updateEdgeFade]);
@@ -302,11 +425,15 @@ export function WordDrum({
     if (spotlight === null || container === null) {
       return;
     }
-    const index = slots.findIndex(
-      (slot) => slot.found?.word === spotlight.word,
+    const index = items.findIndex(
+      (item) => item.kind === 'word' && item.found.word === spotlight.word,
     );
     if (index < 0) {
       return;
+    }
+    const landing = items[index];
+    if (landing.kind !== 'word') {
+      return; // findIndex only matches words; TypeScript needs telling
     }
     // One deliberate submission, one response — never replayed for the
     // renders that follow it.
@@ -317,7 +444,7 @@ export function WordDrum({
     // Center the slot in the window the drum currently has (it flexes with
     // the viewport; jsdom measures 0, so fall back to the design height).
     const height = container.clientHeight || DRUM_HEIGHT;
-    const centered = index * ROW_HEIGHT - (height - ROW_HEIGHT) / 2;
+    const centered = itemTops[index] - (height - ROW_HEIGHT) / 2;
     if (
       container.clientHeight === 0 ||
       typeof container.scrollTo !== 'function'
@@ -376,7 +503,7 @@ export function WordDrum({
         toTop: slotRect.top - (target - container.scrollTop),
       };
       setFlight({
-        hinted: slots[index].found?.hinted ?? false,
+        hinted: landing.found.hinted,
         id: spotlight.id,
         word: spotlight.word,
       });
@@ -391,7 +518,110 @@ export function WordDrum({
       );
     }
     easeScrollTo(container, target, scrollDuration);
-  }, [easeScrollTo, slots, spotlight, wordOriginRef]);
+  }, [easeScrollTo, items, itemTops, spotlight, wordOriginRef]);
+
+  // What each brick last said, so the drum can tell a shrunken block from
+  // one that now names more than it could before. A narrowed gap forces
+  // longer prefixes (see gapPrefixes), and those extra letters are the
+  // most useful thing a find hands the player — so they are lit as they
+  // arrive rather than appearing as if they had always been there. Only
+  // the drum can know which tiles are new: the label alone cannot say.
+  const previousBricks = useRef<
+    readonly { end: number; prefix: string; start: number }[] | null
+  >(null);
+  useLayoutEffect(() => {
+    const bricks: { end: number; prefix: string; start: number }[] = [];
+    for (const item of items) {
+      if (item.kind === 'brick') {
+        bricks.push({
+          end: item.start + item.count,
+          prefix: item.prefix,
+          start: item.start,
+        });
+      }
+    }
+    const previous = previousBricks.current;
+    previousBricks.current = bricks;
+    const container = containerRef.current;
+    // Nothing to compare against on a board's first paint, and nothing to
+    // play where motion is unwelcome or unavailable (jsdom, for one, has
+    // neither matchMedia nor the Web Animations API).
+    if (
+      previous === null ||
+      container === null ||
+      typeof window.matchMedia !== 'function' ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      return;
+    }
+    // Chained onto the same flight the cleave is timed against, landing
+    // the letters as the block finishes sealing around the new word.
+    const flight = Number.parseFloat(
+      container.style.getPropertyValue('--spotlight-delay'),
+    );
+    const startAt = (Number.isNaN(flight) ? 0 : flight) + 180;
+    for (const brick of bricks) {
+      // The block this one came out of: whatever run used to cover its
+      // first slot. Slot numbers are fixed for the life of the puzzle, so
+      // this holds across any number of finds.
+      const parent = previous.find(
+        (old) => old.start <= brick.start && brick.start < old.end,
+      );
+      if (parent === undefined || brick.prefix.length <= parent.prefix.length) {
+        continue;
+      }
+      const scope = `[data-brick-start="${String(brick.start)}"]`;
+      const tiles = container.querySelectorAll(`${scope} [data-prefix-tile]`);
+      // The letters that just became derivable, and the dash that closes
+      // the strip behind them.
+      const arriving: Element[] = [];
+      for (let index = parent.prefix.length; index < tiles.length; index++) {
+        arriving.push(tiles[index]);
+      }
+      const dash = container.querySelector(`${scope} [data-prefix-dash]`);
+      if (dash !== null) {
+        arriving.push(dash);
+      }
+      arriving.forEach((node, rank) => {
+        const animate = (node as { animate?: Element['animate'] }).animate;
+        if (animate === undefined) {
+          return;
+        }
+        // Backwards fill holds each letter out of sight until its turn:
+        // they are absent while the word flies, then settle in one by
+        // one. The dash rides with the last of them.
+        animate.call(
+          node,
+          [
+            { opacity: 0, transform: 'scale(1.6)' },
+            { opacity: 1, transform: 'none' },
+          ],
+          {
+            delay:
+              startAt +
+              Math.min(rank, Math.max(0, arriving.length - 2)) *
+                TILE_ARRIVAL_MS,
+            duration: 420,
+            easing: 'cubic-bezier(0.34, 1.28, 0.64, 1)',
+            fill: 'backwards',
+          },
+        );
+      });
+    }
+  }, [items]);
+
+  // True when the item at this index is the word a fresh find just landed
+  // in — the neighbor test that tells a brick to play its split.
+  const spotlightWordAt = (index: number): boolean => {
+    if (spotlight === null || spotlight.requested) {
+      return false;
+    }
+    if (index < 0 || index >= items.length) {
+      return false;
+    }
+    const item = items[index];
+    return item.kind === 'word' && item.found.word === spotlight.word;
+  };
 
   return (
     <>
@@ -404,196 +634,288 @@ export function WordDrum({
         // three-row floor below which the frame gives up and the page
         // scrolls instead. overscroll-contain keeps a flick that hits the
         // list's end from rubber-banding the (unscrollable) page behind it.
-        className="word-drum relative flex min-h-24 w-full flex-1 flex-col overflow-y-auto overscroll-contain [scrollbar-width:none]"
+        // px-2 buffers row content from the block slabs' edges; the slabs
+        // themselves reach back over the padding (negative insets below),
+        // so they keep the drum's full width. Rows move with the padding,
+        // so the flight's landing measurement needs no correction.
+        className="word-drum relative flex min-h-24 w-full flex-1 flex-col overflow-y-auto overscroll-contain px-2 [scrollbar-width:none]"
         data-testid="word-drum"
         onScroll={handleScroll}
         ref={containerRef}
       >
-        {slots.map((slot, index) => {
-          const found = slot.found;
-          return (
-            <li
-              // Bare placeholders are visual scaffolding; screen readers hear
-              // the found words and the rows with something to say (a derived
-              // prefix carries information and an action).
-              aria-hidden={
-                found === null && slot.prefix === '' ? true : undefined
-              }
-              // shrink-0: fixed-height rows must overflow into scroll, not
-              // compress to fit. mt-auto on the first row bottom-anchors a
-              // list shorter than its window, chat-style — the words hug
-              // the composer below; once the list overflows, the auto
-              // margin resolves to zero and scrolling is unchanged.
-              className={`shrink-0${index === 0 ? ' mt-auto' : ''}`}
-              data-found={found === null ? 'false' : 'true'}
-              data-spotlight={
-                found !== null && found.word === spotlight?.word
-                  ? 'true'
-                  : 'false'
-              }
-              data-testid="word-slot"
-              key={index}
-              style={{ height: ROW_HEIGHT }}
-            >
-              {found === null ? (
-                slot.prefix === '' ? (
-                  <div className="flex h-full items-center justify-between gap-4 text-sm text-gray-300 dark:text-gray-700">
-                    <span>—</span>
-                    <span className="w-16 text-right">?</span>
+        {items.map((item, index) => {
+          // mt-auto on the first item bottom-anchors a list shorter than
+          // its window, chat-style — the words hug the composer below;
+          // once the list overflows, the auto margin resolves to zero and
+          // scrolling is unchanged.
+          const anchored = index === 0 ? ' mt-auto' : '';
+          if (item.kind === 'brick') {
+            // A fresh find splits its brick: the halves it leaves behind
+            // start extended toward each other (together still covering
+            // the landing row, so the material reads as unbroken while
+            // the word is in flight), then part from its center and seal
+            // their caps once it lands. Alternating names replay a repeat
+            // split of a surviving brick without a remount.
+            const cleave =
+              spotlight === null
+                ? ''
+                : spotlightWordAt(index + 1)
+                  ? spotlight.id % 2 === 1
+                    ? 'block-cleave-bottom'
+                    : 'block-cleave-bottom-alt'
+                  : spotlightWordAt(index - 1)
+                    ? spotlight.id % 2 === 1
+                      ? 'block-cleave-top'
+                      : 'block-cleave-top-alt'
+                    : '';
+            // The brick's body: solid, uncut material — a hairline edge in
+            // the app's border grammar and a faint 45° hatch (drafting
+            // notation for solid matter). -z-10 sinks it below every row's
+            // in-flow content within the drum's stacking context (the
+            // edge-fade mask establishes one before first paint), so a
+            // splitting half extending over the landing row slides under
+            // its tiles, never over them. The whole brick is one object,
+            // so its hover answers as one (interactive bricks only).
+            const chipClass = `block-hatch absolute -inset-x-2 inset-y-0.5 -z-10 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-gray-900${
+              item.prefix === ''
+                ? ''
+                : ' transition group-hover:border-gray-300 group-hover:bg-gray-200 dark:group-hover:border-gray-700 dark:group-hover:bg-gray-800'
+            }${cleave === '' ? '' : ` ${cleave}`}`;
+            // Exactly the bricks the cleave touches are the ones whose
+            // identity just changed: a find splits its own gap and leaves
+            // every other one alone. Their counts flash as the caps seal.
+            const relabel =
+              cleave === ''
+                ? ''
+                : spotlight !== null && spotlight.id % 2 === 1
+                  ? ' block-relabel'
+                  : ' block-relabel-alt';
+            return (
+              <li
+                // shrink-0: fixed-height items must overflow into scroll,
+                // not compress to fit.
+                className={`relative shrink-0${anchored}`}
+                // The run's first slot, stable for as long as the run
+                // keeps its head: how the effect above finds this brick's
+                // tiles again after a find rewrote the list.
+                data-brick-start={item.start}
+                data-count={item.count}
+                data-rows={item.rows}
+                data-testid="word-brick"
+                key={`brick-${String(item.start)}`}
+                style={{ height: item.rows * ROW_HEIGHT }}
+              >
+                {item.prefix === '' ? (
+                  // The count belongs to the Words column the header names;
+                  // what a brick's words are worth is exactly what it does
+                  // not say, so the points column keeps its question mark.
+                  <div className="flex h-full items-center justify-between gap-4 text-sm text-gray-400 dark:text-gray-500">
+                    <span aria-hidden="true" className={chipClass} />
+                    <span className={relabel.trim()}>
+                      {t.unfoundCountLabel(item.count)}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="w-16 text-right text-gray-300 dark:text-gray-700"
+                    >
+                      ?
+                    </span>
                   </div>
                 ) : (
                   // The letters the alphabetized list itself gives away,
-                  // spelled in ghost tiles; the tap types them into the word
-                  // area, sparing the player the bookkeeping.
+                  // spelled in ghost tiles; every buried word here shares
+                  // them, so the tap — anywhere on the brick — types them
+                  // into the word area, sparing the player the bookkeeping.
                   <button
-                    aria-label={t.unfoundPrefixLabel(
-                      Array.from(slot.prefix).join(' '),
+                    aria-label={t.unfoundBlockLabel(
+                      item.count,
+                      Array.from(item.prefix).join(' '),
                     )}
-                    className="flex h-full w-full touch-manipulation items-center justify-between gap-4 text-sm text-gray-300 transition hover:opacity-70 dark:text-gray-700"
+                    className="group flex h-full w-full touch-manipulation items-center justify-between gap-4 text-sm text-gray-300 dark:text-gray-700"
                     onClick={() => {
-                      onPrefill(slot.prefix);
+                      onPrefill(item.prefix);
                     }}
                     type="button"
                   >
+                    <span aria-hidden="true" className={chipClass} />
+                    {/* Words column: the letters every word in here shares,
+                        then how many are buried. */}
                     <span
                       aria-hidden="true"
-                      className={`flex items-center ${
-                        slot.prefix.length > 9 ? 'gap-0.5' : 'gap-1'
-                      }`}
+                      className="flex items-center gap-2"
                     >
-                      {Array.from(slot.prefix).map((letter, tileIndex) => (
-                        <span
-                          className={miniTileClass(letter, requiredCharacters, {
-                            compact: slot.prefix.length > 9,
-                            ghost: true,
-                          })}
-                          key={tileIndex}
-                        >
-                          {letter}
-                        </span>
-                      ))}
-                      <span>—</span>
+                      <span
+                        className={`flex items-center ${
+                          item.prefix.length > 9 ? 'gap-0.5' : 'gap-1'
+                        }`}
+                      >
+                        {Array.from(item.prefix).map((letter, tileIndex) => (
+                          <span
+                            className={miniTileClass(
+                              letter,
+                              requiredCharacters,
+                              {
+                                compact: item.prefix.length > 9,
+                                ghost: true,
+                              },
+                            )}
+                            data-prefix-tile=""
+                            key={tileIndex}
+                          >
+                            {letter}
+                          </span>
+                        ))}
+                        {/* The strip's terminator: it arrives with the
+                            last of any newly forced letters, so the trail
+                            is never left hanging without them. */}
+                        <span data-prefix-dash="">—</span>
+                      </span>
+                      <span
+                        className={`text-gray-400 dark:text-gray-500${relabel}`}
+                      >
+                        {t.unfoundCountLabel(item.count)}
+                      </span>
                     </span>
                     <span aria-hidden="true" className="w-16 text-right">
                       ?
                     </span>
                   </button>
-                )
-              ) : (
-                <div
-                  // A fresh find's row materializes as the flown word lands
-                  // on it (slot-reveal is timed to the flight); being taken
-                  // to one already found swells the word itself (below),
-                  // which leaves the points column and neighbouring rows
-                  // alone.
-                  className={`flex h-full items-center justify-between gap-2 text-sm ${
-                    found.word === spotlight?.word && !spotlight.requested
-                      ? 'slot-reveal'
-                      : ''
-                  }`}
-                  // Remounting on each spotlight replays the reveal, so
-                  // asking for the same word twice still flags where it
-                  // landed.
-                  key={
-                    found.word === spotlight?.word
-                      ? `reveal-${String(spotlight.id)}`
-                      : 'idle'
-                  }
-                >
-                  {/* The word spelled in the game's miniature tiles, as in
+                )}
+              </li>
+            );
+          }
+          const found = item.found;
+          return (
+            <li
+              className={`relative shrink-0${anchored}`}
+              data-found="true"
+              // The slot this row occupies in the full word list, so a
+              // restart can find where it sat after the list has collapsed.
+              data-slot-index={item.slotIndex}
+              data-spotlight={found.word === spotlight?.word ? 'true' : 'false'}
+              data-testid="word-slot"
+              key={`word-${String(item.slotIndex)}`}
+              style={{ height: ROW_HEIGHT }}
+            >
+              <div
+                // A fresh find's row materializes as the flown word lands
+                // on it (slot-reveal is timed to the flight); being taken
+                // to one already found swells the word itself (below),
+                // which leaves the points column and neighbouring rows
+                // alone.
+                className={`flex h-full items-center justify-between gap-2 text-sm ${
+                  found.word === spotlight?.word && !spotlight.requested
+                    ? 'slot-reveal'
+                    : ''
+                }`}
+                // Remounting on each spotlight replays the reveal, so
+                // asking for the same word twice still flags where it
+                // landed.
+                key={
+                  found.word === spotlight?.word
+                    ? `reveal-${String(spotlight.id)}`
+                    : 'idle'
+                }
+              >
+                {/* The word spelled in the game's miniature tiles, as in
                       the history rows (long words in the compact cut, so
                       even the dictionary's deepest reach fits a phone); the
                       plain text stays for screen readers. */}
-                  <a
-                    className={`touch-manipulation transition hover:opacity-70 ${
-                      found.word === spotlight?.word && spotlight.requested
-                        ? 'slot-locate'
-                        : ''
+                <a
+                  className={`touch-manipulation transition hover:opacity-70 ${
+                    found.word === spotlight?.word && spotlight.requested
+                      ? 'slot-locate'
+                      : ''
+                  }`}
+                  data-hinted={found.hinted}
+                  href={definitionUrl(found.word)}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <span className="sr-only">
+                    {found.word}
+                    {found.hinted ? '*' : ''}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={`flex items-center ${
+                      found.word.length > 9 ? 'gap-0.5' : 'gap-1'
                     }`}
-                    data-hinted={found.hinted}
-                    href={definitionUrl(found.word)}
-                    rel="noreferrer"
-                    target="_blank"
                   >
-                    <span className="sr-only">
-                      {found.word}
-                      {found.hinted ? '*' : ''}
-                    </span>
-                    <span
-                      aria-hidden="true"
-                      className={`flex items-center ${
-                        found.word.length > 9 ? 'gap-0.5' : 'gap-1'
-                      }`}
-                    >
-                      {Array.from(found.word).map((letter, tileIndex) => (
-                        <span
-                          className={miniTileClass(
-                            foldLetter(letter),
-                            requiredCharacters,
-                            {
-                              compact: found.word.length > 9,
-                              muted: found.hinted,
-                            },
-                          )}
-                          key={tileIndex}
-                        >
-                          {letter}
-                        </span>
-                      ))}
-                      {found.hinted ? (
-                        <span className="text-gray-500 dark:text-gray-400">
-                          *
-                        </span>
-                      ) : null}
-                    </span>
-                  </a>
-                  <span className="w-16 text-right">{found.points}</span>
-                </div>
-              )}
+                    {Array.from(found.word).map((letter, tileIndex) => (
+                      <span
+                        className={miniTileClass(
+                          foldLetter(letter),
+                          requiredCharacters,
+                          {
+                            compact: found.word.length > 9,
+                            muted: found.hinted,
+                          },
+                        )}
+                        key={tileIndex}
+                      >
+                        {letter}
+                      </span>
+                    ))}
+                    {found.hinted ? (
+                      <span className="text-gray-500 dark:text-gray-400">
+                        *
+                      </span>
+                    ) : null}
+                  </span>
+                </a>
+                <span className="w-16 text-right">{found.points}</span>
+              </div>
             </li>
           );
         })}
-        {/* The wiped rows' ghosts, briefly overlaying their old slots and
-            flying up toward the Restart pill — the same tiles the rows
-            wore, staggered top-first so the nearest leave first. */}
-        {exitGhosts === null
-          ? null
-          : exitGhosts.rows.map((row, rank) => (
-              <div
-                aria-hidden="true"
-                className="row-exit pointer-events-none absolute inset-x-0 flex items-center"
-                data-testid="word-exit-ghost"
-                key={`${exitGhosts.id}-${row.word}`}
-                style={{
-                  animationDelay: `${Math.min(rank * 30, 240)}ms`,
-                  height: ROW_HEIGHT,
-                  top: row.top,
-                }}
-              >
-                <span
-                  className={`flex items-center ${
-                    row.word.length > 9 ? 'gap-0.5' : 'gap-1'
-                  }`}
-                >
-                  {Array.from(row.word).map((letter, tileIndex) => (
-                    <span
-                      className={miniTileClass(
-                        foldLetter(letter),
-                        requiredCharacters,
-                        {
-                          compact: row.word.length > 9,
-                          muted: row.hinted,
-                        },
-                      )}
-                      key={tileIndex}
-                    >
-                      {letter}
-                    </span>
-                  ))}
-                </span>
-              </div>
-            ))}
       </ul>
+      {/* The wiped rows' ghosts, hanging where the rows last were and
+          flying up toward the Restart pill — the same tiles the rows wore,
+          staggered top-first so the nearest leave first. Fixed and outside
+          the drum, like the flight below: the wipe leaves the list too
+          short to hold them, and its edge-fade mask would paint them out.
+          px-2 mirrors the drum's own padding, so a ghost lines up with the
+          row it stands in for. */}
+      {exitGhosts === null
+        ? null
+        : exitGhosts.rows.map((row, rank) => (
+            <div
+              aria-hidden="true"
+              className="row-exit pointer-events-none fixed flex items-center px-2"
+              data-testid="word-exit-ghost"
+              key={`${exitGhosts.id}-${row.word}`}
+              style={{
+                animationDelay: `${Math.min(rank * 30, 240)}ms`,
+                height: ROW_HEIGHT,
+                left: row.left,
+                top: row.top,
+                width: exitGhosts.width,
+              }}
+            >
+              <span
+                className={`flex items-center ${
+                  row.word.length > 9 ? 'gap-0.5' : 'gap-1'
+                }`}
+              >
+                {Array.from(row.word).map((letter, tileIndex) => (
+                  <span
+                    className={miniTileClass(
+                      foldLetter(letter),
+                      requiredCharacters,
+                      {
+                        compact: row.word.length > 9,
+                        muted: row.hinted,
+                      },
+                    )}
+                    key={tileIndex}
+                  >
+                    {letter}
+                  </span>
+                ))}
+              </span>
+            </div>
+          ))}
       {/* The word in flight, dressed exactly as the row it will become —
           the same tiles at the same size — so the landing is a cross-fade
           between identical pixels. Fixed and outside the drum: the drum's

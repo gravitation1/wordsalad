@@ -650,27 +650,27 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows an anonymous slot for every word in the puzzle', () => {
+  it('buries the unfound words in bricks that state only how many', () => {
     render(<App dictionary={DICTIONARY} />);
-    const slots = () =>
-      within(screen.getByTestId('word-drum')).getAllByTestId('word-slot');
+    const drum = () => within(screen.getByTestId('word-drum'));
+    const bricks = () => drum().getAllByTestId('word-brick');
 
-    // Three words exist; the drum knows the count but names none of them.
-    expect(slots()).toHaveLength(3);
-    for (const slot of slots()) {
-      expect(slot).toHaveAttribute('data-found', 'false');
-      expect(slot).toHaveTextContent('?');
-    }
+    // Three words exist; the drum says how many but names none of them.
+    expect(bricks()).toHaveLength(1);
+    expect(bricks()[0]).toHaveAttribute('data-count', '3');
+    expect(bricks()[0]).toHaveTextContent('3 words');
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
 
-    // Finding TEST fills its alphabetical slot (ROTTED, TEST, WORSTED).
+    // Finding TEST cuts the run in two (ROTTED · TEST · WORSTED): the word
+    // takes its own row, a one-word brick left on either side.
     submitWord('test');
-    expect(slots()[1]).toHaveAttribute('data-found', 'true');
-    expect(
-      within(slots()[1]).getByRole('link', { name: 'TEST' }),
-    ).toBeInTheDocument();
-    expect(slots()[0]).toHaveAttribute('data-found', 'false');
-    expect(slots()[2]).toHaveAttribute('data-found', 'false');
+    expect(bricks().map((brick) => brick.getAttribute('data-count'))).toEqual([
+      '1',
+      '1',
+    ]);
+    const rows = drum().getAllByTestId('word-slot');
+    expect(rows).toHaveLength(1);
+    expect(within(rows[0]).getByRole('link', { name: 'TEST' })).toBeVisible();
   });
 
   it('reveals the letters a gap logically forces and prefills on tap', () => {
@@ -680,12 +680,12 @@ describe('App', () => {
     render(<App dictionary={['CACAO', 'CAECAL', 'CALL', 'CANAL', 'OCEAN']} />);
     const prefixRow = () =>
       screen.getByRole('button', {
-        name: 'Unfound word starting with C A — fill in these letters',
+        name: 'One unfound word starts with C A — fill in these letters',
       });
 
-    // Nothing found yet: no gap is bounded, so every slot stays anonymous.
+    // Nothing found yet: no gap is bounded, so the brick stays anonymous.
     expect(
-      screen.queryByRole('button', { name: /Unfound word/ }),
+      screen.queryByRole('button', { name: /unfound word/i }),
     ).not.toBeInTheDocument();
 
     submitWord('cacao');
@@ -694,7 +694,7 @@ describe('App', () => {
     // Only the bounded gap gained a prefix; the open tail after CALL
     // still forces nothing and stays inert.
     expect(
-      screen.getAllByRole('button', { name: /Unfound word/ }),
+      screen.getAllByRole('button', { name: /unfound word/i }),
     ).toHaveLength(1);
 
     // Tapping the row types the derived letters into the word area.
@@ -721,7 +721,7 @@ describe('App', () => {
       'CAECAL earned you 3 points!',
     );
     expect(
-      screen.queryByRole('button', { name: /Unfound word/ }),
+      screen.queryByRole('button', { name: /unfound word/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -1727,6 +1727,43 @@ describe('App', () => {
     expect(screen.getAllByTestId('word-exit-ghost')).toHaveLength(2);
     expect(restart()).toHaveAttribute('data-restart-id', '1');
     expect(restart()).toHaveClass('control-press');
+  });
+
+  // Bounded mass: a brick's height grows with what it buries so the
+  // remaining work keeps a felt size, but is capped so its metadata can
+  // never scroll out of reach.
+  it('sizes a brick by its count, up to a cap', () => {
+    const heights = () =>
+      screen
+        .getAllByTestId('word-brick')
+        .map((brick) => brick.getAttribute('data-rows'));
+
+    // Three words: the middle tier. Cleaving it leaves one-word bricks,
+    // which take the smallest.
+    const view = render(<App dictionary={DICTIONARY} />);
+    expect(heights()).toEqual(['2']);
+    submitWord('test'); // the middle slot of ROTTED · TEST · WORSTED
+    expect(heights()).toEqual(['1', '1']);
+    view.unmount();
+
+    // Far more words than tiers: the tallest brick still stops at the cap.
+    render(
+      <App
+        dictionary={[
+          'TEST',
+          'TOTS',
+          'TORE',
+          'TOES',
+          'TROD',
+          'TREES',
+          'TOWED',
+          'TOTTER',
+          'TWEED',
+        ]}
+      />,
+    );
+    expect(screen.getByTestId('word-brick')).toHaveAttribute('data-count', '8');
+    expect(heights()).toEqual(['3']);
   });
 
   it('resumes the hash game instead of regenerating, until New game is used', () => {
