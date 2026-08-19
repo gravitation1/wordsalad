@@ -4,7 +4,7 @@ import { useMessages } from '../i18n';
 import type { Celebration } from '../useWordSaladGame';
 import { matchesDigitKey } from '../useWordSaladGame';
 import { Confetti, WinBurst } from './Confetti';
-import { KEYCAP_CLASS, KEYCAP_TINTED_CLASS, TILE_FACE } from './tiles';
+import { KEYCAP_TINTED_CLASS, TILE_FACE } from './tiles';
 
 // The win moment as a modal: the fanfare interrupts, then gets out of the
 // way — dismissing it returns the board to its normal playing view (the
@@ -211,8 +211,15 @@ export function WinDialog({
               </span>
             </span>
           </button>
+          {/* The scoreboard Share's win tint (accent, gold when perfect),
+              so the modal and the row behind it tell one story; outline
+              rather than fill keeps New game the primary action. */}
           <button
-            className="min-h-11 touch-manipulation rounded-full border border-gray-300 px-5 font-medium transition hover:bg-gray-50 active:scale-95 dark:border-gray-700 dark:hover:bg-gray-800"
+            className={`min-h-11 touch-manipulation rounded-full border px-5 font-medium transition active:scale-95 ${
+              perfect
+                ? 'border-amber-400 text-amber-600 hover:bg-amber-400/10 dark:border-amber-400/60 dark:text-amber-300'
+                : 'border-accent text-accent hover:bg-accent/10'
+            }`}
             onClick={onShare}
             type="button"
           >
@@ -239,7 +246,7 @@ export function WinDialog({
                   {t.shareCopied}
                 </span>
               </span>
-              <span aria-hidden="true" className={KEYCAP_CLASS}>
+              <span aria-hidden="true" className={KEYCAP_TINTED_CLASS}>
                 3
               </span>
             </span>

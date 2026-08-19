@@ -84,6 +84,19 @@ const ACTION_CLASS =
 const ACTION_DISABLED_CLASS =
   'flex min-h-11 cursor-not-allowed touch-manipulation items-center justify-center rounded-full border border-dashed border-gray-300 px-2 text-sm font-medium text-gray-300 transition active:scale-95 dark:border-gray-700 dark:text-gray-700';
 
+// Share once the game is won: the row's hierarchy inverts — Submit's job
+// is done and Share is the control whose moment arrived — so it alone
+// takes the valid-word accent (border and text, no fill: a quiet tint,
+// not a CTA shout). Same grammar as Submit's readiness tint, one level
+// softer.
+const ACTION_WON_CLASS =
+  'flex min-h-11 touch-manipulation items-center justify-center rounded-full border border-accent px-2 text-sm font-medium text-accent transition hover:bg-accent/10 active:scale-95';
+
+// And the perfect sweep trades the accent for the score line's gilding:
+// sharing a perfect game is holding up the trophy.
+const ACTION_PERFECT_CLASS =
+  'flex min-h-11 touch-manipulation items-center justify-center rounded-full border border-amber-400 px-2 text-sm font-medium text-amber-600 transition hover:bg-amber-400/10 active:scale-95 dark:border-amber-400/60 dark:text-amber-300';
+
 // A gated shortcut aimed at this pill (2 or 3 with nothing found): dip in
 // acknowledgment, exactly as the play controls do for a denied Backspace
 // or Enter. The identical animations alternate by denial parity so
@@ -320,7 +333,13 @@ export function Scoreboard({
           key family no dictionary's words can claim — and shows it below
           the label in the play controls' hint pattern (no leading icons:
           label over hint is already two lines of story). */}
-      <div className="meta-actions grid w-full grid-cols-3 gap-2">
+      {/* Capped and centered like the play controls' row rather than
+          full-bleed: the pills are peers of Delete/Toss/Submit, not a
+          toolbar spanning the panel. A touch wider than that row's
+          max-w-xs for the longer labels here; the longest localized one
+          (Dutch "Opnieuw beginnen") wraps to two lines inside its pill,
+          and the grid keeps the three pills equal height. */}
+      <div className="meta-actions mx-auto grid w-full max-w-[25rem] grid-cols-3 gap-2">
         <button
           className={ACTION_CLASS}
           onClick={onNewGame}
@@ -369,7 +388,15 @@ export function Scoreboard({
         </button>
         <button
           aria-disabled={!hasProgress}
-          className={`${hasProgress ? ACTION_CLASS : ACTION_DISABLED_CLASS} ${denyClass(denied, 'share')}`}
+          className={`${
+            !hasProgress
+              ? ACTION_DISABLED_CLASS
+              : isPerfect
+                ? ACTION_PERFECT_CLASS
+                : hasWon
+                  ? ACTION_WON_CLASS
+                  : ACTION_CLASS
+          } ${denyClass(denied, 'share')}`}
           data-denied-id={denied?.control === 'share' ? denied.id : 0}
           onClick={() => {
             if (hasProgress) {
@@ -399,9 +426,14 @@ export function Scoreboard({
                 {t.shareCopied}
               </span>
             </span>
+            {/* Tinted whenever the pill has a color story of its own —
+                disabled's dashes, the won accent, the perfect gold — so
+                the cap rides currentColor like the label does. */}
             <span
               aria-hidden="true"
-              className={hasProgress ? KEYCAP_CLASS : KEYCAP_TINTED_CLASS}
+              className={
+                hasProgress && !hasWon ? KEYCAP_CLASS : KEYCAP_TINTED_CLASS
+              }
             >
               3
             </span>
