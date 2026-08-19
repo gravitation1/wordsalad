@@ -24,10 +24,13 @@ ENABLE list (Enhanced North American Benchmark Lexicon, mirrored at
 restricted to the common-word list
 [12dicts `3of6all`](http://wordlist.aspell.net/12dicts/) (words appearing in at
 least three of six dictionaries, inflections included). It is filtered to
-American, alphabetic words, and a small blocklist is removed: slurs and crude
-vulgarities, plus British and Commonwealth dialect words (NOWT, BAIRN,
-GAZUMP) that read as gotchas rather than words to the American players the
-list is tuned for. Because both sources predate the late 1990s, the list is
+American, alphabetic words, and a blocklist is
+removed: slurs and crude vulgarities; British and Commonwealth words and
+spellings (NOWT, BAIRN, GAZUMP, AEON) that read as gotchas rather than words
+to the American players the list is tuned for — a word survives if
+Merriam-Webster gives it any sense without a regional label; proper nouns;
+and closed compounds that Merriam-Webster spells hyphenated or open
+(TICKTACKTOE, PENNAME). Because both sources predate the late 1990s, the list is
 supplemented with contemporary standard vocabulary — tech, food, and societal
 terms (PODCASTING, DEEPFAKE, UMAMI), each verified against Merriam-Webster;
 slang and proper-noun-adjacent coinages are deliberately left out. The result
