@@ -22,8 +22,11 @@ interface SaladLettersProps {
   lastAppended: LetterActivation | null;
   letters: readonly string[];
   // Letters that could still extend the typed word into a new find. The
-  // rest dim but stay pressable: the dim is information, not a wall —
-  // retyping an already-found word to locate it must keep working.
+  // rest fade their glyph but stay pressable: the fade is information,
+  // not a wall — retyping an already-found word to locate it must keep
+  // working, so the tile itself keeps its full face and border. (Fading
+  // the whole tile was a no-op in light mode: a white face over a white
+  // page doesn't dim, and the distinction fell to text alone.)
   liveLetters: ReadonlySet<string>;
   onLetter: (letter: string) => void;
   requiredCharacters: string;
@@ -240,9 +243,9 @@ export function SaladLetters({
         const isRequired = requiredCharacters.includes(letter);
         const isLive = liveLetters.has(letter);
         // Describes rather than renames (matching the required-letter
-        // note): the accessible name stays the bare letter, and a dimmed
-        // tile carries the dead-letter note alongside — the same fact the
-        // fade shows sighted players.
+        // note): the accessible name stays the bare letter, and a dead
+        // letter carries the note alongside — the same fact its faded
+        // glyph shows sighted players.
         const noteIds =
           [
             isRequired ? 'required-letter-note' : null,
@@ -294,9 +297,7 @@ export function SaladLetters({
                   isRequired
                     ? `border border-accent ${TILE_FACE.accent}`
                     : `${TILE_FACE.plain} hover:bg-gray-50 dark:hover:bg-gray-800`
-                } ${isLive ? '' : 'opacity-40'} ${
-                  press === null ? '' : 'control-press'
-                }`}
+                } ${press === null ? '' : 'control-press'}`}
                 data-letter={letter}
                 data-live={isLive ? 'true' : 'false'}
                 data-pressed={
@@ -323,7 +324,13 @@ export function SaladLetters({
                 }
                 type="button"
               >
-                {letter}
+                {/* Only the glyph fades on a dead letter — it is the
+                    semantic carrier; the tile is the tap target. Opacity
+                    rather than a color swap, so it composes with the
+                    plain and accent faces alike. */}
+                <span className={isLive ? undefined : 'opacity-30'}>
+                  {letter}
+                </span>
                 {press === null ? null : (
                   <span
                     aria-hidden="true"
