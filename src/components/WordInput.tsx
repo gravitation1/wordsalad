@@ -23,6 +23,7 @@ interface WordInputProps {
   preview: WordPreview | null;
   lastSubmission: SubmittedPreview | null;
   canHint: boolean;
+  hasWon: boolean;
   isComplete: boolean;
   isPerfect: boolean;
   hintCost: number;
@@ -106,6 +107,7 @@ function isHintReveal(
 export function WordInput({
   wordExit,
   canHint,
+  hasWon,
   isComplete,
   isPerfect,
   hintCost,
@@ -272,17 +274,32 @@ export function WordInput({
             </span>
           </>
         ) : isComplete ? (
-          // The board is cleared: a tile-styled check where the typing
+          // The board is cleared: a tile-styled verdict where the typing
           // cursor would otherwise beckon for words that don't exist.
-          // Gold for a perfect clear.
+          // Gold check for a perfect clear, the win accent's check for a
+          // win — but a board revealed into a loss closes in the hinted
+          // tiles' spent gray with the feedback line's ✕, since a green
+          // check here would claim a win that never came.
           <span
             aria-hidden="true"
-            className={`flex h-8 w-8 items-center justify-center rounded-lg text-base font-bold text-white ${
-              isPerfect ? 'bg-amber-400' : 'bg-accent'
+            // tracking-normal: the word line's wide letter-spacing trails
+            // the glyph and would drag its ink left of the chip's center.
+            className={`flex h-8 w-8 items-center justify-center rounded-lg text-base font-bold tracking-normal text-white ${
+              isPerfect
+                ? 'bg-amber-400'
+                : hasWon
+                  ? 'bg-accent'
+                  : 'bg-gray-400 dark:bg-gray-600'
             }`}
+            data-perfect={isPerfect ? 'true' : 'false'}
             data-testid="complete-mark"
+            data-won={hasWon ? 'true' : 'false'}
           >
-            ✓
+            {/* The glyphs' ink rides half a pixel below the line box's
+                middle; lifted onto the chip's measured optical center. */}
+            <span className="inline-block -translate-y-[0.5px]">
+              {hasWon ? '✓' : '✕'}
+            </span>
           </span>
         ) : inputLetters.length === 0 ? (
           // Only ever an invitation to an empty line: letters always append

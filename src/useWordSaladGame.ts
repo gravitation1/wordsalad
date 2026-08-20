@@ -147,7 +147,7 @@ export interface Lockout {
 // tap on it gives via CSS :active.
 export interface DeniedControl {
   id: number;
-  control: 'delete' | 'submit' | 'share' | 'restart';
+  control: 'delete' | 'submit' | 'toss' | 'share' | 'restart';
 }
 
 // The 3 key asked to share. Sharing lives outside this hook (it reads the
@@ -711,6 +711,12 @@ export function useWordSaladGame(
 
   const appendLetter = useCallback(
     (character: string) => {
+      // A cleared board has no words left to spell, so letters stop
+      // landing: the complete-mark already stands where the caret was, and
+      // everything downstream (Submit, Delete) is inert on an empty input.
+      if (wordSalad !== null && wordSalad.remainingWords.size === 0) {
+        return;
+      }
       // Typed characters fold into play-key space, so an AZERTY é lands as
       // E (and a typed œ as the two letters OE) instead of being rejected
       // as foreign.
@@ -792,7 +798,9 @@ export function useWordSaladGame(
   }, [hintReveal, inputLetters, submitWord]);
 
   const tossSalad = useCallback(() => {
-    if (wordSalad !== null) {
+    // A cleared board has nothing left to hunt for, so rearranging the
+    // tiles serves nothing: the toss retires with the rest of the input.
+    if (wordSalad !== null && wordSalad.remainingWords.size > 0) {
       setSaladLetters(shuffled(Array.from(wordSalad.characterSet)));
       setTossId((previous) => previous + 1);
       // The tiles remount to replay the toss; drop the press marker so the
@@ -1081,7 +1089,13 @@ export function useWordSaladGame(
         }
       } else if (event.key === ' ') {
         event.preventDefault(); // don't scroll the page
-        tossSalad();
+        // Gated like the button once the board is cleared: the keystroke
+        // dips the pill in acknowledgment instead of tossing.
+        if (wordSalad.remainingWords.size === 0) {
+          denyControl('toss');
+        } else {
+          tossSalad();
+        }
       } else if (event.key === '?') {
         // Take a hint, but only from an empty word area (like the button),
         // so it never overwrites a word in progress.

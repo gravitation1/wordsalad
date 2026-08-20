@@ -314,6 +314,7 @@ function AppBody({
         />
         <div className="game-composer flex w-full flex-col items-center gap-3">
           <WordInput
+            hasWon={game.hasWon}
             wordExit={game.wordExit}
             canHint={game.canHint}
             isComplete={game.isComplete}
@@ -345,6 +346,7 @@ function AppBody({
           />
           <GameControls
             canDelete={game.inputLetters.length > 0}
+            canToss={!game.isComplete}
             deleteId={game.deleteId}
             denied={game.deniedControl}
             onClearAll={game.clearInput}

@@ -10,6 +10,7 @@ import { KEYCAP_CLASS, KEYCAP_TINTED_CLASS } from './tiles';
 
 interface GameControlsProps {
   canDelete: boolean;
+  canToss: boolean;
   deleteId: number;
   denied: DeniedControl | null;
   onClearAll: () => void;
@@ -55,6 +56,7 @@ function denyClass(
 
 export function GameControls({
   canDelete,
+  canToss,
   deleteId,
   denied,
   onClearAll,
@@ -134,9 +136,13 @@ export function GameControls({
         ) : null}
       </button>
       {/* Remounts on every toss (key) so the button signals it caused the
-          toss — even when triggered by Enter on an empty word. */}
+          toss — even when triggered by Enter on an empty word. Retired
+          (aria-disabled, same bargain as Delete) once the board is cleared:
+          there is nothing left to hunt for in a rearrangement. */}
       <button
-        className={`relative ${NEUTRAL_CLASS} ${tossId > 0 ? 'control-press' : ''}`}
+        aria-disabled={!canToss}
+        className={`relative ${canToss ? NEUTRAL_CLASS : DISABLED_CLASS} ${tossId > 0 ? 'control-press' : ''} ${denyClass(denied, 'toss')}`}
+        data-denied-id={denied?.control === 'toss' ? denied.id : 0}
         data-toss-id={tossId}
         key={`toss-${tossId}`}
         onClick={onToss}
@@ -144,7 +150,10 @@ export function GameControls({
       >
         <span className="flex flex-col items-center leading-tight">
           {t.tossButton}
-          <span aria-hidden="true" className={KEYCAP_CLASS}>
+          <span
+            aria-hidden="true"
+            className={canToss ? KEYCAP_CLASS : KEYCAP_TINTED_CLASS}
+          >
             ␣
           </span>
         </span>

@@ -558,6 +558,32 @@ describe('App', () => {
     expect(text).toContain('letters=DEORSTW&required=T&score=1&hints=0');
   });
 
+  it('shares a gold bar and trophy for a perfect score', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted'); // 11 of 15
+    submitWord('test'); // 12: the win
+    keepPlaying();
+    submitWord('rotted'); // 15 of 15
+    closeWin();
+    fireEvent.click(screen.getByRole('button', { name: /Share/ }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Copied!' }),
+    ).toBeInTheDocument();
+    const text = writeText.mock.calls[0][0] as string;
+    expect(text).toContain('15/15');
+    expect(text).toContain('🏆');
+    expect(text).not.toContain('✓');
+    expect(text).toContain('🟨'.repeat(7));
+    expect(text).not.toContain('🟩');
+  });
+
   it('blurs the menu trigger when History closes so Enter cannot re-open it', () => {
     render(<App dictionary={DICTIONARY} />);
     const menuTrigger = screen.getByRole('button', { name: 'More options' });
@@ -953,6 +979,62 @@ describe('App', () => {
       'data-perfect',
       'true',
     );
+    expect(screen.getByTestId('won-mark')).toHaveTextContent('🏆');
+  });
+
+  it('retires the input once every word is found', () => {
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted');
+    submitWord('test'); // 12 of 15: the win
+    keepPlaying();
+    submitWord('rotted'); // 15 of 15: the board is cleared
+    closeWin();
+
+    // Letters no longer land, so a found word can't even be staged for a
+    // pointless re-submission.
+    typeWord('test');
+    expect(currentWord()).toBe('');
+    expect(screen.queryByTestId('verdict')).not.toBeInTheDocument();
+
+    // Toss retires too — rearranging tiles serves nothing on a cleared
+    // board. The space key dips the pill instead of tossing.
+    const toss = screen.getByRole('button', { name: /Toss/ });
+    expect(toss).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(toss);
+    pressKey(' ');
+    expect(screen.getByRole('button', { name: /Toss/ })).toHaveAttribute(
+      'data-toss-id',
+      '0',
+    );
+    expect(screen.getByRole('button', { name: /Toss/ })).toHaveAttribute(
+      'data-denied-id',
+      '1',
+    );
+  });
+
+  it('closes a fully hinted, unwon board without the win green', () => {
+    vi.useFakeTimers();
+    try {
+      render(<App dictionary={DICTIONARY} />);
+
+      // Reveal all three words by hint: the board completes with 0 points,
+      // so the closing mark must not wear the win accent.
+      for (let i = 0; i < 3; i += 1) {
+        fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+        act(() => {
+          vi.runAllTimers();
+        });
+      }
+
+      expect(screen.getByTestId('complete-mark')).toHaveAttribute(
+        'data-won',
+        'false',
+      );
+      // Not the ✓ either: a check of any color still implies success.
+      expect(screen.getByTestId('complete-mark')).toHaveTextContent('✕');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('celebrates only at the moment the win line is crossed', () => {
@@ -1049,6 +1131,7 @@ describe('App', () => {
       'data-perfect',
       'false',
     );
+    expect(screen.getByTestId('won-mark')).toHaveTextContent('✓');
 
     // The perfect clear reopens the modal for its grander, gold pass.
     submitWord('rotted'); // 15 of 15

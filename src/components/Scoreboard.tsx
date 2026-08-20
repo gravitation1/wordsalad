@@ -113,10 +113,16 @@ function denyClass(
   return denied.id % 2 === 1 ? 'control-deny' : 'control-deny-alt';
 }
 
-// The share snippet's miniature bar: earned, lost-to-hints, unclaimed.
+// The share snippet's miniature bar: earned, lost-to-hints, unclaimed —
+// or solid gold for the perfect sweep.
 const SHARE_BAR_SEGMENTS = 7;
 
 function shareBar(earned: number, lost: number, max: number): string {
+  // Gated on the real score, not the rounded bar: rounding can fill all
+  // seven segments a point or two short of perfect.
+  if (earned === max) {
+    return '🟨'.repeat(SHARE_BAR_SEGMENTS);
+  }
   const greens = Math.round((earned / max) * SHARE_BAR_SEGMENTS);
   const darks = Math.min(
     SHARE_BAR_SEGMENTS - greens,
@@ -238,9 +244,10 @@ export function Scoreboard({
     url.searchParams.set('score', String(earnedPoints));
     url.searchParams.set('hints', String(hintCount));
 
+    const wonMark = earnedPoints === maxPoints ? ' 🏆' : hasWon ? ' ✓' : '';
     const summary =
       `${earnedPoints}/${maxPoints} · ${t.levelName(level)}` +
-      (hasWon ? ' ✓' : '') +
+      wonMark +
       (hintCount > 0 ? ` · ${t.hintsUsed(hintCount, lostPoints)}` : '');
     const text = [
       `${t.appTitle} · ${letters}` +
@@ -515,9 +522,9 @@ export function Scoreboard({
               score itself rather than the middle of the line. */}
           <div className="relative flex shrink-0 items-baseline">
             {/* The win's quiet residue once the modal is gone (and the only
-                marker a restored won game shows): gold for a perfect score.
-                Outside the ratings button so its accessible name stays the
-                plain score. */}
+                marker a restored won game shows): the trophy for a perfect
+                score, matching the share snippet. Outside the ratings button
+                so its accessible name stays the plain score. */}
             {hasWon ? (
               <span
                 className={`mr-1 text-sm font-semibold ${
@@ -526,7 +533,7 @@ export function Scoreboard({
                 data-perfect={isPerfect ? 'true' : 'false'}
                 data-testid="won-mark"
               >
-                <span aria-hidden="true">✓</span>
+                <span aria-hidden="true">{isPerfect ? '🏆' : '✓'}</span>
                 <span className="sr-only">{t.statWon}</span>
               </span>
             ) : null}
