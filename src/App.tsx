@@ -311,6 +311,7 @@ function AppBody({
           winThreshold={game.winThreshold}
           wordOriginRef={wordOriginRef}
           wordSlots={game.wordSlots}
+          admittingGaps={game.admittingGaps}
         />
         <div className="game-composer flex w-full flex-col items-center gap-3">
           <WordInput

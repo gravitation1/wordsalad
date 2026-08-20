@@ -33,6 +33,9 @@ interface ScoreboardProps {
   saladLetters: readonly string[];
   requiredCharacters: string;
   wordSlots: readonly WordSlot[];
+  // Start slots of the gaps the staged input could still break, for the
+  // drum's hunt cursor.
+  admittingGaps: ReadonlySet<number>;
   spotlight: WordSpotlight | null;
   // A gated meta shortcut to acknowledge with a dip on its pill.
   denied: DeniedControl | null;
@@ -143,6 +146,7 @@ export function Scoreboard({
   saladLetters,
   requiredCharacters,
   wordSlots,
+  admittingGaps,
   spotlight,
   denied,
   shareRequest,
@@ -677,6 +681,7 @@ export function Scoreboard({
         </div>
       </div>
       <WordDrum
+        admittingGaps={admittingGaps}
         definitionUrl={definitionUrl}
         foldLetter={foldLetter}
         inputWord={inputWord}

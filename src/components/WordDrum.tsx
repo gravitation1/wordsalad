@@ -20,6 +20,10 @@ import type { WordOrigin } from './tiles';
 import { miniTileClass } from './tiles';
 
 interface WordDrumProps {
+  // Start slots of the gaps the staged input could still break (computed
+  // beside the rack dimming, from the same dictionary-blind test). The
+  // cursor targets the first of them.
+  admittingGaps: ReadonlySet<number>;
   // Where a found word's definition lives (dictionary- and UI-language
   // aware; the rows are surface forms, exactly what definitions key on).
   definitionUrl: (word: string) => string;
@@ -104,6 +108,7 @@ const MIN_FLIGHT_MS = 350;
 const SLOT_REVEAL_MS = 120;
 
 export function WordDrum({
+  admittingGaps,
   definitionUrl,
   foldLetter,
   inputWord,
@@ -164,18 +169,21 @@ export function WordDrum({
     return list;
   }, [slots]);
 
-  // The drum's cursor: while letters are staged, they always sort to
-  // exactly one position in the alphabetized list, and the cursor is that
-  // resolution made visible — a highlighted row when the letters spell a
-  // found word, a highlighted brick when they sort into an unfound run,
-  // and a hairline caret at a seam two adjacent found rows close off
-  // (nothing unfound can sort there). Position, not verdict: the pill at
-  // the rack says what the letters are worth; this only ever says where
-  // they are. Point semantics deliberately — the cursor marks where the
-  // string as typed sorts, not the span of its possible completions — so
-  // it moves predictably as letters are added and removed. Derived from
-  // public knowledge only (found rows and the bricks between them), like
-  // the pursuit that keeps it in view.
+  // The drum's cursor: while letters are staged, it marks the hunt's
+  // target — the first brick the staged letters could still break
+  // (admittingGaps: the gaps that admit the input as a prefix, all of
+  // which sit inside the input's prefix range). Nobody re-submits a found
+  // word; the blocks are what staged letters are for, so blocks get the
+  // cursor by default. Target, not verdict: the pill at the rack says
+  // what the letters are worth; this says where their work is. Adding a
+  // letter only narrows which gaps admit it, so the cursor walks down
+  // the list as the word grows and back up as it is deleted. Only when
+  // no block admits the letters does the cursor fall back to where the
+  // string as typed sorts — a highlighted row when it spells a found
+  // word nothing unfound extends, or a hairline caret at the seam it
+  // would vanish into (a dead end: nothing unfound can sort there).
+  // Derived from public knowledge only (found rows and the bricks
+  // between them), like the pursuit that keeps it in view.
   const cursor = useMemo<
     | { kind: 'brick' | 'row'; index: number }
     | { kind: 'seam'; before: number }
@@ -183,6 +191,12 @@ export function WordDrum({
   >(() => {
     if (inputWord === '' || items.length === 0) {
       return null;
+    }
+    const hunt = items.findIndex(
+      (item) => item.kind === 'brick' && admittingGaps.has(item.start),
+    );
+    if (hunt >= 0) {
+      return { index: hunt, kind: 'brick' };
     }
     const foldWord = (word: string) =>
       Array.from(word).map(foldLetter).join('');
@@ -205,7 +219,7 @@ export function WordDrum({
     return items[index - 1]?.kind === 'brick'
       ? { index: index - 1, kind: 'brick' }
       : { before: index, kind: 'seam' };
-  }, [foldLetter, inputWord, items]);
+  }, [admittingGaps, foldLetter, inputWord, items]);
 
   // Where the found rows sat, refreshed whenever the list changes shape:
   // the drum's own box plus each row's offset within the scrolling content.
@@ -583,10 +597,11 @@ export function WordDrum({
   }, [easeScrollTo, items, spotlight, wordOriginRef]);
 
   // The drum follows the typing: each keystroke rolls the window to the
-  // typed string's place in the alphabetized list — the gap it would land
-  // in, or the row that already holds it. Only public knowledge steers
-  // this — found rows and the bricks between them — so it surfaces
-  // nothing a scrub of the drum would not; it just does the scrubbing.
+  // cursor's target — the first block the typed string could still
+  // break, or where it sorts once nothing admits it. Only public
+  // knowledge steers this — found rows and the bricks between them — so
+  // it surfaces nothing a scrub of the drum would not; it just does the
+  // scrubbing.
   // An empty input parks the drum where it last was: snapping home on
   // every clear would double the motion for nothing.
   useEffect(() => {
@@ -862,8 +877,9 @@ export function WordDrum({
             // so its hover answers as one (interactive bricks only).
             // Under the cursor the edge firms to the keycap gray — the
             // staged letters sort into this material.
+            const isCursor = cursor?.kind === 'brick' && cursor.index === index;
             const chipClass = `block-hatch absolute -inset-x-2 inset-y-0.5 -z-10 rounded-lg border ${
-              cursor?.kind === 'brick' && cursor.index === index
+              isCursor
                 ? 'border-gray-400 dark:border-gray-500'
                 : 'border-gray-200 dark:border-gray-800'
             } bg-gray-100 dark:bg-gray-900${
@@ -891,6 +907,7 @@ export function WordDrum({
                 // tiles again after a find rewrote the list.
                 data-brick-start={item.start}
                 data-count={item.count}
+                data-cursor={isCursor ? 'true' : 'false'}
                 data-testid="word-brick"
                 key={`brick-${String(item.start)}`}
                 // The material takes up whatever the found rows leave, in

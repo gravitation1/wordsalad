@@ -4,6 +4,7 @@ import type { DictionarySpec } from './game/dictionaries';
 import { alphabetPattern, DEFAULT_DICTIONARY } from './game/dictionaries';
 import type { WordGap } from './game/gapPrefixes';
 import {
+  gapAdmits,
   liveNextLetters,
   rankedLetters,
   slotPrefixes,
@@ -224,6 +225,10 @@ export interface PlayingGame {
   feedback: GameFeedback | null;
   foundWords: readonly FoundWord[];
   wordSlots: readonly WordSlot[];
+  // Start slots of the gaps the staged input could still break — the same
+  // dictionary-blind test as the rack dimming, per gap. The drum's cursor
+  // targets the first of them.
+  admittingGaps: ReadonlySet<number>;
   spotlight: WordSpotlight | null;
   earnedPoints: number;
   maxPoints: number;
@@ -1219,6 +1224,33 @@ export function useWordSaladGame(
     });
   }, [boardAlphabet, gaps, hintReveal, inputLetters, wordSalad]);
 
+  // Which gaps the staged letters could still break: a gap is in while it
+  // admits the input as a prefix, by the same dictionary-blind test the
+  // ghost prefixes and rack dimming rest on. Extensions of the input all
+  // sort at or after it, so these gaps are exactly the ones inside the
+  // input's prefix range.
+  const admittingGaps = useMemo<ReadonlySet<number>>(() => {
+    const staged = inputLetters.join('');
+    if (wordSalad === null || staged === '') {
+      return new Set();
+    }
+    return new Set(
+      gaps
+        .filter((gap) =>
+          gapAdmits(
+            {
+              alphabet: boardAlphabet,
+              lower: gap.lower,
+              upper: gap.upper,
+              minimumLength: wordSalad.minimumLength,
+            },
+            staged,
+          ),
+        )
+        .map((gap) => gap.start),
+    );
+  }, [boardAlphabet, gaps, inputLetters, wordSalad]);
+
   // Record a compact summary for the history view whenever progress
   // changes. Zero-progress games stay out of history (browsing New game
   // would otherwise litter it), and Restart clears the record.
@@ -1308,6 +1340,7 @@ export function useWordSaladGame(
     feedback,
     foundWords,
     wordSlots,
+    admittingGaps,
     spotlight,
     earnedPoints,
     maxPoints: wordSalad.maxPoints,

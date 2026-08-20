@@ -699,6 +699,67 @@ describe('App', () => {
     expect(within(rows[0]).getByRole('link', { name: 'TEST' })).toBeVisible();
   });
 
+  it('aims the cursor at the first block the staged letters could break', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const drum = () => within(screen.getByTestId('word-drum'));
+    const bricks = () => drum().getAllByTestId('word-brick');
+
+    submitWord('test'); // ROTTED · TEST · WORSTED: a brick on either side
+
+    // TES could still complete into the first gap (TESD… sorts before
+    // TEST), so the hunt starts there.
+    typeWord('tes');
+    expect(bricks().map((b) => b.getAttribute('data-cursor'))).toEqual([
+      'true',
+      'false',
+    ]);
+
+    // The fourth letter rules the first gap out and the cursor walks down
+    // — past the found TEST row, which stays unselected even though the
+    // staged letters spell it exactly: the blocks are the hunt, and the
+    // rack's badge already says "already found".
+    typeWord('t');
+    expect(bricks().map((b) => b.getAttribute('data-cursor'))).toEqual([
+      'false',
+      'true',
+    ]);
+    expect(drum().queryByTestId('drum-cursor-row')).not.toBeInTheDocument();
+
+    // Deleting widens what admits again, and the cursor walks back up.
+    pressKey('Backspace');
+    expect(bricks().map((b) => b.getAttribute('data-cursor'))).toEqual([
+      'true',
+      'false',
+    ]);
+  });
+
+  it('falls back to the found row once nothing unfound extends the word', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const drum = () => within(screen.getByTestId('word-drum'));
+
+    submitWord('worsted'); // brick{ROTTED · TEST} · WORSTED
+    typeWord('worsted'); // no gap admits any extension of WORSTED
+    expect(drum().getByTestId('drum-cursor-row')).toBeInTheDocument();
+    expect(drum().getByTestId('word-brick')).toHaveAttribute(
+      'data-cursor',
+      'false',
+    );
+  });
+
+  it('shows the dead-end seam when the letters cannot break anything', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const drum = () => within(screen.getByTestId('word-drum'));
+
+    submitWord('rotted');
+    submitWord('test'); // adjacent rows; only WORSTED's brick remains
+    typeWord('sort'); // sorts between the rows; no gap admits it
+    expect(drum().getByTestId('drum-caret')).toBeInTheDocument();
+    expect(drum().getByTestId('word-brick')).toHaveAttribute(
+      'data-cursor',
+      'false',
+    );
+  });
+
   it('reveals the letters a gap logically forces and prefills on tap', () => {
     // CAECAL sits alone between CACAO and CALL, so once those two are
     // found, the sort order alone proves it starts with CA.
