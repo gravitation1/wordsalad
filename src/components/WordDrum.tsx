@@ -29,6 +29,10 @@ interface WordDrumProps {
   // Surface letter -> play key, so an accented tile (É in CAFÉ) still
   // recognizes itself as the required letter it folds to.
   foldLetter: (letter: string) => string;
+  // The letters typed so far, exactly as they stand in the input. The drum
+  // follows them: each keystroke rolls the window to where that string
+  // would sit in the alphabetized list. Empty leaves the drum parked.
+  inputWord: string;
   // Types an unfound row's derived prefix into the word area.
   onPrefill: (prefix: string) => void;
   // The word to bring into view, if any. A new id re-triggers the scroll,
@@ -78,6 +82,15 @@ type DrumItem =
   | { kind: 'word'; slotIndex: number; found: FoundWord }
   | { kind: 'brick'; start: number; count: number; prefix: string };
 
+// How the drum follows the typing (an experiment with two candidate
+// feels — flip the word to compare):
+//   'center'  every keystroke rolls the target to mid-window, so the eye
+//             always checks one spot;
+//   'reveal'  minimum motion — nothing moves while the target is already
+//             legible, and when it is not, the drum slides just far
+//             enough to tuck it inside the edge fade.
+const PURSUIT_MODE: 'center' | 'reveal' = 'reveal';
+
 // The beat between newly forced letters as they settle into a brick.
 const TILE_ARRIVAL_MS = 70;
 
@@ -92,6 +105,7 @@ const SLOT_REVEAL_MS = 120;
 export function WordDrum({
   definitionUrl,
   foldLetter,
+  inputWord,
   onPrefill,
   restartExit,
   spotlight,
@@ -114,6 +128,10 @@ export function WordDrum({
   // the roll and relaunch the flight of a word already shelved on every
   // subsequent keystroke.
   const handledSpotlight = useRef(0);
+  // Until when a submission's roll-and-flight owns the drum's position:
+  // the typing pursuit below yields to it, so letters typed while a word
+  // is still landing cannot yank the slot out from under the flight.
+  const rollUntil = useRef(0);
 
   // Slots folded into the drum's rendering units. A find replaces one
   // brick with up to three items (brick · word · brick), so item indices
@@ -144,6 +162,49 @@ export function WordDrum({
     }
     return list;
   }, [slots]);
+
+  // The drum's cursor: while letters are staged, they always sort to
+  // exactly one position in the alphabetized list, and the cursor is that
+  // resolution made visible — a highlighted row when the letters spell a
+  // found word, a highlighted brick when they sort into an unfound run,
+  // and a hairline caret at a seam two adjacent found rows close off
+  // (nothing unfound can sort there). Position, not verdict: the pill at
+  // the rack says what the letters are worth; this only ever says where
+  // they are. Point semantics deliberately — the cursor marks where the
+  // string as typed sorts, not the span of its possible completions — so
+  // it moves predictably as letters are added and removed. Derived from
+  // public knowledge only (found rows and the bricks between them), like
+  // the pursuit that keeps it in view.
+  const cursor = useMemo<
+    | { kind: 'brick' | 'row'; index: number }
+    | { kind: 'seam'; before: number }
+    | null
+  >(() => {
+    if (inputWord === '' || items.length === 0) {
+      return null;
+    }
+    const foldWord = (word: string) =>
+      Array.from(word).map(foldLetter).join('');
+    const staged = foldWord(inputWord);
+    const index = items.findIndex(
+      (item) => item.kind === 'word' && foldWord(item.found.word) >= staged,
+    );
+    if (index < 0) {
+      // Past every found word: the trailing brick if the list has one,
+      // else the seam below the last row.
+      const last = items[items.length - 1];
+      return last.kind === 'brick'
+        ? { index: items.length - 1, kind: 'brick' }
+        : { before: items.length, kind: 'seam' };
+    }
+    const boundary = items[index];
+    if (boundary.kind === 'word' && foldWord(boundary.found.word) === staged) {
+      return { index, kind: 'row' };
+    }
+    return items[index - 1]?.kind === 'brick'
+      ? { index: index - 1, kind: 'brick' }
+      : { before: index, kind: 'seam' };
+  }, [foldLetter, inputWord, items]);
 
   // Where the found rows sat, refreshed whenever the list changes shape:
   // the drum's own box plus each row's offset within the scrolling content.
@@ -513,8 +574,90 @@ export function WordDrum({
         `${String(Math.max(0, Math.round(scrollDuration - SLOT_REVEAL_MS)))}ms`,
       );
     }
+    rollUntil.current =
+      performance.now() +
+      Math.max(scrollDuration, spotlight.requested ? 0 : MIN_FLIGHT_MS);
     easeScrollTo(container, target, scrollDuration);
   }, [easeScrollTo, items, spotlight, wordOriginRef]);
+
+  // The drum follows the typing: each keystroke rolls the window to the
+  // typed string's place in the alphabetized list — the gap it would land
+  // in, or the row that already holds it. Only public knowledge steers
+  // this — found rows and the bricks between them — so it surfaces
+  // nothing a scrub of the drum would not; it just does the scrubbing.
+  // An empty input parks the drum where it last was: snapping home on
+  // every clear would double the motion for nothing.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (cursor === null || container === null) {
+      return;
+    }
+    if (performance.now() < rollUntil.current) {
+      return;
+    }
+    // The camera chases the cursor: its row or brick directly, or for a
+    // seam the item just after it (the caret rides that item's top edge).
+    const index =
+      cursor.kind === 'seam'
+        ? Math.min(cursor.before, items.length - 1)
+        : cursor.index;
+    const target = items[index];
+    const node = container.querySelector(
+      target.kind === 'word'
+        ? `[data-slot-index="${String(target.slotIndex)}"]`
+        : `[data-brick-start="${String(target.start)}"]`,
+    );
+    if (!(node instanceof HTMLElement)) {
+      return;
+    }
+    const height = container.clientHeight || DRUM_HEIGHT;
+    let desired: number;
+    if (PURSUIT_MODE === 'center') {
+      desired = node.offsetTop - (height - node.offsetHeight) / 2;
+    } else {
+      // Legible means clear of the edge fades, so the safe band insets by
+      // the fade's grown depth. A row counts as in view when all of it is
+      // legible; a brick (which can be taller than the window) when at
+      // least a row's worth is.
+      const margin = Math.min(FADE_PX, height / 4);
+      const reveal = Math.min(node.offsetHeight || ROW_HEIGHT, ROW_HEIGHT);
+      const top = node.offsetTop;
+      const bottom = top + node.offsetHeight;
+      const safeTop = container.scrollTop + margin;
+      const safeBottom = container.scrollTop + height - margin;
+      const visible = Math.min(bottom, safeBottom) - Math.max(top, safeTop);
+      if (visible >= reveal) {
+        return; // already in view: the whole point of this mode
+      }
+      // Slide just far enough: a target above tucks its tail in under the
+      // top fade, one below raises its head over the bottom fade.
+      desired =
+        top + node.offsetHeight / 2 < container.scrollTop + height / 2
+          ? bottom - reveal - margin
+          : top + reveal + margin - height;
+    }
+    if (
+      container.clientHeight === 0 ||
+      typeof container.scrollTo !== 'function'
+    ) {
+      container.scrollTop = Math.max(0, desired); // jsdom: no layout to ease
+      return;
+    }
+    const to = Math.min(
+      Math.max(0, desired),
+      Math.max(0, container.scrollHeight - container.clientHeight),
+    );
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      container.scrollTop = to;
+      return;
+    }
+    const distance = Math.abs(to - container.scrollTop);
+    if (distance < 1) {
+      return;
+    }
+    // The spotlight's pacing: short hops brisk, long ones unhurried.
+    easeScrollTo(container, to, Math.min(650, Math.max(280, distance * 0.45)));
+  }, [cursor, easeScrollTo, items]);
 
   // What each brick last said, so the drum can tell a shrunken block from
   // one that now names more than it could before. A narrowed gap forces
@@ -654,6 +797,30 @@ export function WordDrum({
           // once the list overflows, the auto margin resolves to zero and
           // scrolling is unchanged.
           const anchored = index === 0 ? ' mt-auto' : '';
+          // The cursor's hairline: a seam carries no material to
+          // highlight, so the caret straddles the boundary — drawn at
+          // this item's top edge, or under the last item for a seam past
+          // the end of the list. It rides the item, so it scrolls (and
+          // bottom-anchors) with the rows it sits between.
+          const caret = (edge: 'top' | 'bottom') => (
+            <span
+              aria-hidden="true"
+              className={`absolute -inset-x-2 z-10 h-0.5 rounded-full bg-gray-400 dark:bg-gray-500 ${
+                edge === 'top' ? '-top-px' : '-bottom-px'
+              }`}
+              data-testid="drum-caret"
+            />
+          );
+          const seamTop =
+            cursor?.kind === 'seam' && cursor.before === index
+              ? caret('top')
+              : null;
+          const seamBottom =
+            cursor?.kind === 'seam' &&
+            cursor.before === items.length &&
+            index === items.length - 1
+              ? caret('bottom')
+              : null;
           if (item.kind === 'brick') {
             // A fresh find splits its brick: the halves it leaves behind
             // start extended toward each other (together still covering
@@ -691,7 +858,13 @@ export function WordDrum({
             // splitting half extending over the landing row slides under
             // its tiles, never over them. The whole brick is one object,
             // so its hover answers as one (interactive bricks only).
-            const chipClass = `block-hatch absolute -inset-x-2 inset-y-0.5 -z-10 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-gray-900${
+            // Under the cursor the edge firms to the keycap gray — the
+            // staged letters sort into this material.
+            const chipClass = `block-hatch absolute -inset-x-2 inset-y-0.5 -z-10 rounded-lg border ${
+              cursor?.kind === 'brick' && cursor.index === index
+                ? 'border-gray-400 dark:border-gray-500'
+                : 'border-gray-200 dark:border-gray-800'
+            } bg-gray-100 dark:bg-gray-900${
               item.prefix === ''
                 ? ''
                 : ' transition group-hover:border-gray-300 group-hover:bg-gray-200 dark:group-hover:border-gray-700 dark:group-hover:bg-gray-800'
@@ -730,6 +903,8 @@ export function WordDrum({
                   minHeight: ROW_HEIGHT,
                 }}
               >
+                {seamTop}
+                {seamBottom}
                 {item.prefix === '' ? (
                   // The count belongs to the Words column the header names;
                   // what a brick's words are worth is exactly what it does
@@ -822,6 +997,18 @@ export function WordDrum({
               key={`word-${String(item.slotIndex)}`}
               style={{ height: ROW_HEIGHT }}
             >
+              {seamTop}
+              {seamBottom}
+              {/* The cursor as a row selection: the staged letters spell
+                  this very word. The slab wears the bricks' geometry with
+                  the keycap gray's edge — same cursor, solid ground. */}
+              {cursor?.kind === 'row' && cursor.index === index ? (
+                <span
+                  aria-hidden="true"
+                  className="absolute -inset-x-2 inset-y-0.5 -z-10 rounded-lg border border-gray-400 dark:border-gray-500"
+                  data-testid="drum-cursor-row"
+                />
+              ) : null}
               <div
                 // A fresh find's row materializes as the flown word lands
                 // on it (slot-reveal is timed to the flight); being taken

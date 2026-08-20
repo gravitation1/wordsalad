@@ -295,6 +295,7 @@ function AppBody({
           earnedPoints={game.earnedPoints}
           hasWon={game.hasWon}
           hintCount={game.hintCount}
+          inputWord={game.inputLetters.join('')}
           spotlight={game.spotlight}
           level={game.level}
           lockedOut={game.lockedOut}

@@ -60,6 +60,8 @@ interface ScoreboardProps {
   lockedOut: boolean;
   lockout: Lockout | null;
   hintCount: number;
+  // The letters typed so far, joined — the drum rolls to follow them.
+  inputWord: string;
   challengeScore: number | null;
   rankUp: RankUp | null;
   onCustomGame: () => void;
@@ -151,6 +153,7 @@ export function Scoreboard({
   lockedOut,
   lockout,
   hintCount,
+  inputWord,
   challengeScore,
   rankUp,
   onCustomGame,
@@ -669,6 +672,7 @@ export function Scoreboard({
       <WordDrum
         definitionUrl={definitionUrl}
         foldLetter={foldLetter}
+        inputWord={inputWord}
         onPrefill={onPrefill}
         restartExit={restartExit}
         spotlight={spotlight}
