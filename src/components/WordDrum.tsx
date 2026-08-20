@@ -49,6 +49,7 @@ interface WordDrumProps {
 interface WordFlight {
   hinted: boolean;
   id: number;
+  pangram: boolean;
   word: string;
 }
 
@@ -562,6 +563,7 @@ export function WordDrum({
       setFlight({
         hinted: landing.found.hinted,
         id: spotlight.id,
+        pangram: landing.found.pangram,
         word: spotlight.word,
       });
     } else {
@@ -1062,6 +1064,10 @@ export function WordDrum({
                           {
                             compact: found.word.length > 9,
                             muted: found.hinted,
+                            // A hinted pangram stays muted: the bonus was
+                            // forfeited with the reveal, so there is no
+                            // outsized number left to explain.
+                            pangram: found.pangram && !found.hinted,
                           },
                         )}
                         key={tileIndex}
@@ -1118,6 +1124,7 @@ export function WordDrum({
                       {
                         compact: row.word.length > 9,
                         muted: row.hinted,
+                        pangram: row.pangram && !row.hinted,
                       },
                     )}
                     key={tileIndex}
@@ -1155,6 +1162,7 @@ export function WordDrum({
                   {
                     compact: flight.word.length > 9,
                     muted: flight.hinted,
+                    pangram: flight.pangram && !flight.hinted,
                   },
                 )}
                 key={tileIndex}

@@ -61,6 +61,11 @@ interface MiniTileOptions {
   ghost?: boolean;
   // The drum's hinted state.
   muted?: boolean;
+  // A pangram used every letter on the board, so every tile wears the
+  // accent — the "letters that counted" story widened from the one
+  // required letter to all seven. This is what makes the pangram bonus
+  // legible: a fully lit row carrying an outsized number explains itself.
+  pangram?: boolean;
 }
 
 // The game's letters at pocket size, shared by the history rows, the
@@ -68,9 +73,14 @@ interface MiniTileOptions {
 export function miniTileClass(
   letter: string,
   requiredCharacters: string,
-  { compact = false, ghost = false, muted = false }: MiniTileOptions = {},
+  {
+    compact = false,
+    ghost = false,
+    muted = false,
+    pangram = false,
+  }: MiniTileOptions = {},
 ): string {
-  const isRequired = requiredCharacters.includes(letter);
+  const isRequired = pangram || requiredCharacters.includes(letter);
   const face = ghost
     ? TILE_FACE.ghost
     : muted

@@ -48,6 +48,9 @@ export function FeedbackLine({
               <span
                 className={miniTileClass(letter, requiredCharacters, {
                   compact,
+                  // A scored pangram announces itself fully lit, exactly
+                  // as its row on the drum will render.
+                  pangram: feedback.kind === 'scored' && feedback.pangram,
                 })}
                 key={index}
               >

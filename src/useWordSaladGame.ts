@@ -50,7 +50,7 @@ const REVEAL_READ_MS = 500;
 
 export type GameFeedback =
   | { kind: 'letter-rejected'; letter: string }
-  | { kind: 'scored'; word: string; points: number }
+  | { kind: 'scored'; word: string; points: number; pangram: boolean }
   | {
       kind: 'word-rejected';
       word: string;
@@ -61,6 +61,9 @@ export interface FoundWord {
   word: string;
   points: number;
   hinted: boolean;
+  // Used every letter on the board, and scored the bonus for it. The view
+  // lights all of a pangram's tiles so the outsized number explains itself.
+  pangram: boolean;
 }
 
 // One row of the alphabetized word list. Unfound slots stay anonymous —
@@ -160,6 +163,7 @@ export interface RestartExitRow {
   index: number;
   word: string;
   hinted: boolean;
+  pangram: boolean;
 }
 
 // Restart's absorb, published as a one-shot: the found rows captured at
@@ -293,6 +297,7 @@ function toFoundWords(
     word,
     points: hintedWords.has(word) ? 0 : points,
     hinted: hintedWords.has(word),
+    pangram: wordSalad.pangramWords.has(word),
   })).sort((a, b) => compareWords(a.word, b.word));
 }
 
@@ -666,7 +671,12 @@ export function useWordSaladGame(
     const earnedBefore = tallyPoints(wordSalad, hintedWords).earnedPoints;
 
     const awarded = wordSalad.tryWord(word);
-    setFeedback({ kind: 'scored', word, points: isHinted ? 0 : awarded });
+    setFeedback({
+      kind: 'scored',
+      word,
+      points: isHinted ? 0 : awarded,
+      pangram: wordSalad.pangramWords.has(word) && !isHinted,
+    });
 
     const earnedAfter = tallyPoints(wordSalad, hintedWords).earnedPoints;
     const crossedWin = earnedBefore < winPoints && earnedAfter >= winPoints;
@@ -962,7 +972,12 @@ export function useWordSaladGame(
       .map((slot: WordSlot, index: number) =>
         slot.found === null
           ? null
-          : { index, word: slot.found.word, hinted: slot.found.hinted },
+          : {
+              index,
+              word: slot.found.word,
+              hinted: slot.found.hinted,
+              pangram: slot.found.pangram,
+            },
       )
       .filter((row): row is RestartExitRow => row !== null);
     if (exitRows.length > 0) {
