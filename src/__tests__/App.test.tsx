@@ -261,7 +261,7 @@ describe('App', () => {
     // No misleading letters field: the mode says a board will be generated.
     expect(screen.queryByLabelText('Letters')).not.toBeInTheDocument();
     expect(screen.getByTestId('custom-preview')).toHaveTextContent(
-      'A board with 15–60 words will be generated',
+      'A board with 30–80 words will be generated',
     );
   });
 

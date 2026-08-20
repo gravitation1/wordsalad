@@ -87,8 +87,10 @@ export function CustomGameModal({
   // outside the board), while the generator's are typed (no board yet).
   const [requiredTiles, setRequiredTiles] = useState('');
   const [minLength, setMinLength] = useState(4);
-  const [minWords, setMinWords] = useState(15);
-  const [maxWords, setMaxWords] = useState(60);
+  // Seeded at the generator's own curated band, so an untouched builder
+  // produces a default-feeling game.
+  const [minWords, setMinWords] = useState(30);
+  const [maxWords, setMaxWords] = useState(80);
 
   // A range that cannot invert: pushing one bound past the other carries it
   // along, so there is no invalid pair to scold the user about.

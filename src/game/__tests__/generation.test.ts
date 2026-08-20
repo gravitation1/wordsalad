@@ -183,11 +183,11 @@ describe('newRandomWordSalad', () => {
 });
 
 describe('generateWordSalad', () => {
-  it('generates a game with a pangram and 15 to 60 words', () => {
+  it('generates a game with a pangram and 30 to 80 words', () => {
     const wordSalad = generateWordSalad(REAL_DICTIONARY);
     expect(wordSalad.pangramWords.size).toBeGreaterThan(0);
-    expect(wordSalad.remainingWords.size).toBeGreaterThanOrEqual(15);
-    expect(wordSalad.remainingWords.size).toBeLessThanOrEqual(60);
+    expect(wordSalad.remainingWords.size).toBeGreaterThanOrEqual(30);
+    expect(wordSalad.remainingWords.size).toBeLessThanOrEqual(80);
   });
 
   it('generates around a pinned required letter', () => {
@@ -200,7 +200,7 @@ describe('generateWordSalad', () => {
   });
 
   it('accepts a small minimum length via best-effort fallback', () => {
-    // min=2 blows past the 60-word ceiling, so no puzzle meets the curated
+    // min=2 blows past the 80-word ceiling, so no puzzle meets the curated
     // band; the best valid one is returned anyway.
     const wordSalad = generateWordSalad(REAL_DICTIONARY, { minimumLength: 2 });
     expect(wordSalad.minimumLength).toBe(2);
@@ -238,8 +238,8 @@ describe('generateWordSalad', () => {
     const wordSalad = generateWordSalad(REAL_DICTIONARY, {
       requirePangram: false,
     });
-    expect(wordSalad.remainingWords.size).toBeGreaterThanOrEqual(15);
-    expect(wordSalad.remainingWords.size).toBeLessThanOrEqual(60);
+    expect(wordSalad.remainingWords.size).toBeGreaterThanOrEqual(30);
+    expect(wordSalad.remainingWords.size).toBeLessThanOrEqual(80);
   });
 
   it('fails when more letters are required than a board holds', () => {

@@ -48,9 +48,15 @@ export function randomCharacterString(
 }
 
 // The curated word-count band a generated game falls into unless a caller
-// asks for a different range.
-const DEFAULT_MIN_WORDS = 15;
-const DEFAULT_MAX_WORDS = 60;
+// asks for a different range. The floor is a dead-game filter — the fun is
+// per-submission (the roll, the flight, the sounds), so sparse boards play
+// flat and the worst case matters more than the median. The ceiling bounds
+// session length: winning takes 75% of the points, so board size is
+// playtime. 30–80 puts the typical game near 52 words and the tails at
+// roughly 34 and 74 (measured over every pangram signature × required
+// letter against the shipped dictionary).
+const DEFAULT_MIN_WORDS = 30;
+const DEFAULT_MAX_WORDS = 80;
 
 // Levers a caller can pin; anything omitted takes its default (the minimum
 // length, the word-count band, requiring a pangram) or is chosen from the
