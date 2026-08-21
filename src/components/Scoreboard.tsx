@@ -1,6 +1,7 @@
 import type { RefObject } from 'react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import { completionToPoints, getLevelLadder } from '../game/levels';
 import { useMessages } from '../i18n';
 import type {
   Celebration,
@@ -101,6 +102,32 @@ const ACTION_WON_CLASS =
 // sharing a perfect game is holding up the trophy.
 const ACTION_PERFECT_CLASS =
   'flex min-h-11 touch-manipulation items-center justify-center rounded-full border border-amber-400 px-2 text-sm font-medium text-amber-600 transition hover:bg-amber-400/10 active:scale-95 dark:border-amber-400/60 dark:text-amber-300';
+
+// The ratings ladder riding the progress bar as dots, one rule for all of
+// them: passed melts into the fill, ahead is hollow, burned melts into the
+// gray burn. The two point targets — the win line and the perfect sweep —
+// wear larger rings while they are live promises: green for the win, gold
+// for perfect. Every dot overhangs the 6px track by exactly the strip's
+// 2px padding, so no state changes the strip's footprint.
+const DOT_BASE_CLASS =
+  'pointer-events-none absolute top-1/2 -translate-y-1/2 rounded-full transition-colors';
+const RUNG_CLASS = `${DOT_BASE_CLASS} h-[7px] w-[7px] -translate-x-1/2`;
+const RUNG_AHEAD_CLASS = `${RUNG_CLASS} border border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-950`;
+const RUNG_PASSED_CLASS = `${RUNG_CLASS} bg-accent`;
+const RUNG_BURNED_CLASS = `${RUNG_CLASS} bg-gray-400 dark:bg-gray-600`;
+// Solid states keep the border (in their fill color) rather than dropping
+// it, so a ring resolving never changes size.
+const TARGET_CLASS = `${DOT_BASE_CLASS} h-2.5 w-2.5 border-2`;
+const TARGET_WIN_CLASS = `${TARGET_CLASS} -translate-x-1/2`;
+// The terminus ring is tucked fully inside the track's right edge (no
+// centering translate), so the bar with its ladder is exactly as wide as
+// the bare gold sweep the perfect dissolve leaves behind.
+const TARGET_END_CLASS = `${TARGET_CLASS} right-0`;
+const TARGET_WIN_LIVE_CLASS = 'border-accent bg-white dark:bg-gray-950';
+const TARGET_GOLD_LIVE_CLASS = 'border-amber-400 bg-white dark:bg-gray-950';
+const TARGET_KEPT_CLASS = 'border-accent bg-accent';
+const TARGET_DEAD_CLASS =
+  'border-gray-400 bg-gray-400 dark:border-gray-600 dark:bg-gray-600';
 
 // A gated shortcut aimed at this pill (2 or 3 with nothing found): dip in
 // acknowledgment, exactly as the play controls do for a denied Backspace
@@ -310,19 +337,25 @@ export function Scoreboard({
   // it (only the animations are reserved for the moment itself).
   const isPerfect = earnedPoints === maxPoints;
 
-  // The bar measures whatever is actually being played for: the win
-  // threshold until it is reached, the full board once it is. Max() guards
-  // the degenerate zero-point puzzle rather than dividing by nothing.
-  const barMax = Math.max(1, hasWon ? maxPoints : winPoints);
+  // One fixed scale for the whole game: the full board. The fill crosses
+  // the win ring instead of the bar re-scaling at the win, and hint burn
+  // is always visible from the right — the gray reaching the win ring IS
+  // the lost state. Max() guards the degenerate zero-point puzzle rather
+  // than dividing by nothing.
+  const barMax = Math.max(1, maxPoints);
   const earnedWidth = Math.min(1, earnedPoints / barMax);
-  // What hints have taken. Against the full board that is simply what was
-  // spent; against the threshold it is only the part that has eaten into
-  // still-winnable points — nothing while the slack above the threshold
-  // covers it, which is to say nothing until the game is lost.
-  const burnedPoints = hasWon
-    ? lostPoints
-    : Math.max(0, winPoints - (maxPoints - lostPoints));
-  const burnedWidth = Math.min(1 - earnedWidth, burnedPoints / barMax);
+  const burnedWidth = Math.min(1 - earnedWidth, lostPoints / barMax);
+  // What a flawless rest-of-game could still reach; every rating boundary
+  // past it is burned. Boundaries compare in points (the ladder's own
+  // epsilon-guarded rounding), never as raw fractions.
+  const reachablePoints = maxPoints - lostPoints;
+  // The ladder's interior rungs: every rating boundary except the two
+  // ringed targets (the win line and the perfect sweep).
+  const rungFractions = getLevelLadder()
+    .map((step) => step.minimumCompletion)
+    .filter(
+      (fraction) => fraction > 0 && fraction < 1 && fraction !== winThreshold,
+    );
 
   // Closing the dialog restores focus to this trigger; blur it so a
   // subsequent Enter submits a word instead of re-opening the dialog.
@@ -592,8 +625,8 @@ export function Scoreboard({
           </p>
         </div>
         {/* Green earned points grow from the left; gray points lost to
-            hints eat in from the right. A hairline now, sitting under the
-            score line rather than claiming a row of its own. */}
+            hints eat in from the right. A hairline under the score line,
+            wearing the ratings ladder as dots. */}
         <div className="progress-strip relative py-0.5">
           <div
             aria-label={t.completionLabel}
@@ -611,9 +644,11 @@ export function Scoreboard({
           >
             {/* Both fills advance with flat edges — the container's clip
                 rounds the outer ends — so they butt cleanly when they
-                meet. */}
+                meet. A perfect sweep trades the accent for gold. */}
             <div
-              className="absolute inset-y-0 left-0 bg-accent transition-all"
+              className={`absolute inset-y-0 left-0 transition-all ${
+                isPerfect ? 'bg-amber-400' : 'bg-accent'
+              }`}
               ref={earnedBarRef}
               style={{ width: `${earnedWidth * 100}%` }}
             />
@@ -624,17 +659,51 @@ export function Scoreboard({
               style={{ width: `${burnedWidth * 100}%` }}
             />
           </div>
-          {/* Only once the win is banked and the bar spans the full board is
-              there a threshold to mark: before that it is the bar's own end.
-              Dark enough to stay visible on top of the gray lost segment. */}
-          {hasWon ? (
-            <div
-              aria-hidden="true"
-              className="absolute inset-y-0 w-0.5 -translate-x-1/2 rounded bg-gray-700 dark:bg-gray-300"
-              style={{ left: `${winThreshold * 100}%` }}
-              title={t.winThresholdLabel(winPoints)}
-            />
-          ) : null}
+          {/* At perfect the ladder dissolves: every rung is history, and
+              the gold sweep stands alone. */}
+          {isPerfect ? null : (
+            <>
+              {rungFractions.map((fraction) => {
+                const rungPoints = completionToPoints(fraction, maxPoints);
+                return (
+                  <div
+                    aria-hidden="true"
+                    className={
+                      earnedPoints >= rungPoints
+                        ? RUNG_PASSED_CLASS
+                        : rungPoints > reachablePoints
+                          ? RUNG_BURNED_CLASS
+                          : RUNG_AHEAD_CLASS
+                    }
+                    key={fraction}
+                    style={{ left: `${fraction * 100}%` }}
+                  />
+                );
+              })}
+              {/* The win target: a green promise until it is kept (filled
+                  by the arriving fill) or broken (spent gray). */}
+              <div
+                aria-hidden="true"
+                className={`${TARGET_WIN_CLASS} ${
+                  hasWon
+                    ? TARGET_KEPT_CLASS
+                    : lockedOut
+                      ? TARGET_DEAD_CLASS
+                      : TARGET_WIN_LIVE_CLASS
+                }`}
+                style={{ left: `${winThreshold * 100}%` }}
+                title={t.winThresholdLabel(winPoints)}
+              />
+              {/* The perfect target: a gold promise the first hint breaks
+                  — the ring grays right as the spent cost lands here. */}
+              <div
+                aria-hidden="true"
+                className={`${TARGET_END_CLASS} ${
+                  lostPoints > 0 ? TARGET_DEAD_CLASS : TARGET_GOLD_LIVE_CLASS
+                }`}
+              />
+            </>
+          )}
         </div>
       </div>
       {/* The lockout modal's quiet residue once dismissed — and the only

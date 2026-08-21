@@ -131,11 +131,7 @@ function AppBody({
   useEffect(() => {
     lastBarWidth.current =
       game.status === 'playing'
-        ? Math.min(
-            1,
-            game.earnedPoints /
-              Math.max(1, game.hasWon ? game.maxPoints : game.winPoints),
-          )
+        ? Math.min(1, game.earnedPoints / Math.max(1, game.maxPoints))
         : 0;
   });
 

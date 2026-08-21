@@ -1448,8 +1448,9 @@ describe('App', () => {
     render(<App dictionary={DICTIONARY} />);
     const hint = () => screen.getByRole('button', { name: 'Hint' });
     // The next hint reveals the shortest word (TEST, worth 1); the badge
-    // frames the cost as a reduction of the max, not a deduction.
-    expect(hint()).toHaveTextContent('−1 max');
+    // trails the button (like a typed word's verdict) and frames the cost
+    // as a reduction of the max, not a deduction.
+    expect(screen.getByText('−1 max')).toBeInTheDocument();
 
     // Commit TEST; the next hint would reveal ROTTED (worth 3).
     fireEvent.click(hint());
@@ -1461,7 +1462,8 @@ describe('App', () => {
 
     // Once TEST lands, the next hint is a fresh charge for ROTTED.
     pressKey('Enter');
-    expect(hint()).toHaveTextContent('−3 max');
+    expect(hint()).toBeInTheDocument();
+    expect(screen.getByText('−3 max')).toBeInTheDocument();
   });
 
   it('marks the hint that would forfeit the win', () => {
@@ -1499,8 +1501,9 @@ describe('App', () => {
     render(<App dictionary={DICTIONARY} />);
     const hint = () => screen.getByRole('button', { name: 'Hint' });
 
-    // Already paid for: the offer carries no cost chip.
-    expect(hint()).not.toHaveTextContent('max');
+    // Already paid for: the offer carries no cost badge.
+    expect(hint()).toBeInTheDocument();
+    expect(screen.queryByText(/−\d+ max/u)).not.toBeInTheDocument();
 
     fireEvent.click(hint()); // the same word, at no new charge
     expect(currentWord()).toBe('TEST');
@@ -2489,7 +2492,7 @@ describe('App with the French dictionary', () => {
     const hint = () => screen.getByRole('button', { name: 'Hint' });
 
     // The next hint is the COTE group: four one-point siblings, −4 max.
-    expect(hint()).toHaveTextContent('−4 max');
+    expect(screen.getByText('−4 max')).toBeInTheDocument();
     fireEvent.click(hint());
     expect(currentWord()).toBe('COTE');
     // Spending 4 of 7 points drops the win out of reach: dismiss the

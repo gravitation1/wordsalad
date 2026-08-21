@@ -40,16 +40,19 @@ interface WordInputProps {
   wordOriginRef: { current: WordOrigin | null };
 }
 
-// Faded to sit quietly beside the muted "Hint" label; red as a cost warning
-// before the purchase (once spent, the bar shows the loss in neutral gray).
+// The cost, worn at the hint button's trailing edge in the typed word's
+// verdict-badge grammar: whatever stands in the word area wears its points
+// consequence as a trailing pill — +N for a word, −N max for a hint. Red
+// borrows the verdict family's "this will cost you" recipe (the invalid-
+// letters ✕), so the color already carries the warning in this spot.
 const HINT_BADGE_CLASS =
-  'flex h-5 items-center whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2 text-[11px] font-semibold text-red-400 dark:border-red-400/25 dark:bg-red-400/10 dark:text-red-400/80';
+  'flex h-[17px] items-center justify-center whitespace-nowrap rounded-full border border-red-300 bg-white px-1.5 text-xs font-bold tracking-normal text-red-500 dark:border-red-400/40 dark:bg-gray-950 dark:text-red-400';
 
 // Full alarm: this hint would drop the reachable maximum below the win
-// line. The routine faded chip goes solid so the same object reads as
-// "this one is different".
+// line. The verdict family is all outlines, so the solid fill is a
+// categorical break — "this one is different".
 const HINT_BADGE_DANGER_CLASS =
-  'flex h-5 items-center whitespace-nowrap rounded-full bg-red-500 px-2 text-[11px] font-semibold text-white';
+  'flex h-[17px] items-center justify-center whitespace-nowrap rounded-full bg-red-500 px-1.5 text-xs font-bold tracking-normal text-white';
 
 // The exiting word's letters peel off left to right as it animates away.
 const EXIT_STAGGER_MS = 35;
@@ -238,35 +241,46 @@ export function WordInput({
               aria-describedby="hint-note"
               // The button eases in; after a submission it waits out the
               // exiting word so the two never hard-cut in the same frame.
-              className={`${wordExit === null ? 'hint-enter' : 'hint-enter-delayed'} flex h-10 touch-manipulation items-center gap-2 rounded-full bg-gray-100 px-4 text-sm font-medium text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200`}
+              className={`${wordExit === null ? 'hint-enter' : 'hint-enter-delayed'} flex min-h-10 touch-manipulation items-center rounded-full bg-gray-100 px-4 py-1 text-sm font-medium text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200`}
               data-forfeits-win={hintForfeitsWin ? 'true' : 'false'}
               onClick={handleHint}
               title={hintNote}
               type="button"
             >
-              {t.hintButton}
-              {/* Taking a hint lowers your reachable max score by this much.
-                  Re-revealing an already-paid word is free: no cost chip. */}
-              {hintCost > 0 ? (
-                <span
-                  aria-hidden="true"
-                  className={
-                    hintForfeitsWin ? HINT_BADGE_DANGER_CLASS : HINT_BADGE_CLASS
-                  }
-                  ref={costBadgeRef}
-                >
-                  {t.hintCostBadge(hintCost)}
+              {/* Label over keycap, the shortcut pattern every other button
+                  follows — with the cost badge outside, the interior is
+                  exactly that pattern and nothing else. min-h-10 (not a
+                  fixed height): the stack collapses to one finger-sized
+                  line where the keycap hides. */}
+              <span className="flex flex-col items-center leading-tight">
+                {t.hintButton}
+                {/* Keyboard shortcut, shown only where there is a real
+                    keyboard. */}
+                <span aria-hidden="true" className={KEYCAP_CLASS}>
+                  {/* tracking-normal above: inherited letter-spacing trails
+                    the glyph and skews it off-center. The half-pixel lift
+                    moves the ink to its measured optical center. */}
+                  <span className="inline-block -translate-y-[0.5px]">?</span>
                 </span>
-              ) : null}
-              {/* Keyboard shortcut, shown only where there is a real
-                  keyboard. */}
-              <span aria-hidden="true" className={KEYCAP_CLASS}>
-                {/* tracking-normal above: inherited letter-spacing trails the
-                  glyph and skews it off-center. The half-pixel lift moves the
-                  ink to its measured optical center. */}
-                <span className="inline-block -translate-y-[0.5px]">?</span>
               </span>
             </button>
+            {/* Taking a hint lowers your reachable max score by this much,
+                worn at the button's trailing edge the way a typed word
+                wears its verdict. Decoration, not a click target — the
+                button's title and note already speak the cost. It enters
+                with the button so the pair arrives as one object.
+                Re-revealing an already-paid word is free: no badge. */}
+            {hintCost > 0 ? (
+              <span
+                aria-hidden="true"
+                className={`${wordExit === null ? 'hint-enter' : 'hint-enter-delayed'} pointer-events-none ml-2 ${
+                  hintForfeitsWin ? HINT_BADGE_DANGER_CLASS : HINT_BADGE_CLASS
+                }`}
+                ref={costBadgeRef}
+              >
+                {t.hintCostBadge(hintCost)}
+              </span>
+            ) : null}
             {/* Outside the button: describes it without joining its
                 accessible name (which stays a plain "Hint"). */}
             <span className="sr-only" id="hint-note">
