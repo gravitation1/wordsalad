@@ -50,3 +50,36 @@ export function completionToPoints(
 ): number {
   return Math.ceil(fraction * maxPoints - 1e-9);
 }
+
+export interface NextRank {
+  level: string;
+  // The smallest score that reaches it.
+  points: number;
+}
+
+// The rank the next earned points are chasing: the lowest rung above the
+// current score, provided a flawless rest-of-game can still get there.
+// Null once nothing above remains reachable — a perfect sweep, or hints
+// burned past the last rung. (Rung points grow with the ladder, so burned
+// rungs are always a suffix: there is never a reachable rung beyond an
+// unreachable one.)
+export function getNextRank(
+  earnedPoints: number,
+  maxPoints: number,
+  reachablePoints: number,
+): NextRank | null {
+  let next: NextRank | null = null;
+  for (const step of getLevelLadder()) {
+    const points = completionToPoints(step.minimumCompletion, maxPoints);
+    if (points <= earnedPoints || points > reachablePoints) {
+      continue;
+    }
+    if (next !== null && points > next.points) {
+      break;
+    }
+    // On small boards several rungs can collapse onto one score; keep the
+    // last of them — the rank that crossing score actually awards.
+    next = { level: step.level, points };
+  }
+  return next;
+}

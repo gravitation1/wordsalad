@@ -71,6 +71,16 @@ describe('plural forms', () => {
     expect(CATALOGS.ru.scoreLabel(1, 21)).toBe('1 / 21 очко');
     expect(CATALOGS.ru.scoreLabel(1, 3)).toBe('1 / 3 очка');
     expect(CATALOGS.ru.scoreLabel(3, 100)).toBe('3 / 100 очков');
+    // And with the countdown's delta.
+    expect(CATALOGS.ru.pointsToRank(21, 'Гений')).toBe(
+      '21 очко до звания «Гений»',
+    );
+    expect(CATALOGS.ru.pointsToRank(3, 'Гений')).toBe(
+      '3 очка до звания «Гений»',
+    );
+    expect(CATALOGS.ru.pointsToRank(100, 'Гений')).toBe(
+      '100 очков до звания «Гений»',
+    );
   });
 
   it('handles German full-word plurals', () => {
@@ -113,7 +123,7 @@ describe('French UI', () => {
     );
     expect(screen.getByText('1 mot trouvé')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: '1 / 12 points pour gagner · Bof' }),
+      screen.getByRole('button', { name: 'Bof · à 1 point de Correct' }),
     ).toBeInTheDocument();
   });
 
@@ -158,7 +168,7 @@ describe('Japanese UI', () => {
     expect(screen.getByText('1個の単語')).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
-        name: '勝利まで 1 / 12ポイント · いまいち',
+        name: 'いまいち · まあまあまで あと1ポイント',
       }),
     ).toBeInTheDocument();
   });

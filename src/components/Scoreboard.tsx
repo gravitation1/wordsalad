@@ -1,7 +1,11 @@
 import type { RefObject } from 'react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import { completionToPoints, getLevelLadder } from '../game/levels';
+import {
+  completionToPoints,
+  getLevelLadder,
+  getNextRank,
+} from '../game/levels';
 import { useMessages } from '../i18n';
 import type {
   Celebration,
@@ -349,6 +353,10 @@ export function Scoreboard({
   // past it is burned. Boundaries compare in points (the ladder's own
   // epsilon-guarded rounding), never as raw fractions.
   const reachablePoints = maxPoints - lostPoints;
+  // The rung the next earned points are chasing, for the score line's
+  // countdown; null once nothing above the current rank can be caught (a
+  // perfect sweep, or hints burned past the last rung).
+  const nextRank = getNextRank(earnedPoints, maxPoints, reachablePoints);
   // The ladder's interior rungs: every rating boundary except the two
   // ringed targets (the win line and the perfect sweep).
   const rungFractions = getLevelLadder()
@@ -547,12 +555,15 @@ export function Scoreboard({
           {t.challengeNote(challengeScore)}
         </p>
       )}
-      {/* One thin line: score, rank, and the bar as a hairline beneath it.
-          Before the win the measurement is against the threshold actually
-          being played for. The full board is a number almost nobody clears,
-          so grading against it left the bar near-empty and the rank sour
-          for most of a game. Winning banks the goal and the bar rescales to
-          the whole board, with the threshold left behind as a marker. */}
+      {/* One thin line: rank, countdown, and the bar as a hairline beneath
+          it. The countdown names the next rank still in reach — a single
+          delta instead of the old score-over-win-line fraction, which sat
+          on a different scale than the maxPoints bar right below it and
+          made the two disagree ("96% by the numbers" over a 72% fill).
+          The win needs no words of its own: it is the Genius rung, ringed
+          green on the bar, and the countdown wears the accent while that
+          rung is the target. With nothing left to chase the line falls
+          back to the plain score against the whole board. */}
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           {/* Shrink-to-fit and relative so the rank-up burst lands on the
@@ -583,10 +594,6 @@ export function Scoreboard({
               ref={ratingsButtonRef}
               type="button"
             >
-              {hasWon
-                ? t.scoreLabel(earnedPoints, maxPoints)
-                : t.scoreToWin(earnedPoints, winPoints)}
-              {' · '}
               {/* Split-flaps in on a rank-up (keyed remount replays it). */}
               <span
                 className={
@@ -598,6 +605,25 @@ export function Scoreboard({
               >
                 {t.levelName(level)}
               </span>
+              {' · '}
+              {nextRank === null ? (
+                t.scoreLabel(earnedPoints, maxPoints)
+              ) : (
+                /* Accented while the target rung is also the win line — a
+                   kept win puts every remaining rung above it, and a broken
+                   one (lockout) leaves only rungs below, so the tint needs
+                   no hasWon/lockedOut guard of its own. */
+                <span
+                  className={
+                    nextRank.points === winPoints ? 'text-accent' : undefined
+                  }
+                >
+                  {t.pointsToRank(
+                    nextRank.points - earnedPoints,
+                    t.levelName(nextRank.level),
+                  )}
+                </span>
+              )}
             </button>
             {rankUp === null ? null : (
               <span data-testid="rank-burst" key={`burst-${rankUp.id}`}>

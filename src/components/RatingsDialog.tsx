@@ -71,11 +71,16 @@ export function RatingsDialog({
         <span aria-hidden="true">✕</span>
       </button>
       <h2
-        className="mb-3 text-sm font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500"
+        className="mb-1 text-sm font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500"
         id="ratings-title"
       >
         {t.ratingsTitle}
       </h2>
+      {/* The exact score lives here now that the score line outside leads
+          with rank and countdown instead of numbers. */}
+      <p className="mb-3 text-sm font-medium text-gray-600 dark:text-gray-300">
+        {t.scoreLabel(earnedPoints, maxPoints)}
+      </p>
       <ul className="space-y-1.5">
         {ladder.map((step, index) => {
           const isAchieved = earnedPoints >= step.points;

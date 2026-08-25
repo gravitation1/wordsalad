@@ -662,7 +662,7 @@ describe('App', () => {
     );
     expect(screen.getByText('Found 1 word')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: '1 / 12 points to win · Meh' }),
+      screen.getByRole('button', { name: 'Meh · 1 point to Okay' }),
     ).toBeInTheDocument();
     expect(currentWord()).toBe('');
 
@@ -979,7 +979,7 @@ describe('App', () => {
     expect(screen.getByText('Found 3 words')).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
-        name: '15 / 15 points · Super-Duper-Genius',
+        name: 'Super-Duper-Genius · 15 / 15 points',
       }),
     ).toBeInTheDocument();
   });
@@ -1000,6 +1000,14 @@ describe('App', () => {
     submitWord('worsted'); // 12 of 15: the win
     expect(screen.getByTestId('confetti')).toBeInTheDocument();
     expect(rating()).toHaveAttribute('data-rank-id', '1');
+
+    // The countdown grammar survives the win: the next rung takes over as
+    // the target with no switch to a fraction.
+    expect(
+      screen.getByRole('button', {
+        name: 'Genius · 2 points to Super-Genius',
+      }),
+    ).toBeInTheDocument();
   });
 
   it('throws the grand show for a perfect score', () => {
@@ -1241,7 +1249,7 @@ describe('App', () => {
     expect(screen.getByTestId('won-mark')).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
-        name: '15 / 15 points · Super-Duper-Genius',
+        name: 'Super-Duper-Genius · 15 / 15 points',
       }),
     ).toBeInTheDocument();
   });
@@ -1261,10 +1269,12 @@ describe('App', () => {
     submitWord('test'); // 1 of 15 points -> Meh
 
     fireEvent.click(
-      screen.getByRole('button', { name: '1 / 12 points to win · Meh' }),
+      screen.getByRole('button', { name: 'Meh · 1 point to Okay' }),
     );
 
     const dialog = screen.getByRole('dialog');
+    // The exact score moved in here from the score line.
+    expect(within(dialog).getByText('1 / 15 points')).toBeInTheDocument();
     const rows = within(dialog).getAllByRole('listitem');
     // The 11 rating rungs plus the win line marker.
     expect(rows).toHaveLength(12);
@@ -1287,7 +1297,7 @@ describe('App', () => {
     render(<App dictionary={DICTIONARY} />);
     submitWord('test');
     fireEvent.click(
-      screen.getByRole('button', { name: '1 / 12 points to win · Meh' }),
+      screen.getByRole('button', { name: 'Meh · 1 point to Okay' }),
     );
 
     // Typing must not reach the game behind the modal.
