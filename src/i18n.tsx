@@ -94,6 +94,9 @@ export interface Messages {
   shareCopied: string;
   challengeNote: (points: number) => string;
   challengeBeaten: (points: number) => string;
+  // The short form on the score line; the sentences above serve screen
+  // readers and the bar mark's title.
+  challengeClause: (points: number) => string;
   hintButton: string;
   hintsUsed: (count: number, lostPoints: number) => string;
   hintCostBadge: (cost: number) => string;
@@ -227,6 +230,7 @@ const EN: Messages = {
   statHints: 'Hints',
   shareButton: 'Share',
   shareCopied: 'Copied!',
+  challengeClause: (points) => `Beat ${points}`,
   challengeNote: (points) => `Shared score to beat: ${points}`,
   challengeBeaten: (points) => `You beat the shared score of ${points}!`,
   hintButton: 'Hint',
@@ -409,6 +413,7 @@ const FR: Messages = {
   statHints: 'Indices',
   shareButton: 'Partager',
   shareCopied: 'Copié !',
+  challengeClause: (points) => `À battre : ${points}`,
   challengeNote: (points) => `Score partagé à battre : ${points}`,
   challengeBeaten: (points) =>
     `Vous avez battu le score partagé de ${points} !`,
@@ -594,6 +599,7 @@ const ES: Messages = {
   statHints: 'Pistas',
   shareButton: 'Compartir',
   shareCopied: '¡Copiado!',
+  challengeClause: (points) => `A batir: ${points}`,
   challengeNote: (points) => `Puntuación compartida a batir: ${points}`,
   challengeBeaten: (points) =>
     `¡Superaste la puntuación compartida de ${points}!`,
@@ -779,6 +785,7 @@ const DE: Messages = {
   statHints: 'Tipps',
   shareButton: 'Teilen',
   shareCopied: 'Kopiert!',
+  challengeClause: (points) => `Zu schlagen: ${points}`,
   challengeNote: (points) => `Geteilte Punktzahl zum Schlagen: ${points}`,
   challengeBeaten: (points) =>
     `Du hast die geteilte Punktzahl von ${points} geschlagen!`,
@@ -967,6 +974,7 @@ const IT: Messages = {
   statHints: 'Indizi',
   shareButton: 'Condividi',
   shareCopied: 'Copiato!',
+  challengeClause: (points) => `Da battere: ${points}`,
   challengeNote: (points) => `Punteggio condiviso da battere: ${points}`,
   challengeBeaten: (points) =>
     `Hai battuto il punteggio condiviso di ${points}!`,
@@ -1153,6 +1161,7 @@ const PT: Messages = {
   statHints: 'Dicas',
   shareButton: 'Compartilhar',
   shareCopied: 'Copiado!',
+  challengeClause: (points) => `A bater: ${points}`,
   challengeNote: (points) => `Pontuação compartilhada a bater: ${points}`,
   challengeBeaten: (points) =>
     `Você superou a pontuação compartilhada de ${points}!`,
@@ -1339,6 +1348,7 @@ const NL: Messages = {
   statHints: 'Hints',
   shareButton: 'Delen',
   shareCopied: 'Gekopieerd!',
+  challengeClause: (points) => `Te verslaan: ${points}`,
   challengeNote: (points) => `Gedeelde score om te verslaan: ${points}`,
   challengeBeaten: (points) =>
     `Je hebt de gedeelde score van ${points} verslagen!`,
@@ -1523,6 +1533,7 @@ const JA: Messages = {
   statHints: 'ヒント',
   shareButton: '共有',
   shareCopied: 'コピーしました！',
+  challengeClause: (points) => `目標 ${points}`,
   challengeNote: (points) => `共有されたスコア：${points}（これを超えよう）`,
   challengeBeaten: (points) => `共有されたスコア${points}を超えました！`,
   hintButton: 'ヒント',
@@ -1689,6 +1700,7 @@ const KO: Messages = {
   statHints: '힌트',
   shareButton: '공유',
   shareCopied: '복사했어요!',
+  challengeClause: (points) => `목표 ${points}`,
   challengeNote: (points) => `공유된 점수: ${points} (도전해 보세요)`,
   challengeBeaten: (points) => `공유된 점수 ${points}점을 넘었어요!`,
   hintButton: '힌트',
@@ -1853,6 +1865,7 @@ const ZH: Messages = {
   statHints: '提示',
   shareButton: '分享',
   shareCopied: '已复制！',
+  challengeClause: (points) => `目标 ${points}`,
   challengeNote: (points) => `好友分享的分数：${points}（超过它！）`,
   challengeBeaten: (points) => `你超过了分享的分数 ${points}！`,
   hintButton: '提示',
@@ -2018,6 +2031,7 @@ const RU: Messages = {
   statHints: 'Подсказки',
   shareButton: 'Поделиться',
   shareCopied: 'Скопировано!',
+  challengeClause: (points) => `Побить: ${points}`,
   challengeNote: (points) => `Поделились результатом ${points} — побейте его!`,
   challengeBeaten: (points) => `Вы побили результат ${points}!`,
   hintButton: 'Подсказка',

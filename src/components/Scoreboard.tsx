@@ -136,6 +136,15 @@ const TARGET_GOLD_LIVE_CLASS = 'border-amber-400 bg-white dark:bg-gray-950';
 const TARGET_KEPT_CLASS = 'border-accent bg-accent';
 const TARGET_DEAD_CLASS =
   'border-gray-400 bg-gray-400 dark:border-gray-600 dark:bg-gray-600';
+// A shared score to beat rides the bar as a diamond — a shape of its own,
+// so it can't be mistaken for a rung — in the targets' grammar: hollow
+// while it is a promise, filled with the accent once kept. A 7px square on
+// its corner spans just under the strip's 10px, keeping the footprint rule.
+const CHALLENGE_MARK_CLASS =
+  'pointer-events-none absolute top-1/2 h-[7px] w-[7px] -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1.5px] border-2 transition-colors';
+const CHALLENGE_LIVE_CLASS =
+  'border-gray-500 bg-white dark:border-gray-400 dark:bg-gray-950';
+const CHALLENGE_BEATEN_CLASS = 'border-accent bg-accent';
 
 // A gated shortcut aimed at this pill (2 or 3 with nothing found): dip in
 // acknowledgment, exactly as the play controls do for a denied Backspace
@@ -219,6 +228,9 @@ export function Scoreboard({
     loadSummaries().some((entry) => entry.summary.earned > 0),
   );
   const coaching = !hadScoredRecord && earnedPoints === 0;
+  // Strictly more: matching a shared score is a tie, not a win.
+  const challengeBeaten =
+    challengeScore !== null && earnedPoints > challengeScore;
   const [isRatingsOpen, setIsRatingsOpen] = useState(false);
   const ratingsButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -553,23 +565,6 @@ export function Scoreboard({
           winPoints={winPoints}
         />
       ) : null}
-      {/* A score that arrived via a shared link: the duel banner. */}
-      {challengeScore === null ? null : earnedPoints > challengeScore ? (
-        <p
-          className="rounded-xl bg-accent-soft p-3 text-center text-sm font-medium text-accent dark:bg-accent/15"
-          data-testid="challenge"
-          role="status"
-        >
-          {t.challengeBeaten(challengeScore)}
-        </p>
-      ) : (
-        <p
-          className="rounded-xl bg-gray-100 p-3 text-center text-sm font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300"
-          data-testid="challenge"
-        >
-          {t.challengeNote(challengeScore)}
-        </p>
-      )}
       {/* One thin line: rank, countdown, and the bar as a hairline beneath
           it. The countdown names the next rank still in reach — a single
           delta instead of the old score-over-win-line fraction, which sat
@@ -663,6 +658,31 @@ export function Scoreboard({
                 {` · ${t.hintsUsed(hintCount, lostPoints)}`}
               </span>
             ) : null}
+            {/* A shared score to beat: a clause here and a diamond on the
+                bar below, in place of the old full-width banner — the bar
+                already tells the story in points, so the challenge joins it
+                as one more mark to pass. The full sentence goes to screen
+                readers; the eye gets the short form, accented once beaten. */}
+            {challengeScore === null ? null : (
+              <span data-testid="challenge">
+                <span
+                  aria-hidden="true"
+                  className={
+                    challengeBeaten
+                      ? 'font-medium text-accent'
+                      : 'text-gray-600 dark:text-gray-400'
+                  }
+                >
+                  {` · ${t.challengeClause(challengeScore)}`}
+                  {challengeBeaten ? ' ✓' : null}
+                </span>
+                <span className="sr-only" role="status">
+                  {challengeBeaten
+                    ? t.challengeBeaten(challengeScore)
+                    : t.challengeNote(challengeScore)}
+                </span>
+              </span>
+            )}
           </p>
         </div>
         {/* Green earned points grow from the left; gray points lost to
@@ -721,6 +741,28 @@ export function Scoreboard({
                   />
                 );
               })}
+              {/* The shared score to beat, if any, as a diamond at its
+                  point; a target at or beyond the board's maximum can't be
+                  beaten and would sit on the gold ring, so it stays in the
+                  clause alone. */}
+              {challengeScore === null || challengeScore >= maxPoints ? null : (
+                <div
+                  aria-hidden="true"
+                  className={`${CHALLENGE_MARK_CLASS} ${
+                    challengeBeaten
+                      ? CHALLENGE_BEATEN_CLASS
+                      : CHALLENGE_LIVE_CLASS
+                  }`}
+                  data-beaten={challengeBeaten ? 'true' : 'false'}
+                  data-testid="challenge-mark"
+                  style={{ left: `${(challengeScore / maxPoints) * 100}%` }}
+                  title={
+                    challengeBeaten
+                      ? t.challengeBeaten(challengeScore)
+                      : t.challengeNote(challengeScore)
+                  }
+                />
+              )}
               {/* The win target: a green promise until it is kept (filled
                   by the arriving fill) or broken (spent gray). */}
               <div

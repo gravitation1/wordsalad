@@ -19,11 +19,17 @@ import { NOT_READY_TINT_CLASS } from './tiles';
 const BADGE_BASE_CLASS =
   'flex h-[17px] min-w-9 items-center justify-center rounded-full border px-1.5 text-xs font-bold tracking-normal';
 
-// The four "not yet" verdicts wear Submit's own not-ready tint (tiles.ts):
-// same border and fill in both themes, so the pill reads as the button's
+// A legitimate word that yields nothing — hinted (valid, 0 points) or
+// already found — is inert, not wrong: the gray the hinted rows wear in the
+// drum, rather than the orange of a word that can't be accepted as it
+// stands. The glyph carries the difference (+0 vs ✓).
+const WORTHLESS_BADGE_CLASS = `${BADGE_BASE_CLASS} border-gray-300 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-500`;
+
+// The "not yet" verdicts wear Submit's own not-ready tint (tiles.ts): same
+// border and fill in both themes, so the pill reads as the button's
 // miniature rather than a different shade of the same warning.
 const BADGE_CLASS: Record<WordPreview['verdict'], string> = {
-  'already-found': `${BADGE_BASE_CLASS} ${NOT_READY_TINT_CLASS}`,
+  'already-found': WORTHLESS_BADGE_CLASS,
   'invalid-letters': `${BADGE_BASE_CLASS} border-red-300 bg-white text-red-500 dark:border-red-400/40 dark:bg-gray-950 dark:text-red-400`,
   'missing-required': `${BADGE_BASE_CLASS} ${NOT_READY_TINT_CLASS}`,
   'not-a-word': `${BADGE_BASE_CLASS} ${NOT_READY_TINT_CLASS}`,
@@ -31,12 +37,9 @@ const BADGE_CLASS: Record<WordPreview['verdict'], string> = {
   valid: `${BADGE_BASE_CLASS} border-accent bg-white text-accent dark:bg-gray-950`,
 };
 
-// A hinted word is valid but worth 0 points: neutral, not the "+N" green.
-const HINTED_BADGE_CLASS = `${BADGE_BASE_CLASS} border-gray-300 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-500`;
-
 export function badgeClass(preview: WordPreview): string {
   if (preview.verdict === 'valid' && preview.points === 0) {
-    return HINTED_BADGE_CLASS;
+    return WORTHLESS_BADGE_CLASS;
   }
   return BADGE_CLASS[preview.verdict];
 }
