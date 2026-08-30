@@ -85,9 +85,52 @@ function fixtureLinks(): Plugin {
   };
 }
 
+// The deployed page may talk to exactly one origin: its own. Every fetch,
+// script, style, image, font, frame and worker is confined to 'self' by the
+// browser itself, so no dependency or future edit can quietly reach a third
+// party — the guarantee holds by construction, not by review. Inline style
+// attributes (React's style props) are the one relaxation; scripts get none
+// (the theme stamp is an external file for exactly this reason). Build-only:
+// the dev server injects its own inline HMR preamble, which this would
+// block. Navigation is not a CSP concern — outbound links stay allowed and
+// carry nothing (no-referrer, above in index.html).
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self'",
+  "connect-src 'self'",
+  "font-src 'none'",
+  "media-src 'none'",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "worker-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join('; ');
+
+function contentSecurityPolicy(): Plugin {
+  return {
+    name: 'content-security-policy',
+    apply: 'build',
+    transformIndexHtml() {
+      return [
+        {
+          tag: 'meta',
+          attrs: {
+            'http-equiv': 'Content-Security-Policy',
+            content: CONTENT_SECURITY_POLICY,
+          },
+          injectTo: 'head-prepend',
+        },
+      ];
+    },
+  };
+}
+
 export default defineConfig({
   base: '/wordsalad/',
-  plugins: [react(), tailwindcss(), fixtureLinks()],
+  plugins: [react(), tailwindcss(), fixtureLinks(), contentSecurityPolicy()],
   test: {
     include: ['src/**/__tests__/**/*.test.{ts,tsx}'],
     environment: 'jsdom',

@@ -667,10 +667,7 @@ describe('App', () => {
     expect(currentWord()).toBe('');
 
     const link = screen.getByRole('link', { name: 'TEST' });
-    expect(link).toHaveAttribute(
-      'href',
-      'https://www.merriam-webster.com/dictionary/TEST',
-    );
+    expect(link).toHaveAttribute('href', 'https://en.wiktionary.org/wiki/test');
     expect(
       within(screen.getByTestId('word-drum')).getByText('1'),
     ).toBeInTheDocument();

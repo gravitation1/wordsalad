@@ -37,9 +37,9 @@ function stripDiacritics(text: string): string {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-// Wiktionary is the definition host for every non-English list: the only
-// major dictionary family with predictable URLs for every inflected
-// surface form. When the UI language matches the word list, the reader's
+// Wiktionary is the definition host for every list: the only major
+// dictionary family with predictable URLs for every inflected surface form,
+// and — being Wikimedia — the only one without third-party trackers. When the UI language matches the word list, the reader's
 // own edition serves; otherwise the English edition's language section, so
 // a learner reads definitions in the language they chose for the UI.
 function wiktionaryUrl(
@@ -62,7 +62,9 @@ const EN_DICTIONARY: DictionarySpec = {
   letters: LATIN_LETTERS,
   vowels: LATIN_VOWELS,
   fold: (text) => text.toUpperCase(),
-  definitionUrl: (word) => `https://www.merriam-webster.com/dictionary/${word}`,
+  // Wiktionary for English too — the app's only definition host.
+  // Merriam-Webster is the curation reference (README), not a runtime link.
+  definitionUrl: wiktionaryUrl('en', 'English'),
 };
 
 // French folds as the French game tradition does — accents strip, ligatures

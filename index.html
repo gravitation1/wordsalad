@@ -6,20 +6,12 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
+    <meta name="referrer" content="no-referrer" />
     <link rel="icon" href="/favicon.ico" />
     <title>Word Salad</title>
-    <script>
-      // Stamp any saved theme override before first paint, so the loading
-      // screen doesn't flash the OS theme. The app keeps it in sync after.
-      try {
-        var theme = localStorage.getItem('wordsalad:theme');
-        if (theme === 'light' || theme === 'dark') {
-          document.documentElement.dataset.theme = theme;
-        }
-      } catch (error) {
-        // No storage means no override to honor.
-      }
-    </script>
+    <!-- External so the build's script-src 'self' needs no hashes; classic
+         and render-blocking on purpose, to run before first paint. -->
+    <script src="/theme.js"></script>
   </head>
   <body>
     <div id="root"></div>
