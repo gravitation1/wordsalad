@@ -2632,4 +2632,97 @@ describe('first-run coach', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
     expect(screen.queryByTestId('how-to-play-dialog')).not.toBeInTheDocument();
   });
+
+  it('restores a half-typed word after a reload', () => {
+    const view = render(<App dictionary={DICTIONARY} />);
+    typeWord('ROT');
+    expect(window.localStorage.getItem('wordsalad:draft:DEORSTW.T.4')).toBe(
+      'ROT',
+    );
+    view.unmount();
+
+    render(<App dictionary={DICTIONARY} />);
+    expect(currentWord()).toBe('ROT');
+    // The restored word is live: it finishes into a score.
+    submitWord('TED');
+    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+  });
+
+  it('keeps a draft with the puzzle it was typed on', () => {
+    const view = render(<App dictionary={DICTIONARY} />);
+    typeWord('ROT');
+    view.unmount();
+
+    window.history.replaceState(null, '', '?letters=WORDTES&required=D');
+    render(<App dictionary={DICTIONARY} />);
+    expect(currentWord()).toBe('');
+  });
+
+  it('drops a draft made of letters not on the board', () => {
+    window.localStorage.setItem('wordsalad:draft:DEORSTW.T.4', 'ZAP');
+    render(<App dictionary={DICTIONARY} />);
+    expect(currentWord()).toBe('');
+  });
+
+  it('clears the draft once the word is submitted or deleted', () => {
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('TEST');
+    expect(
+      window.localStorage.getItem('wordsalad:draft:DEORSTW.T.4'),
+    ).toBeNull();
+
+    typeWord('RO');
+    pressKey('Backspace');
+    expect(window.localStorage.getItem('wordsalad:draft:DEORSTW.T.4')).toBe(
+      'R',
+    );
+    pressKey('Backspace');
+    expect(
+      window.localStorage.getItem('wordsalad:draft:DEORSTW.T.4'),
+    ).toBeNull();
+  });
+
+  it('does not save a hint reveal as the draft', () => {
+    render(<App dictionary={DICTIONARY} />);
+    pressKey('?');
+    expect(currentWord()).toBe('TEST');
+    expect(
+      window.localStorage.getItem('wordsalad:draft:DEORSTW.T.4'),
+    ).toBeNull();
+  });
+
+  it('records the game on screen as the one to return to', () => {
+    render(<App dictionary={REAL_DICTIONARY} />);
+    expect(window.localStorage.getItem('wordsalad:last')).toBe('DEORSTW.T.4');
+
+    fireEvent.click(screen.getByRole('button', { name: 'New game' }));
+    const key = new URLSearchParams(window.location.search);
+    expect(window.localStorage.getItem('wordsalad:last')).toBe(
+      `${key.get('letters')}.${key.get('required')}.4`,
+    );
+  });
+
+  it('skips a history entry whose key no longer parses', () => {
+    window.localStorage.setItem(
+      'wordsalad:meta:not-a-key',
+      JSON.stringify({
+        earned: 1,
+        found: 1,
+        hints: 0,
+        lost: 0,
+        max: 15,
+        playedAt: 1000,
+        total: 3,
+      }),
+    );
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test');
+
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'History' }));
+    const dialog = screen.getByRole('dialog');
+    const links = within(dialog).getAllByRole('link');
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute('href', '?letters=DEORSTW&required=T');
+  });
 });

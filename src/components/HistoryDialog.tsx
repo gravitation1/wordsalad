@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { parseGameKey, puzzleSearchParams } from '../game/gameKey';
 import { completionToPoints, getLevel } from '../game/levels';
 import { useMessages } from '../i18n';
 import type { HistoryEntry } from '../progressStore';
@@ -47,34 +48,25 @@ const STATUS_ORDER: Record<GameStatus, number> = {
   won: 0,
 };
 
+// Null for an entry whose key no longer parses: a damaged save is skipped
+// rather than shown as a row that cannot be resumed.
 function toRow(
   entry: HistoryEntry,
   langParam: string | null,
   formatDate: (timestamp: number) => string,
-): Row {
+): Row | null {
   const { gameKey, summary } = entry;
   // Non-English games carry their dictionary as a "fr:" style key prefix
   // (English stays bare); it rides back into the replay link as ?dict=.
-  const colon = gameKey.indexOf(':');
-  const dict = colon === -1 ? null : gameKey.slice(0, colon);
-  const encoded = colon === -1 ? gameKey : gameKey.slice(colon + 1);
-  const [letters, requiredCharacters, minimumLength] = encoded.split('.');
+  const parts = parseGameKey(gameKey);
+  const params = puzzleSearchParams(gameKey, langParam);
+  if (parts === null || params === null) {
+    return null;
+  }
+  const { dict, letters, requiredCharacters } = parts;
   const winPoints = completionToPoints(WIN_THRESHOLD, summary.max);
   const won = summary.earned >= winPoints;
   const locked = !won && summary.max - summary.lost < winPoints;
-
-  const params = new URLSearchParams();
-  if (langParam !== null) {
-    params.set('lang', langParam);
-  }
-  if (dict !== null) {
-    params.set('dict', dict);
-  }
-  params.set('letters', letters);
-  params.set('required', requiredCharacters);
-  if (minimumLength !== '4') {
-    params.set('min', minimumLength);
-  }
 
   return {
     dateLabel: formatDate(summary.playedAt),
@@ -171,7 +163,9 @@ export function HistoryDialog({
             : 'numeric',
       }).format(timestamp);
     const sorted = sortRows(
-      entries.map((entry) => toRow(entry, langParam, formatDate)),
+      entries
+        .map((entry) => toRow(entry, langParam, formatDate))
+        .filter((row): row is Row => row !== null),
       sort.mode,
     );
     return sort.flipped ? [...sorted].reverse() : sorted;

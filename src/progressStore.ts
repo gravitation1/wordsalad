@@ -6,8 +6,14 @@
 const WORDS_PREFIX = 'wordsalad:';
 const HINTED_WORDS_PREFIX = 'wordsalad:hinted:';
 const META_PREFIX = 'wordsalad:meta:';
+// The word in progress — typed but not yet submitted — so a reload (or a
+// browser restoring a tab it unloaded) hands it back.
+const DRAFT_PREFIX = 'wordsalad:draft:';
 // Legacy key from an earlier hint-count design; still cleared on reset.
 const LEGACY_HINTS_PREFIX = 'wordsalad:hints:';
+// The game most recently on screen, for the installed app's launch to
+// return to (see resume.ts). Not per-puzzle, and never cleared by a reset.
+const LAST_GAME_KEY = 'wordsalad:last';
 // Settings that belong to the player rather than to a puzzle, so they have
 // no game key and no reset touches them.
 const SOUND_KEY = 'wordsalad:sound';
@@ -95,6 +101,46 @@ export function saveHintedWords(
     );
   } catch (_error) {
     // Play on without persistence.
+  }
+}
+
+// The draft is stored as the letters themselves, validated against the
+// board by the caller: what the input can hold is the board's business.
+export function loadDraft(gameKey: string): string {
+  try {
+    return window.localStorage.getItem(DRAFT_PREFIX + gameKey) ?? '';
+  } catch (_error) {
+    return '';
+  }
+}
+
+// An empty draft is stored as absence, so a puzzle leaves no residue once
+// its word is submitted or cleared.
+export function saveDraft(gameKey: string, letters: string): void {
+  try {
+    if (letters === '') {
+      window.localStorage.removeItem(DRAFT_PREFIX + gameKey);
+    } else {
+      window.localStorage.setItem(DRAFT_PREFIX + gameKey, letters);
+    }
+  } catch (_error) {
+    // Play on without persistence.
+  }
+}
+
+export function loadLastGameKey(): string | null {
+  try {
+    return window.localStorage.getItem(LAST_GAME_KEY);
+  } catch (_error) {
+    return null;
+  }
+}
+
+export function saveLastGameKey(gameKey: string): void {
+  try {
+    window.localStorage.setItem(LAST_GAME_KEY, gameKey);
+  } catch (_error) {
+    // Then a launch deals fresh, as it would with nothing to return to.
   }
 }
 
@@ -209,6 +255,7 @@ export function clearSavedProgress(gameKey: string): void {
     window.localStorage.removeItem(WORDS_PREFIX + gameKey);
     window.localStorage.removeItem(HINTED_WORDS_PREFIX + gameKey);
     window.localStorage.removeItem(META_PREFIX + gameKey);
+    window.localStorage.removeItem(DRAFT_PREFIX + gameKey);
     window.localStorage.removeItem(LEGACY_HINTS_PREFIX + gameKey);
   } catch (_error) {
     // Nothing to clear if storage is unavailable.

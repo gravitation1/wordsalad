@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { DictionarySpec } from './game/dictionaries';
 import { alphabetPattern, DEFAULT_DICTIONARY } from './game/dictionaries';
+import { storageKey } from './game/gameKey';
 import type { WordGap } from './game/gapPrefixes';
 import {
   gapAdmits,
@@ -23,9 +24,12 @@ import type { WordPreview } from './game/wordSalad';
 import { WordSalad } from './game/wordSalad';
 import {
   clearSavedProgress,
+  loadDraft,
   loadHintedWords,
   loadSavedWords,
+  saveDraft,
   saveHintedWords,
+  saveLastGameKey,
   saveSummary,
   saveWords,
 } from './progressStore';
@@ -284,12 +288,17 @@ export type WordSaladGame = FailedGame | PlayingGame;
 
 type GameInit = { reason: FailureReason } | { wordSalad: WordSalad };
 
-// Storage keys carry the dictionary id so equal boards in different
-// languages never share progress; English stays bare so saves that predate
-// multiple dictionaries keep working.
-function storageKey(spec: DictionarySpec, wordSalad: WordSalad): string {
-  const encoded = storeWordSalad(wordSalad);
-  return spec.id === 'en' ? encoded : `${spec.id}:${encoded}`;
+// The word the player had staged when the page last went away, if it was
+// made of this board's letters — the input only ever holds those, so
+// anything else is a stale or damaged save and starts the word over.
+function restoredDraft(
+  spec: DictionarySpec,
+  wordSalad: WordSalad,
+): readonly string[] {
+  const letters = Array.from(loadDraft(storageKey(spec, wordSalad)));
+  return letters.every((letter) => wordSalad.characterSet.has(letter))
+    ? letters
+    : [];
 }
 
 // Hinted (committed) words score nothing, so they show 0 points. Sorting
@@ -514,7 +523,9 @@ export function useWordSaladGame(
   const [saladLetters, setSaladLetters] = useState(() =>
     wordSalad === null ? [] : shuffled(Array.from(wordSalad.characterSet)),
   );
-  const [inputLetters, setInputLetters] = useState<readonly string[]>([]);
+  const [inputLetters, setInputLetters] = useState<readonly string[]>(() =>
+    wordSalad === null ? [] : restoredDraft(spec, wordSalad),
+  );
   // The stem the last block tap laid down. While the input still reads
   // exactly this, it is the tap's letters rather than the player's work —
   // which is what lets another block replace them (see prefillWord). Any
@@ -590,7 +601,25 @@ export function useWordSaladGame(
     url.searchParams.delete('hints');
     url.hash = '';
     window.history.replaceState(null, '', url.toString());
+    // The installed app's launch returns to whichever game was on screen
+    // last (resume.ts); this effect runs for exactly the games that were.
+    saveLastGameKey(storageKey(spec, wordSalad));
   }, [spec, wordSalad]);
+
+  // The staged word rides along with the found words, so a reload — or a
+  // browser restoring a tab it unloaded — hands back the half-typed word
+  // rather than an empty line. A hint's reveal is not saved: the revealed
+  // word is committed the moment it appears, and a session that ends
+  // mid-reveal re-reveals it for free (nextHintWord).
+  useEffect(() => {
+    if (wordSalad === null) {
+      return;
+    }
+    saveDraft(
+      storageKey(spec, wordSalad),
+      hintReveal === null ? inputLetters.join('') : '',
+    );
+  }, [hintReveal, inputLetters, spec, wordSalad]);
 
   // Blur on any click so that Enter submits the current word instead of
   // re-triggering the last focused button or link. An open modal owns its

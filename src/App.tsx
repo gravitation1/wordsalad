@@ -29,6 +29,7 @@ import {
   saveThemePreference,
 } from './progressStore';
 import { soundDisabled, soundEnabled as playSoundEnabled } from './sound';
+import { syncThemeColor } from './themeColor';
 import { useGameSounds } from './useGameSounds';
 import { useWordSaladGame } from './useWordSaladGame';
 
@@ -71,14 +72,16 @@ export function App({
   const locale = resolveLocale(localeOverride);
 
   // Reflect the settings onto <html>: data-theme drives the dark: variant
-  // (the boot script in index.html stamps the same attribute before first
-  // paint), and lang follows the resolved locale.
+  // (the boot script theme.js stamps the same attribute before first
+  // paint), the browser chrome's tint follows it, and lang follows the
+  // resolved locale.
   useEffect(() => {
     if (theme === 'system') {
       delete document.documentElement.dataset.theme;
     } else {
       document.documentElement.dataset.theme = theme;
     }
+    syncThemeColor(theme);
   }, [theme]);
   useEffect(() => {
     document.documentElement.lang = locale;
