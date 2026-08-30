@@ -43,6 +43,8 @@ interface ScoreboardProps {
   // Start slots of the gaps the staged input could still break, for the
   // drum's hunt cursor.
   admittingGaps: ReadonlySet<number>;
+  // The admitting gap a block tap named, for the drum's cursor tiebreak.
+  huntOrigin: number | null;
   spotlight: WordSpotlight | null;
   // A gated meta shortcut to acknowledge with a dip on its pill.
   denied: DeniedControl | null;
@@ -80,7 +82,7 @@ interface ScoreboardProps {
   onNewGame: () => void;
   // Passed through to the word drum's unfound rows: types a row's derived
   // prefix into the word area.
-  onPrefill: (prefix: string) => void;
+  onPrefill: (prefix: string, origin: number) => void;
   onRestart: () => void;
   // Passed through to the drum: where a found word flies in from.
   wordOriginRef: { current: WordOrigin | null };
@@ -191,6 +193,7 @@ export function Scoreboard({
   requiredCharacters,
   wordSlots,
   admittingGaps,
+  huntOrigin,
   spotlight,
   denied,
   shareRequest,
@@ -846,6 +849,7 @@ export function Scoreboard({
         admittingGaps={admittingGaps}
         definitionUrl={definitionUrl}
         foldLetter={foldLetter}
+        huntOrigin={huntOrigin}
         inputWord={inputWord}
         onPrefill={onPrefill}
         restartExit={restartExit}

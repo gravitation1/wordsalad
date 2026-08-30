@@ -233,6 +233,10 @@ export interface PlayingGame {
   // dictionary-blind test as the rack dimming, per gap. The drum's cursor
   // targets the first of them.
   admittingGaps: ReadonlySet<number>;
+  // Among the admitting gaps, the one a block tap named — while the staged
+  // letters still stand on that tap's stem and the gap still admits them.
+  // The drum's cursor prefers it; null means "no tie to break".
+  huntOrigin: number | null;
   spotlight: WordSpotlight | null;
   earnedPoints: number;
   maxPoints: number;
@@ -274,7 +278,7 @@ export interface PlayingGame {
   revealHint: () => void;
   // Fill the word area with an unfound slot's derived prefix (WordSlot's
   // prefix), replacing anything shorter that was typed.
-  prefillWord: (prefix: string) => void;
+  prefillWord: (prefix: string, origin?: number) => void;
 }
 
 export type FailureReason = 'generation-failed' | 'invalid-game-data';
@@ -531,6 +535,17 @@ export function useWordSaladGame(
   // which is what lets another block replace them (see prefillWord). Any
   // edit, in either direction, moves the input off it.
   const prefilledStem = useRef<string | null>(null);
+  // The brick the last tap named, with the stem it laid down: the cursor's
+  // tiebreak. Two bricks can admit the same letters (found TEST, TESTER and
+  // TESTS leave two gaps both forced to start with TEST), and no function
+  // of the letters and the list can tell which one a tap meant — only the
+  // tap can. It lives while the input still stands on the stem and dies
+  // when the letters are deleted back into it, cleared, submitted,
+  // replaced by a hint, or the board changes.
+  const [huntOrigin, setHuntOrigin] = useState<{
+    start: number;
+    stem: string;
+  } | null>(null);
   const [feedback, setFeedback] = useState<GameFeedback | null>(null);
   const [hintedWords, setHintedWords] = useState<ReadonlySet<string>>(() =>
     wordSalad === null
@@ -672,6 +687,7 @@ export function useWordSaladGame(
     }));
 
     setInputLetters([]);
+    setHuntOrigin(null);
 
     // The word animates out of the word area instead of vanishing: rising
     // when accepted, sinking when rejected.
@@ -815,6 +831,13 @@ export function useWordSaladGame(
     setDeniedControl(null);
     setDeleteId((previous) => previous + 1);
     setInputLetters((previous) => previous.slice(0, -1));
+    // Deleting back into the tapped stem leaves it: the letters that
+    // remain are the player's own again, and so is the hunt.
+    setHuntOrigin((origin) =>
+      origin !== null && inputLetters.length - 1 < origin.stem.length
+        ? null
+        : origin,
+    );
   }, [hintReveal, inputLetters, submitWord]);
 
   // Clear the whole input at once (long-press Delete, or Ctrl/Cmd+Backspace).
@@ -831,6 +854,7 @@ export function useWordSaladGame(
     setDeniedControl(null);
     setDeleteId((previous) => previous + 1);
     setInputLetters([]);
+    setHuntOrigin(null);
   }, [hintReveal, inputLetters, submitWord]);
 
   const tossSalad = useCallback(() => {
@@ -867,6 +891,7 @@ export function useWordSaladGame(
     // the found list will show the real spellings the reveal pays for.
     const letters = Array.from(wordSalad.keyOf(hint.word));
     setInputLetters(letters);
+    setHuntOrigin(null);
     // The revealed word replaces whatever was typed, so the last verdict no
     // longer describes what's in the word area.
     setFeedback(null);
@@ -917,10 +942,15 @@ export function useWordSaladGame(
   // the typing, nothing more — unlike a hint, nothing is paid or
   // committed, because the letters were already the player's to know.
   const prefillWord = useCallback(
-    (prefix: string) => {
+    (prefix: string, origin?: number) => {
       if (wordSalad === null || prefix.length === 0) {
         return;
       }
+      // The tap names its brick even when it leaves typed work in place:
+      // whatever stands on this stem is now hunted there.
+      setHuntOrigin(
+        origin === undefined ? null : { start: origin, stem: prefix },
+      );
       // A revealed hint is a submission in waiting: it lands first (the
       // word can't be unraveled once paid for) and the prefill starts the
       // next word, exactly as typing over a reveal would.
@@ -977,6 +1007,7 @@ export function useWordSaladGame(
         : [],
     );
     setInputLetters([]);
+    setHuntOrigin(null);
     setFeedback(null);
     setFoundWords([]);
     setSpotlight(null);
@@ -1043,6 +1074,7 @@ export function useWordSaladGame(
       init: { wordSalad: fresh },
     }));
     setInputLetters([]);
+    setHuntOrigin(null);
     setFeedback(null);
     setFoundWords([]);
     setSpotlight(null);
@@ -1281,6 +1313,12 @@ export function useWordSaladGame(
         .map((gap) => gap.start),
     );
   }, [boardAlphabet, gaps, inputLetters, wordSalad]);
+  const huntOriginStart =
+    huntOrigin !== null &&
+    inputLetters.join('').startsWith(huntOrigin.stem) &&
+    admittingGaps.has(huntOrigin.start)
+      ? huntOrigin.start
+      : null;
 
   // Record a compact summary for the history view whenever progress
   // changes. Zero-progress games stay out of history (browsing New game
@@ -1372,6 +1410,7 @@ export function useWordSaladGame(
     foundWords,
     wordSlots,
     admittingGaps,
+    huntOrigin: huntOriginStart,
     spotlight,
     earnedPoints,
     maxPoints: wordSalad.maxPoints,

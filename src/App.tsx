@@ -334,6 +334,7 @@ function AppBody({
           wordOriginRef={wordOriginRef}
           wordSlots={game.wordSlots}
           admittingGaps={game.admittingGaps}
+          huntOrigin={game.huntOrigin}
         />
         <div className="game-composer flex w-full flex-col items-center gap-3">
           <WordInput

@@ -22,8 +22,13 @@ import { miniTileClass } from './tiles';
 interface WordDrumProps {
   // Start slots of the gaps the staged input could still break (computed
   // beside the rack dimming, from the same dictionary-blind test). The
-  // cursor targets the first of them.
+  // cursor targets the first of them — unless a tap named one.
   admittingGaps: ReadonlySet<number>;
+  // The admitting gap a block tap named, if the staged letters still stand
+  // on its stem: it wins the cursor over the first admitting gap. The one
+  // piece of history the cursor consults, and only to break a tie the
+  // letters alone cannot (two gaps forced to the same prefix).
+  huntOrigin: number | null;
   // Where a found word's definition lives (dictionary- and UI-language
   // aware; the rows are surface forms, exactly what definitions key on).
   definitionUrl: (word: string) => string;
@@ -38,7 +43,7 @@ interface WordDrumProps {
   // would sit in the alphabetized list. Empty leaves the drum parked.
   inputWord: string;
   // Types an unfound row's derived prefix into the word area.
-  onPrefill: (prefix: string) => void;
+  onPrefill: (prefix: string, origin: number) => void;
   // The word to bring into view, if any. A new id re-triggers the scroll,
   // so asking for the same word twice works.
   spotlight: WordSpotlight | null;
@@ -109,6 +114,7 @@ const SLOT_REVEAL_MS = 120;
 
 export function WordDrum({
   admittingGaps,
+  huntOrigin,
   definitionUrl,
   foldLetter,
   inputWord,
@@ -183,7 +189,9 @@ export function WordDrum({
   // word nothing unfound extends, or a hairline caret at the seam it
   // would vanish into (a dead end: nothing unfound can sort there).
   // Derived from public knowledge only (found rows and the bricks
-  // between them), like the pursuit that keeps it in view.
+  // between them), like the pursuit that keeps it in view — plus one
+  // remembered tap: when two bricks admit the same letters because a tap
+  // laid them down, the tapped brick is the target, not the first.
   const cursor = useMemo<
     | { kind: 'brick' | 'row'; index: number }
     | { kind: 'seam'; before: number }
@@ -191,6 +199,14 @@ export function WordDrum({
   >(() => {
     if (inputWord === '' || items.length === 0) {
       return null;
+    }
+    if (huntOrigin !== null && admittingGaps.has(huntOrigin)) {
+      const origin = items.findIndex(
+        (item) => item.kind === 'brick' && item.start === huntOrigin,
+      );
+      if (origin >= 0) {
+        return { index: origin, kind: 'brick' };
+      }
     }
     const hunt = items.findIndex(
       (item) => item.kind === 'brick' && admittingGaps.has(item.start),
@@ -219,7 +235,7 @@ export function WordDrum({
     return items[index - 1]?.kind === 'brick'
       ? { index: index - 1, kind: 'brick' }
       : { before: index, kind: 'seam' };
-  }, [admittingGaps, foldLetter, inputWord, items]);
+  }, [admittingGaps, foldLetter, huntOrigin, inputWord, items]);
 
   // Where the found rows sat, refreshed whenever the list changes shape:
   // the drum's own box plus each row's offset within the scrolling content.
@@ -952,7 +968,7 @@ export function WordDrum({
                     )}
                     className="group flex h-full w-full touch-manipulation items-center justify-between gap-4 text-sm text-gray-300 dark:text-gray-700"
                     onClick={() => {
-                      onPrefill(item.prefix);
+                      onPrefill(item.prefix, item.start);
                     }}
                     type="button"
                   >

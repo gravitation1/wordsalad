@@ -730,6 +730,57 @@ describe('App', () => {
     ]);
   });
 
+  it('keeps the cursor on the brick a tap named when two bricks admit the letters', () => {
+    // Found TEST, TESTER and TESTS leave two gaps both forced to start
+    // with TEST — the letters alone can't say which one a tap meant.
+    render(
+      <App dictionary={['TEST', 'TESTED', 'TESTER', 'TESTERS', 'TESTS']} />,
+    );
+    const drum = () => within(screen.getByTestId('word-drum'));
+    const cursors = () =>
+      drum()
+        .getAllByTestId('word-brick')
+        .map((brick) => brick.getAttribute('data-cursor'));
+    submitWord('test');
+    submitWord('tester');
+    submitWord('tests');
+    const blocks = () =>
+      screen.getAllByRole('button', {
+        name: 'One unfound word starts with T E S T — fill in these letters',
+      });
+    expect(blocks()).toHaveLength(2);
+
+    // Typed, the first admitting brick wins, as ever.
+    typeWord('test');
+    expect(cursors()).toEqual(['true', 'false']);
+    pressKey('Backspace');
+    pressKey('Backspace');
+    pressKey('Backspace');
+    pressKey('Backspace');
+
+    // Tapped, the tapped brick wins the tie.
+    fireEvent.click(blocks()[1]);
+    expect(currentWord()).toBe('TEST');
+    expect(cursors()).toEqual(['false', 'true']);
+
+    // Extending the stem keeps the origin while it still admits...
+    typeWord('e'); // TESTE: both gaps admit
+    expect(cursors()).toEqual(['false', 'true']);
+    // ...and hands over when it no longer can, then resumes on the way back.
+    typeWord('d'); // TESTED sorts before TESTER: only the upper gap admits
+    expect(cursors()).toEqual(['true', 'false']);
+    pressKey('Backspace');
+    expect(cursors()).toEqual(['false', 'true']);
+
+    // Deleting back into the stem drops the origin for good: retyping the
+    // same letters is the player's own work, judged by the pure rule.
+    pressKey('Backspace');
+    pressKey('Backspace'); // TES
+    expect(cursors()).toEqual(['true', 'false']);
+    typeWord('t'); // TEST again, typed
+    expect(cursors()).toEqual(['true', 'false']);
+  });
+
   it('falls back to the found row once nothing unfound extends the word', () => {
     render(<App dictionary={DICTIONARY} />);
     const drum = () => within(screen.getByTestId('word-drum'));
