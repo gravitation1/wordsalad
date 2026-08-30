@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 
 import type { SubmittedPreview, WordPreview } from '../useWordSaladGame';
+import { NOT_READY_TINT_CLASS } from './tiles';
 
 // The staged word's standing verdict, worn at its trailing edge: what the
 // letters are worth, or why they are worth nothing yet. It belongs to the
@@ -18,12 +19,15 @@ import type { SubmittedPreview, WordPreview } from '../useWordSaladGame';
 const BADGE_BASE_CLASS =
   'flex h-[17px] min-w-9 items-center justify-center rounded-full border px-1.5 text-xs font-bold tracking-normal';
 
+// The four "not yet" verdicts wear Submit's own not-ready tint (tiles.ts):
+// same border and fill in both themes, so the pill reads as the button's
+// miniature rather than a different shade of the same warning.
 const BADGE_CLASS: Record<WordPreview['verdict'], string> = {
-  'already-found': `${BADGE_BASE_CLASS} border-orange-300 bg-white text-orange-600 dark:bg-gray-950 dark:text-orange-400`,
+  'already-found': `${BADGE_BASE_CLASS} ${NOT_READY_TINT_CLASS}`,
   'invalid-letters': `${BADGE_BASE_CLASS} border-red-300 bg-white text-red-500 dark:border-red-400/40 dark:bg-gray-950 dark:text-red-400`,
-  'missing-required': `${BADGE_BASE_CLASS} border-orange-300 bg-white text-orange-600 dark:bg-gray-950 dark:text-orange-400`,
-  'not-a-word': `${BADGE_BASE_CLASS} border-orange-300 bg-white text-orange-600 dark:bg-gray-950 dark:text-orange-400`,
-  'too-short': `${BADGE_BASE_CLASS} border-orange-300 bg-white text-orange-600 dark:bg-gray-950 dark:text-orange-400`,
+  'missing-required': `${BADGE_BASE_CLASS} ${NOT_READY_TINT_CLASS}`,
+  'not-a-word': `${BADGE_BASE_CLASS} ${NOT_READY_TINT_CLASS}`,
+  'too-short': `${BADGE_BASE_CLASS} ${NOT_READY_TINT_CLASS}`,
   valid: `${BADGE_BASE_CLASS} border-accent bg-white text-accent dark:bg-gray-950`,
 };
 

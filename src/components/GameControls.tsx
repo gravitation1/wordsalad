@@ -6,7 +6,11 @@ import type {
   SubmitReadiness,
   WordPreview,
 } from '../useWordSaladGame';
-import { KEYCAP_CLASS, KEYCAP_TINTED_CLASS } from './tiles';
+import {
+  KEYCAP_CLASS,
+  KEYCAP_TINTED_CLASS,
+  NOT_READY_TINT_CLASS,
+} from './tiles';
 
 interface GameControlsProps {
   canDelete: boolean;
@@ -36,7 +40,7 @@ const DISABLED_CLASS = `${BASE_CLASS} cursor-not-allowed border-dashed border-gr
 // will not score, filled green when it will.
 const SUBMIT_CLASS: Record<SubmitReadiness, string> = {
   empty: DISABLED_CLASS,
-  partial: `${BASE_CLASS} border-orange-300 bg-orange-50 text-orange-600 hover:bg-orange-100 dark:border-orange-400/40 dark:bg-orange-400/10 dark:text-orange-400 dark:hover:bg-orange-400/20`,
+  partial: `${BASE_CLASS} ${NOT_READY_TINT_CLASS} hover:bg-orange-100 dark:hover:bg-orange-400/20`,
   ready: `${BASE_CLASS} border-accent bg-accent text-white hover:bg-accent/90`,
 };
 

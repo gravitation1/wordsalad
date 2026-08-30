@@ -93,3 +93,9 @@ export function miniTileClass(
   const size = compact ? 'h-4 w-4 text-[10px]' : 'h-5 w-5 text-[11px]';
   return `flex items-center justify-center rounded font-bold ${size} ${face}`;
 }
+
+// The "won't score as it stands" tint, worn by Submit while the staged word
+// is not ready and by the verdict pill giving the reason: one verdict,
+// rendered twice, so one set of tokens — light and dark alike.
+export const NOT_READY_TINT_CLASS =
+  'border-orange-300 bg-orange-50 text-orange-600 dark:border-orange-400/40 dark:bg-orange-400/10 dark:text-orange-400';
