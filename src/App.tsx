@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CustomGameModal } from './components/CustomGameModal';
 import { GameControls } from './components/GameControls';
 import { HistoryDialog } from './components/HistoryDialog';
+import { HowToPlayDialog } from './components/HowToPlayDialog';
 import { OverflowMenu } from './components/OverflowMenu';
 import { SaladLetters } from './components/SaladLetters';
 import { Scoreboard } from './components/Scoreboard';
@@ -116,6 +117,7 @@ function AppBody({
   const game = useWordSaladGame(dictionary, spec);
   const [history, setHistory] = useState<HistorySnapshot | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
+  const [howToPlayOpen, setHowToPlayOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(loadSoundEnabled);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   // The New game pill's element, shared with the letter rack: a fresh
@@ -201,6 +203,16 @@ function AppBody({
     menuTriggerRef.current?.blur();
   };
 
+  const openHowToPlay = () => {
+    setHowToPlayOpen(true);
+  };
+
+  const closeHowToPlay = () => {
+    setHowToPlayOpen(false);
+    menuTriggerRef.current?.focus();
+    menuTriggerRef.current?.blur();
+  };
+
   // The board remounts per game (keyed below), so a board mounting with a
   // nonzero game id arrived via New game — and performs its deal. A reload
   // or restore mounts at id 0 and stays quiet.
@@ -237,6 +249,7 @@ function AppBody({
           localeOverride={settings.localeOverride}
           onCustomGame={openCustom}
           onHistory={openHistory}
+          onHowToPlay={openHowToPlay}
           onLocaleOverride={settings.onLocaleOverride}
           onSound={toggleSound}
           soundOn={soundOn}
@@ -262,6 +275,15 @@ function AppBody({
           spec={spec}
         />
       ) : null}
+      {howToPlayOpen ? (
+        <HowToPlayDialog
+          letterCount={game.saladLetters.length}
+          minimumLength={game.minimumLength}
+          onClose={closeHowToPlay}
+          requiredCharacters={game.requiredCharacters}
+          winThreshold={game.winThreshold}
+        />
+      ) : null}
       {/* Remounts on every new game (key) so the board deals in fresh.
           flex-1 hands the app frame's spare height down to the scoreboard
           (whose drum absorbs it), and min-h-0 lets this view shrink to the
@@ -281,6 +303,7 @@ function AppBody({
           restartExit={game.restartExit}
           celebration={game.celebration}
           challengeScore={game.challengeScore}
+          minimumLength={game.minimumLength}
           definitionUrl={(word) => spec.definitionUrl(word, t.locale)}
           foldLetter={spec.fold}
           feedback={game.feedback}

@@ -236,6 +236,8 @@ export interface PlayingGame {
   earnedPercent: number;
   lostPercent: number;
   winThreshold: number;
+  // The shortest word the puzzle accepts — the rules copy quotes it.
+  minimumLength: number;
   winPoints: number;
   level: string;
   hasWon: boolean;
@@ -1348,6 +1350,7 @@ export function useWordSaladGame(
     earnedPercent,
     lostPercent,
     winThreshold: WIN_THRESHOLD,
+    minimumLength: wordSalad.minimumLength,
     winPoints,
     level: getLevel(earnedPercent),
     hasWon,

@@ -2551,3 +2551,88 @@ describe('App with the French dictionary', () => {
     expect(target.searchParams.get('letters')).toBeNull();
   });
 });
+
+// The first-run coach: the rules speak in the feedback row until this
+// device has scored a word, yielding to verdicts in between.
+describe('first-run coach', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.history.replaceState(null, '', '?letters=WORDTES&required=T');
+  });
+
+  afterEach(() => {
+    window.history.replaceState(null, '', window.location.pathname);
+  });
+
+  it('states the rules on a first-ever board and retires on the first scored word', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    const coach = screen.getByTestId('coach');
+    expect(coach).toHaveTextContent('Spell words of 4+ letters');
+    expect(coach).toHaveTextContent('Every word must use T.');
+    expect(coach).toHaveTextContent('Use all 7 letters for a bonus.');
+
+    submitWord('TEST');
+
+    expect(screen.queryByTestId('coach')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('TEST');
+  });
+
+  it('yields the row to a verdict and returns once the word is edited', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    submitWord('WORD');
+    expect(screen.queryByTestId('coach')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('WORD');
+
+    typeWord('T');
+    expect(screen.getByTestId('coach')).toBeInTheDocument();
+  });
+
+  it('is not retired by a hint, only by a score', () => {
+    vi.useFakeTimers();
+    try {
+      render(<App dictionary={DICTIONARY} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /^Hint/ }));
+      act(() => {
+        vi.runAllTimers();
+      });
+      expect(screen.queryByTestId('coach')).not.toBeInTheDocument();
+
+      // The hint's own feedback holds the row; the next edit hands it back.
+      typeWord('W');
+      expect(screen.getByTestId('coach')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('stays retired on later boards once any word has ever scored here', () => {
+    const view = render(<App dictionary={DICTIONARY} />);
+    submitWord('TEST');
+    view.unmount();
+
+    window.history.replaceState(null, '', '?letters=WORDTES&required=D');
+    render(<App dictionary={DICTIONARY} />);
+
+    expect(screen.queryByTestId('coach')).not.toBeInTheDocument();
+    expect(screen.getByText('Words')).toBeInTheDocument();
+  });
+
+  it('opens the rules from the menu and quotes the live puzzle', () => {
+    render(<App dictionary={DICTIONARY} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'How to play' }));
+
+    const dialog = screen.getByTestId('how-to-play-dialog');
+    expect(dialog).toHaveTextContent('4 or more letters from the 7');
+    expect(dialog).toHaveTextContent('required letter T.');
+    expect(dialog).toHaveTextContent('Reach 75% to win');
+    expect(dialog).toHaveTextContent('7-point bonus');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByTestId('how-to-play-dialog')).not.toBeInTheDocument();
+  });
+});

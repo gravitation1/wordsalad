@@ -67,6 +67,22 @@ button {
   }
 }
 
+/* The first-run coach: three lines wherever there is height for them, one
+   line where there is not. A height decision, so a height query. */
+.coach-compact {
+  display: none;
+}
+
+@media (max-height: 520px) {
+  .coach-full {
+    display: none;
+  }
+
+  .coach-compact {
+    display: flex;
+  }
+}
+
 /* Layout is portrait-first, but landscape has two distinct needs. A short
    sideways phone needs vertical compression; a roomy tablet or desktop can
    spend horizontal space on a two-pane play surface. */

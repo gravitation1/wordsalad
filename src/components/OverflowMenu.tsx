@@ -22,6 +22,7 @@ interface OverflowMenuProps {
   localeOverride: Locale | null;
   onCustomGame: () => void;
   onHistory: () => void;
+  onHowToPlay: () => void;
   onLocaleOverride: (locale: Locale | null) => void;
   // Toggles the game sounds; the row stays open like the other settings —
   // its feedback is the confirmation chime and the strike over the note.
@@ -60,6 +61,7 @@ export function OverflowMenu({
   localeOverride,
   onCustomGame,
   onHistory,
+  onHowToPlay,
   onLocaleOverride,
   onSound,
   soundOn,
@@ -126,8 +128,8 @@ export function OverflowMenu({
       return;
     }
     // The buttons cycle with the arrows (the two action items, then the
-    // sound and theme rows); the selects stay out of the ring.
-    const count = items.length + 2;
+    // sound and theme rows, then help); the selects stay out of the ring.
+    const count = items.length + 3;
     const active = itemRefs.current.findIndex(
       (element) => element === document.activeElement,
     );
@@ -307,6 +309,30 @@ export function OverflowMenu({
               ))}
             </select>
           </label>
+          <div
+            className="mx-3 my-1 border-t border-gray-200 dark:border-gray-700"
+            role="separator"
+          />
+          {/* Help is app-scoped, so it lives here rather than on the
+              game's meta row; last, where help conventionally sits. The ?
+              is the Hint button's glyph: the same "unknown" vocabulary. */}
+          <button
+            className={ROW_CLASS}
+            onClick={() => {
+              setOpen(false);
+              onHowToPlay();
+            }}
+            ref={(element) => {
+              itemRefs.current[items.length + 2] = element;
+            }}
+            role="menuitem"
+            type="button"
+          >
+            <span aria-hidden="true" className={ICON_CLASS}>
+              ?
+            </span>
+            {t.howToPlayButton}
+          </button>
         </div>
       ) : null}
     </div>

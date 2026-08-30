@@ -128,6 +128,28 @@ export interface Messages {
   ratingNotReachedLabel: string;
   // Screen-reader description of the Submit button's verdict badge.
   submitPreviewLabel: (preview: WordPreview) => string;
+  // First-run coach: the rules the board cannot show, spoken in the
+  // feedback row until the player's first scored word. {letters} marks where
+  // the required letters go, set as mini tiles.
+  coachLength: (minLength: number) => string;
+  coachRequired: string;
+  coachPangram: (letterCount: number) => string;
+  // One-line form for short viewports; the Free variant serves a puzzle
+  // with no required letter.
+  coachCompact: (minLength: number) => string;
+  coachCompactFree: (minLength: number) => string;
+  howToPlayButton: string;
+  howToPlayTitle: string;
+  howToPlayLetters: (minLength: number, letterCount: number) => string;
+  howToPlayRequired: (count: number) => string;
+  howToPlayScoring: (
+    minLength: number,
+    letterCount: number,
+    bonus: number,
+  ) => string;
+  howToPlayRanks: (winPercent: number) => string;
+  howToPlayHints: string;
+  howToPlayTypeHint: string;
   closeButton: string;
   levelName: (level: string) => string;
   thresholdFrom: (points: number) => string;
@@ -261,6 +283,28 @@ const EN: Messages = {
           : 'Worth no points (revealed by a hint)';
     }
   },
+  coachLength: (minLength) =>
+    `Spell words of ${minLength}+ letters — letters can repeat.`,
+  coachRequired: 'Every word must use {letters}.',
+  coachPangram: (letterCount) => `Use all ${letterCount} letters for a bonus.`,
+  coachCompact: (minLength) =>
+    `${minLength}+ letters · always {letters} · letters can repeat`,
+  coachCompactFree: (minLength) => `${minLength}+ letters · letters can repeat`,
+  howToPlayButton: 'How to play',
+  howToPlayTitle: 'How to play',
+  howToPlayLetters: (minLength, letterCount) =>
+    `Spell words of ${minLength} or more letters from the ${letterCount} in the salad. Letters can be used more than once.`,
+  howToPlayRequired: (count) =>
+    plural('en', count, {
+      one: 'Every word must include the required letter {letters}.',
+      other: 'Every word must include the required letters {letters}.',
+    }),
+  howToPlayScoring: (minLength, letterCount, bonus) =>
+    `Longer words score more: a ${minLength}-letter word is 1 point, and each extra letter adds one. Use all ${letterCount} letters in one word for a ${bonus}-point bonus.`,
+  howToPlayRanks: (winPercent) =>
+    `Your rank climbs with your share of the board's points. Reach ${winPercent}% to win — or find everything.`,
+  howToPlayHints: `A hint reveals the shortest missing word. It scores nothing, and its points come off the board's maximum — so each hint lowers the best rank you can still reach.`,
+  howToPlayTypeHint: 'Type to spell',
   closeButton: 'Close',
   levelName: (level) => level,
   thresholdFrom: (points) =>
@@ -422,6 +466,30 @@ const FR: Messages = {
           : 'Ne vaut aucun point (mot révélé par un indice)';
     }
   },
+  coachLength: (minLength) =>
+    `Mots de ${minLength} lettres ou plus — lettres répétables.`,
+  coachRequired: 'Chaque mot doit contenir {letters}.',
+  coachPangram: (letterCount) =>
+    `Utilisez les ${letterCount} lettres pour un bonus.`,
+  coachCompact: (minLength) =>
+    `${minLength}+ lettres · toujours {letters} · lettres répétables`,
+  coachCompactFree: (minLength) => `${minLength}+ lettres · lettres répétables`,
+  howToPlayButton: 'Comment jouer',
+  howToPlayTitle: 'Comment jouer',
+  howToPlayLetters: (minLength, letterCount) =>
+    `Formez des mots de ${minLength} lettres ou plus avec les ${letterCount} lettres de la salade. Une lettre peut servir plusieurs fois.`,
+  howToPlayRequired: (count) =>
+    plural('fr', count, {
+      one: 'Chaque mot doit contenir la lettre obligatoire {letters}.',
+      other: 'Chaque mot doit contenir les lettres obligatoires {letters}.',
+    }),
+  howToPlayScoring: (minLength, letterCount, bonus) =>
+    `Les mots longs rapportent plus : un mot de ${minLength} lettres vaut 1 point, et chaque lettre de plus en ajoute un. Utilisez les ${letterCount} lettres dans un seul mot pour un bonus de ${bonus} points.`,
+  howToPlayRanks: (winPercent) =>
+    `Votre rang monte avec votre part des points du plateau. Atteignez ${winPercent} % pour gagner — ou trouvez tout.`,
+  howToPlayHints:
+    'Un indice révèle le mot manquant le plus court. Il ne rapporte rien, et ses points sont retirés du maximum du plateau : chaque indice abaisse donc le meilleur rang encore accessible.',
+  howToPlayTypeHint: 'Tapez pour épeler',
   closeButton: 'Fermer',
   levelName: (level) => LEVELS_FR[level] ?? level,
   thresholdFrom: (points) =>
@@ -583,6 +651,30 @@ const ES: Messages = {
           : 'No vale puntos (revelada con una pista)';
     }
   },
+  coachLength: (minLength) =>
+    `Palabras de ${minLength} letras o más — las letras se repiten.`,
+  coachRequired: 'Cada palabra debe usar {letters}.',
+  coachPangram: (letterCount) => `Usa las ${letterCount} letras para un bono.`,
+  coachCompact: (minLength) =>
+    `${minLength}+ letras · siempre {letters} · las letras se repiten`,
+  coachCompactFree: (minLength) =>
+    `${minLength}+ letras · las letras se repiten`,
+  howToPlayButton: 'Cómo jugar',
+  howToPlayTitle: 'Cómo jugar',
+  howToPlayLetters: (minLength, letterCount) =>
+    `Forma palabras de ${minLength} letras o más con las ${letterCount} letras de la ensalada. Una letra puede usarse más de una vez.`,
+  howToPlayRequired: (count) =>
+    plural('es', count, {
+      one: 'Cada palabra debe incluir la letra obligatoria {letters}.',
+      other: 'Cada palabra debe incluir las letras obligatorias {letters}.',
+    }),
+  howToPlayScoring: (minLength, letterCount, bonus) =>
+    `Las palabras largas valen más: una de ${minLength} letras da 1 punto, y cada letra extra suma uno. Usa las ${letterCount} letras en una sola palabra para un bono de ${bonus} puntos.`,
+  howToPlayRanks: (winPercent) =>
+    `Tu rango sube con tu parte de los puntos del tablero. Llega al ${winPercent} % para ganar, o encuéntralo todo.`,
+  howToPlayHints:
+    'Una pista revela la palabra más corta que falta. No suma puntos, y sus puntos se restan del máximo del tablero: cada pista baja el mejor rango que aún puedes alcanzar.',
+  howToPlayTypeHint: 'Escribe para deletrear',
   closeButton: 'Cerrar',
   levelName: (level) => LEVELS_ES[level] ?? level,
   thresholdFrom: (points) =>
@@ -747,6 +839,31 @@ const DE: Messages = {
           : 'Bringt keine Punkte (durch Hinweis aufgedeckt)';
     }
   },
+  coachLength: (minLength) =>
+    `Wörter ab ${minLength} Buchstaben — Wiederholungen erlaubt.`,
+  coachRequired: 'Jedes Wort muss {letters} enthalten.',
+  coachPangram: (letterCount) =>
+    `Nutze alle ${letterCount} Buchstaben für einen Bonus.`,
+  coachCompact: (minLength) =>
+    `${minLength}+ Buchstaben · immer {letters} · Wiederholungen erlaubt`,
+  coachCompactFree: (minLength) =>
+    `${minLength}+ Buchstaben · Wiederholungen erlaubt`,
+  howToPlayButton: 'Spielanleitung',
+  howToPlayTitle: 'Spielanleitung',
+  howToPlayLetters: (minLength, letterCount) =>
+    `Bilde Wörter aus ${minLength} oder mehr Buchstaben aus den ${letterCount} Buchstaben des Salats. Ein Buchstabe darf mehrfach verwendet werden.`,
+  howToPlayRequired: (count) =>
+    plural('de', count, {
+      one: 'Jedes Wort muss den Pflichtbuchstaben {letters} enthalten.',
+      other: 'Jedes Wort muss die Pflichtbuchstaben {letters} enthalten.',
+    }),
+  howToPlayScoring: (minLength, letterCount, bonus) =>
+    `Längere Wörter bringen mehr: ein Wort mit ${minLength} Buchstaben zählt 1 Punkt, jeder weitere Buchstabe einen mehr. Verwende alle ${letterCount} Buchstaben in einem Wort für ${bonus} Bonuspunkte.`,
+  howToPlayRanks: (winPercent) =>
+    `Dein Rang steigt mit deinem Anteil an den Punkten des Bretts. Erreiche ${winPercent} %, um zu gewinnen — oder finde alles.`,
+  howToPlayHints:
+    'Ein Tipp verrät das kürzeste fehlende Wort. Er bringt keine Punkte, und seine Punkte werden vom Maximum des Bretts abgezogen — jeder Tipp senkt also den besten noch erreichbaren Rang.',
+  howToPlayTypeHint: 'Tippen zum Buchstabieren',
   closeButton: 'Schließen',
   levelName: (level) => LEVELS_DE[level] ?? level,
   thresholdFrom: (points) => `ab ${points} Pkt.`,
@@ -909,6 +1026,30 @@ const IT: Messages = {
           : 'Non vale punti (rivelata da un indizio)';
     }
   },
+  coachLength: (minLength) =>
+    `Parole di ${minLength}+ lettere — lettere ripetibili.`,
+  coachRequired: 'Ogni parola deve usare {letters}.',
+  coachPangram: (letterCount) =>
+    `Usa tutte le ${letterCount} lettere per un bonus.`,
+  coachCompact: (minLength) =>
+    `${minLength}+ lettere · sempre {letters} · lettere ripetibili`,
+  coachCompactFree: (minLength) => `${minLength}+ lettere · lettere ripetibili`,
+  howToPlayButton: 'Come si gioca',
+  howToPlayTitle: 'Come si gioca',
+  howToPlayLetters: (minLength, letterCount) =>
+    `Forma parole di ${minLength} o più lettere con le ${letterCount} lettere dell'insalata. Una lettera può essere usata più volte.`,
+  howToPlayRequired: (count) =>
+    plural('it', count, {
+      one: 'Ogni parola deve contenere la lettera obbligatoria {letters}.',
+      other: 'Ogni parola deve contenere le lettere obbligatorie {letters}.',
+    }),
+  howToPlayScoring: (minLength, letterCount, bonus) =>
+    `Le parole lunghe valgono di più: una parola di ${minLength} lettere vale 1 punto, e ogni lettera in più ne aggiunge uno. Usa tutte le ${letterCount} lettere in una sola parola per un bonus di ${bonus} punti.`,
+  howToPlayRanks: (winPercent) =>
+    `Il tuo grado sale con la tua quota dei punti del tabellone. Raggiungi il ${winPercent}% per vincere — o trova tutto.`,
+  howToPlayHints:
+    'Un suggerimento rivela la parola mancante più corta. Non dà punti, e i suoi punti vengono tolti dal massimo del tabellone: ogni suggerimento abbassa il miglior grado ancora raggiungibile.',
+  howToPlayTypeHint: 'Digita per comporre',
   closeButton: 'Chiudi',
   levelName: (level) => LEVELS_IT[level] ?? level,
   thresholdFrom: (points) => `da ${points} pt`,
@@ -1069,6 +1210,31 @@ const PT: Messages = {
           : 'Não vale pontos (revelada por uma dica)';
     }
   },
+  coachLength: (minLength) =>
+    `Palavras com ${minLength}+ letras — as letras podem repetir.`,
+  coachRequired: 'Toda palavra precisa usar {letters}.',
+  coachPangram: (letterCount) =>
+    `Use todas as ${letterCount} letras para um bônus.`,
+  coachCompact: (minLength) =>
+    `${minLength}+ letras · sempre {letters} · letras podem repetir`,
+  coachCompactFree: (minLength) =>
+    `${minLength}+ letras · letras podem repetir`,
+  howToPlayButton: 'Como jogar',
+  howToPlayTitle: 'Como jogar',
+  howToPlayLetters: (minLength, letterCount) =>
+    `Forme palavras com ${minLength} ou mais letras a partir das ${letterCount} letras da salada. Uma letra pode ser usada mais de uma vez.`,
+  howToPlayRequired: (count) =>
+    plural('pt', count, {
+      one: 'Toda palavra precisa incluir a letra obrigatória {letters}.',
+      other: 'Toda palavra precisa incluir as letras obrigatórias {letters}.',
+    }),
+  howToPlayScoring: (minLength, letterCount, bonus) =>
+    `Palavras longas valem mais: uma palavra de ${minLength} letras vale 1 ponto, e cada letra extra soma um. Use todas as ${letterCount} letras em uma só palavra para um bônus de ${bonus} pontos.`,
+  howToPlayRanks: (winPercent) =>
+    `Seu nível sobe com sua parte dos pontos do tabuleiro. Alcance ${winPercent}% para vencer — ou encontre tudo.`,
+  howToPlayHints:
+    'Uma dica revela a palavra mais curta que falta. Ela não pontua, e seus pontos saem do máximo do tabuleiro — assim cada dica reduz o melhor nível que você ainda pode alcançar.',
+  howToPlayTypeHint: 'Digite para soletrar',
   closeButton: 'Fechar',
   levelName: (level) => LEVELS_PT[level] ?? level,
   thresholdFrom: (points) =>
@@ -1231,6 +1397,31 @@ const NL: Messages = {
           : 'Levert geen punten op (onthuld met een hint)';
     }
   },
+  coachLength: (minLength) =>
+    `Woorden van ${minLength}+ letters — letters mogen herhalen.`,
+  coachRequired: 'Elk woord moet {letters} bevatten.',
+  coachPangram: (letterCount) =>
+    `Gebruik alle ${letterCount} letters voor een bonus.`,
+  coachCompact: (minLength) =>
+    `${minLength}+ letters · altijd {letters} · letters mogen herhalen`,
+  coachCompactFree: (minLength) =>
+    `${minLength}+ letters · letters mogen herhalen`,
+  howToPlayButton: 'Speluitleg',
+  howToPlayTitle: 'Speluitleg',
+  howToPlayLetters: (minLength, letterCount) =>
+    `Maak woorden van ${minLength} of meer letters uit de ${letterCount} letters van de salade. Een letter mag vaker worden gebruikt.`,
+  howToPlayRequired: (count) =>
+    plural('nl', count, {
+      one: 'Elk woord moet de verplichte letter {letters} bevatten.',
+      other: 'Elk woord moet de verplichte letters {letters} bevatten.',
+    }),
+  howToPlayScoring: (minLength, letterCount, bonus) =>
+    `Langere woorden leveren meer op: een woord van ${minLength} letters is 1 punt, en elke extra letter telt er een bij. Gebruik alle ${letterCount} letters in één woord voor ${bonus} bonuspunten.`,
+  howToPlayRanks: (winPercent) =>
+    `Je rang stijgt met je aandeel in de punten van het bord. Haal ${winPercent}% om te winnen — of vind alles.`,
+  howToPlayHints:
+    'Een hint onthult het kortste ontbrekende woord. Hij levert niets op, en zijn punten gaan van het maximum van het bord af — elke hint verlaagt dus de beste rang die je nog kunt halen.',
+  howToPlayTypeHint: 'Typ om te spellen',
   closeButton: 'Sluiten',
   levelName: (level) => LEVELS_NL[level] ?? level,
   thresholdFrom: (points) =>
@@ -1380,6 +1571,26 @@ const JA: Messages = {
           : 'ポイントにはなりません（ヒントで判明した単語）';
     }
   },
+  coachLength: (minLength) =>
+    `${minLength}文字以上の単語 — 同じ文字は何度でも可。`,
+  coachRequired: 'どの単語にも {letters} を使います。',
+  coachPangram: (letterCount) => `${letterCount}文字すべてを使うとボーナス。`,
+  coachCompact: (minLength) =>
+    `${minLength}文字以上 · 必ず {letters} · 文字は重複可`,
+  coachCompactFree: (minLength) => `${minLength}文字以上 · 文字は重複可`,
+  howToPlayButton: '遊び方',
+  howToPlayTitle: '遊び方',
+  howToPlayLetters: (minLength, letterCount) =>
+    `サラダの${letterCount}文字から、${minLength}文字以上の単語を作ります。同じ文字を何度使ってもかまいません。`,
+  howToPlayRequired: () =>
+    '必須の文字 {letters} をすべての単語に含めてください。',
+  howToPlayScoring: (minLength, letterCount, bonus) =>
+    `長い単語ほど高得点：${minLength}文字の単語は1点、1文字増えるごとに1点加算。${letterCount}文字すべてを1つの単語に使うと${bonus}点のボーナス。`,
+  howToPlayRanks: (winPercent) =>
+    `ボード全体の得点に占める割合でランクが上がります。${winPercent}%で勝利 — すべて見つければ完全制覇。`,
+  howToPlayHints:
+    'ヒントは未発見の最短単語を明かします。得点にはならず、その点数はボードの最大値から差し引かれるため、ヒントを使うたびに到達できる最高ランクが下がります。',
+  howToPlayTypeHint: '文字を入力',
   closeButton: '閉じる',
   levelName: (level) => LEVELS_JA[level] ?? level,
   thresholdFrom: (points) => `${points}ポイントから`,
@@ -1527,6 +1738,26 @@ const KO: Messages = {
           : '점수가 없습니다 (힌트로 공개된 단어)';
     }
   },
+  coachLength: (minLength) =>
+    `${minLength}글자 이상 단어 만들기 — 글자는 반복해도 됩니다.`,
+  coachRequired: '모든 단어에는 {letters} 이(가) 들어가야 합니다.',
+  coachPangram: (letterCount) => `${letterCount}개 글자를 모두 쓰면 보너스.`,
+  coachCompact: (minLength) =>
+    `${minLength}글자 이상 · 항상 {letters} · 글자 반복 가능`,
+  coachCompactFree: (minLength) => `${minLength}글자 이상 · 글자 반복 가능`,
+  howToPlayButton: '게임 방법',
+  howToPlayTitle: '게임 방법',
+  howToPlayLetters: (minLength, letterCount) =>
+    `샐러드의 ${letterCount}개 글자로 ${minLength}글자 이상의 단어를 만드세요. 같은 글자를 여러 번 써도 됩니다.`,
+  howToPlayRequired: () =>
+    '모든 단어에는 필수 글자 {letters} 이(가) 들어가야 합니다.',
+  howToPlayScoring: (minLength, letterCount, bonus) =>
+    `긴 단어일수록 점수가 높습니다. ${minLength}글자 단어는 1점, 글자가 하나 늘 때마다 1점씩 추가됩니다. ${letterCount}개 글자를 한 단어에 모두 쓰면 ${bonus}점 보너스.`,
+  howToPlayRanks: (winPercent) =>
+    `보드 전체 점수 중 얻은 비율에 따라 등급이 올라갑니다. ${winPercent}%에 도달하면 승리 — 모두 찾으면 완벽.`,
+  howToPlayHints:
+    '힌트는 아직 찾지 못한 가장 짧은 단어를 알려 줍니다. 점수는 없고, 그 점수만큼 보드의 최대 점수에서 빠지므로 힌트를 쓸 때마다 도달할 수 있는 최고 등급이 낮아집니다.',
+  howToPlayTypeHint: '글자를 입력',
   closeButton: '닫기',
   levelName: (level) => LEVELS_KO[level] ?? level,
   thresholdFrom: (points) => `${points}점부터`,
@@ -1669,6 +1900,25 @@ const ZH: Messages = {
           : '不得分（由提示揭示的单词）';
     }
   },
+  coachLength: (minLength) =>
+    `拼出${minLength}个字母以上的单词——字母可以重复使用。`,
+  coachRequired: '每个单词都必须包含 {letters}。',
+  coachPangram: (letterCount) => `用上全部${letterCount}个字母可获得奖励。`,
+  coachCompact: (minLength) =>
+    `${minLength}+字母 · 必含 {letters} · 字母可重复`,
+  coachCompactFree: (minLength) => `${minLength}+字母 · 字母可重复`,
+  howToPlayButton: '玩法说明',
+  howToPlayTitle: '玩法说明',
+  howToPlayLetters: (minLength, letterCount) =>
+    `用沙拉里的${letterCount}个字母拼出${minLength}个字母以上的单词。同一个字母可以多次使用。`,
+  howToPlayRequired: () => '每个单词都必须包含必用字母 {letters}。',
+  howToPlayScoring: (minLength, letterCount, bonus) =>
+    `单词越长得分越高：${minLength}个字母的单词得1分，每多一个字母加1分。在一个单词里用上全部${letterCount}个字母可得${bonus}分奖励。`,
+  howToPlayRanks: (winPercent) =>
+    `你的等级随所得分数占全盘分数的比例上升。达到${winPercent}%即获胜——或者找出全部单词。`,
+  howToPlayHints:
+    '提示会揭示尚未找到的最短单词。它不计分，其分数会从全盘最高分中扣除——因此每次提示都会降低你仍可达到的最高等级。',
+  howToPlayTypeHint: '输入字母',
   closeButton: '关闭',
   levelName: (level) => LEVELS_ZH[level] ?? level,
   thresholdFrom: (points) => `${points} 分起`,
@@ -1826,6 +2076,30 @@ const RU: Messages = {
           : 'Не принесёт очков (открыто подсказкой)';
     }
   },
+  coachLength: (minLength) =>
+    `Слова из ${minLength}+ букв — буквы можно повторять.`,
+  coachRequired: 'В каждом слове должна быть {letters}.',
+  coachPangram: (letterCount) =>
+    `Используйте все ${letterCount} букв для бонуса.`,
+  coachCompact: (minLength) =>
+    `${minLength}+ букв · всегда {letters} · буквы повторяются`,
+  coachCompactFree: (minLength) => `${minLength}+ букв · буквы повторяются`,
+  howToPlayButton: 'Как играть',
+  howToPlayTitle: 'Как играть',
+  howToPlayLetters: (minLength, letterCount) =>
+    `Составляйте слова из ${minLength} и более букв из ${letterCount} букв салата. Одну букву можно использовать несколько раз.`,
+  howToPlayRequired: (count) =>
+    plural('ru', count, {
+      one: 'В каждом слове должна быть обязательная буква {letters}.',
+      other: 'В каждом слове должны быть обязательные буквы {letters}.',
+    }),
+  howToPlayScoring: (minLength, letterCount, bonus) =>
+    `Длинные слова приносят больше: слово из ${minLength} букв — 1 очко, каждая дополнительная буква добавляет ещё одно. Используйте все ${letterCount} букв в одном слове и получите бонус ${bonus} очков.`,
+  howToPlayRanks: (winPercent) =>
+    `Ранг растёт вместе с вашей долей очков на доске. Наберите ${winPercent}%, чтобы выиграть, — или найдите всё.`,
+  howToPlayHints:
+    'Подсказка открывает самое короткое ненайденное слово. Она не приносит очков, а её очки вычитаются из максимума доски — так что каждая подсказка снижает лучший ранг, которого ещё можно достичь.',
+  howToPlayTypeHint: 'Печатайте буквы',
   closeButton: 'Закрыть',
   levelName: (level) => LEVELS_RU[level] ?? level,
   thresholdFrom: (points) => `от ${points} очк.`,

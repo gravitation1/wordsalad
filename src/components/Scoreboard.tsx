@@ -7,6 +7,7 @@ import {
   getNextRank,
 } from '../game/levels';
 import { useMessages } from '../i18n';
+import { loadSummaries } from '../progressStore';
 import type {
   Celebration,
   DeniedControl,
@@ -18,6 +19,7 @@ import type {
   WordSlot,
   WordSpotlight,
 } from '../useWordSaladGame';
+import { Coach } from './Coach';
 import { WinBurst } from './Confetti';
 import { FeedbackLine } from './FeedbackLine';
 import { LockoutDialog } from './LockoutDialog';
@@ -71,6 +73,8 @@ interface ScoreboardProps {
   // The letters typed so far, joined — the drum rolls to follow them.
   inputWord: string;
   challengeScore: number | null;
+  // The shortest word the puzzle accepts, quoted by the first-run coach.
+  minimumLength: number;
   rankUp: RankUp | null;
   onCustomGame: () => void;
   onNewGame: () => void;
@@ -196,6 +200,7 @@ export function Scoreboard({
   hintCount,
   inputWord,
   challengeScore,
+  minimumLength,
   rankUp,
   onCustomGame,
   onNewGame,
@@ -204,6 +209,16 @@ export function Scoreboard({
   wordOriginRef,
 }: ScoreboardProps) {
   const t = useMessages();
+  // The first-run coach speaks until this device has ever scored a word.
+  // History already records that: a summary is written on progress, and
+  // its earned points say whether any of it was scored rather than hinted.
+  // Read once per board (this component remounts per game), so a New game
+  // after the first score already finds the record; a reload or a Restart
+  // before that first score brings the coach back, which is the point.
+  const [hadScoredRecord] = useState(() =>
+    loadSummaries().some((entry) => entry.summary.earned > 0),
+  );
+  const coaching = !hadScoredRecord && earnedPoints === 0;
   const [isRatingsOpen, setIsRatingsOpen] = useState(false);
   const ratingsButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -762,7 +777,7 @@ export function Scoreboard({
       <div className="grid w-full">
         <div
           className={`col-start-1 row-start-1 flex items-baseline justify-between gap-4 text-sm text-gray-500 dark:text-gray-400 ${
-            feedback === null ? '' : 'invisible'
+            feedback === null && !coaching ? '' : 'invisible'
           }`}
         >
           <span className="font-medium">{t.wordsHeader}</span>
@@ -773,6 +788,16 @@ export function Scoreboard({
             feedback={feedback}
             requiredCharacters={requiredCharacters}
           />
+          {/* The verdict outranks the coach: a rejection takes the row and
+              the coach returns once the next edit clears it. The status
+              line stays mounted (empty) so its live region never churns. */}
+          {feedback === null && coaching ? (
+            <Coach
+              letterCount={saladLetters.length}
+              minimumLength={minimumLength}
+              requiredCharacters={requiredCharacters}
+            />
+          ) : null}
         </div>
       </div>
       <WordDrum
