@@ -553,12 +553,13 @@ describe('App', () => {
       await screen.findByRole('button', { name: 'Copied!' }),
     ).toBeInTheDocument();
     const text = writeText.mock.calls[0][0] as string;
-    expect(text).toContain('Word Salad · DEORSTW (T)');
+    // The board as one row of tiles, the required T filled.
+    expect(text).toContain('Word Salad\n🄳🄴🄾🅁🅂🆃🅆\n');
     expect(text).toContain('1/15 · Meh');
     expect(text).toContain('letters=DEORSTW&required=T&score=1&hints=0');
   });
 
-  it('shares a gold bar and trophy for a perfect score', async () => {
+  it('shares a trophy for a perfect score', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -580,7 +581,6 @@ describe('App', () => {
     expect(text).toContain('15/15');
     expect(text).toContain('🏆');
     expect(text).not.toContain('✓');
-    expect(text).toContain('🟨'.repeat(7));
     expect(text).not.toContain('🟩');
   });
 

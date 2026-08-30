@@ -162,26 +162,29 @@ function denyClass(
   return denied.id % 2 === 1 ? 'control-deny' : 'control-deny-alt';
 }
 
-// The share snippet's miniature bar: earned, lost-to-hints, unclaimed —
-// or solid gold for the perfect sweep.
-const SHARE_BAR_SEGMENTS = 7;
+// The share snippet's rack: the board's letters as Unicode square tiles in
+// the rack's own grammar — outlined for a plain letter, filled for the
+// required one — in one row, as the wide rack shows them (a share shouldn't
+// depend on which layout the sender was in). The outlined set (U+1F130–49)
+// has no emoji members; the filled set (U+1F170–) does at A, B, O and P,
+// which is why fill marks only the required letter. A letter with no
+// squared form (Ñ) stays as it is.
+const SQUARED_A = 0x1f130;
+const NEGATIVE_SQUARED_A = 0x1f170;
 
-function shareBar(earned: number, lost: number, max: number): string {
-  // Gated on the real score, not the rounded bar: rounding can fill all
-  // seven segments a point or two short of perfect.
-  if (earned === max) {
-    return '🟨'.repeat(SHARE_BAR_SEGMENTS);
+function shareTile(letter: string, required: string): string {
+  const code = letter.codePointAt(0) ?? 0;
+  if (code < 0x41 || code > 0x5a) {
+    return letter;
   }
-  const greens = Math.round((earned / max) * SHARE_BAR_SEGMENTS);
-  const darks = Math.min(
-    SHARE_BAR_SEGMENTS - greens,
-    Math.round((lost / max) * SHARE_BAR_SEGMENTS),
-  );
-  return (
-    '🟩'.repeat(greens) +
-    '⬛'.repeat(darks) +
-    '⬜'.repeat(SHARE_BAR_SEGMENTS - greens - darks)
-  );
+  const base = required.includes(letter) ? NEGATIVE_SQUARED_A : SQUARED_A;
+  return String.fromCodePoint(base + code - 0x41);
+}
+
+function shareRack(letters: string, required: string): string {
+  return Array.from(letters)
+    .map((letter) => shareTile(letter, required))
+    .join('');
 }
 
 export function Scoreboard({
@@ -300,8 +303,8 @@ export function Scoreboard({
     [],
   );
 
-  // Wordle-style share: a themed snippet whose link replays this puzzle and
-  // carries the score as a challenge. Native share sheet where available,
+  // The share: the board as tiles, the result, and a link that replays this
+  // puzzle and carries the score as a challenge. Native share sheet where available,
   // clipboard otherwise; the score is a claim, verified socially.
   const handleShare = async () => {
     const url = new URL(window.location.href);
@@ -315,10 +318,9 @@ export function Scoreboard({
       wonMark +
       (hintCount > 0 ? ` · ${t.hintsUsed(hintCount, lostPoints)}` : '');
     const text = [
-      `${t.appTitle} · ${letters}` +
-        (requiredCharacters.length > 0 ? ` (${requiredCharacters})` : ''),
+      t.appTitle,
+      shareRack(letters, requiredCharacters),
       summary,
-      shareBar(earnedPoints, lostPoints, maxPoints),
       url.toString(),
     ].join('\n');
 
