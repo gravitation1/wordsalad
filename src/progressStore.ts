@@ -28,6 +28,12 @@ const ACHIEVEMENTS_KEY = 'wordsalad:achievements';
 // Boards that came from the custom-game builder. A fact about the board,
 // not progress on it, so no reset touches it either.
 const BUILT_PREFIX = 'wordsalad:built:';
+// The achievements a board has earned since its first word — the story the
+// end-game dialog recaps. Progress on the board, so a reset clears it.
+const BOARD_UNLOCKS_PREFIX = 'wordsalad:unlocks:';
+// When the trophy case was last opened: everything earned since is "new",
+// and the ⋯ menu says so until the case is opened again.
+const ACHIEVEMENTS_SEEN_KEY = 'wordsalad:achievements-seen';
 
 // A compact per-game record for the history view: everything the list and
 // its aggregate statistics need, without re-solving the puzzle.
@@ -327,12 +333,73 @@ export function saveBuilt(gameKey: string): void {
   }
 }
 
+export function loadBoardUnlocks(gameKey: string): readonly AchievementId[] {
+  try {
+    const raw = window.localStorage.getItem(BOARD_UNLOCKS_PREFIX + gameKey);
+
+    if (raw === null) {
+      return [];
+    }
+
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter(
+          (id): id is AchievementId =>
+            typeof id === 'string' && isAchievementId(id),
+        )
+      : [];
+  } catch (_error) {
+    return [];
+  }
+}
+
+export function saveBoardUnlocks(
+  gameKey: string,
+  ids: readonly AchievementId[],
+): void {
+  try {
+    window.localStorage.setItem(
+      BOARD_UNLOCKS_PREFIX + gameKey,
+      JSON.stringify(ids),
+    );
+  } catch (_error) {
+    // Then the recap tells only this session's part of the story.
+  }
+}
+
+export function loadAchievementsSeenAt(): number {
+  try {
+    const raw = window.localStorage.getItem(ACHIEVEMENTS_SEEN_KEY);
+    const seenAt = raw === null ? Number.NaN : Number(raw);
+    return Number.isFinite(seenAt) ? seenAt : 0;
+  } catch (_error) {
+    return 0;
+  }
+}
+
+export function saveAchievementsSeenAt(now: number): void {
+  try {
+    window.localStorage.setItem(ACHIEVEMENTS_SEEN_KEY, String(now));
+  } catch (_error) {
+    // Then the menu keeps counting; nothing worse.
+  }
+}
+
+// Unlocks earned since the case was last opened.
+export function countFreshUnlocks(): number {
+  const seenAt = loadAchievementsSeenAt();
+  return Object.values(loadUnlocks()).filter(
+    (unlockedAt) => unlockedAt > seenAt,
+  ).length;
+}
+
 export function clearSavedProgress(gameKey: string): void {
   try {
     window.localStorage.removeItem(WORDS_PREFIX + gameKey);
     window.localStorage.removeItem(HINTED_WORDS_PREFIX + gameKey);
     window.localStorage.removeItem(META_PREFIX + gameKey);
     window.localStorage.removeItem(DRAFT_PREFIX + gameKey);
+    window.localStorage.removeItem(BOARD_UNLOCKS_PREFIX + gameKey);
     window.localStorage.removeItem(LEGACY_HINTS_PREFIX + gameKey);
   } catch (_error) {
     // Nothing to clear if storage is unavailable.

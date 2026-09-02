@@ -29,6 +29,7 @@ import {
   loadSummaries,
   loadThemePreference,
   loadUnlocks,
+  saveAchievementsSeenAt,
   saveLocaleOverride,
   saveSoundEnabled,
   saveThemePreference,
@@ -139,6 +140,9 @@ function AppBody({
   const [howToPlayOpen, setHowToPlayOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(loadSoundEnabled);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  // Counts the unlock cards that have landed on the ⋯ trigger, for its
+  // press-and-ring acknowledgment.
+  const [menuPulse, setMenuPulse] = useState(0);
   // The New game pill's element, shared with the letter rack: a fresh
   // deal flies its tiles out of the button that dealt them.
   const newGameRef = useRef<HTMLButtonElement>(null);
@@ -189,11 +193,23 @@ function AppBody({
 
   const openAchievements = () => {
     const now = Date.now();
+    // Opening the case is what makes its contents "seen": the menu stops
+    // counting new unlocks from here.
+    saveAchievementsSeenAt(now);
     setAchievements({
       now,
       stats: summarizeHistory(loadSummaries(), now),
       unlocks: loadUnlocks(),
     });
+  };
+
+  // The unlock card has flown into the menu: retire the moment and let the
+  // trigger acknowledge the landing.
+  const finishUnlock = () => {
+    if (game.status === 'playing') {
+      game.dismissUnlockMoment();
+    }
+    setMenuPulse((previous) => previous + 1);
   };
 
   const openCustom = () => {
@@ -293,6 +309,7 @@ function AppBody({
           theme={settings.theme}
           wordList={spec.id}
           triggerRef={menuTriggerRef}
+          pulse={menuPulse}
         />
       </header>
       {history === null ? null : (
@@ -368,7 +385,13 @@ function AppBody({
           onNewGame={game.startNewGame}
           onPrefill={game.prefillWord}
           onRestart={game.restartGame}
-          onShared={game.noteShare}
+          onShared={(fromDialog) => {
+            game.noteShare(!fromDialog);
+          }}
+          boardUnlocks={game.boardUnlocks}
+          unlockMoment={game.unlockMoment}
+          onUnlockDone={finishUnlock}
+          unlockTargetRef={menuTriggerRef}
           rankUp={game.rankUp}
           winPoints={game.winPoints}
           winThreshold={game.winThreshold}

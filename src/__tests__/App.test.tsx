@@ -2944,7 +2944,7 @@ describe('achievements', () => {
 
   function openCase(): HTMLElement {
     fireEvent.click(screen.getByRole('button', { name: 'More options' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Achievements' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Achievements/ }));
     return screen.getByTestId('achievements-dialog');
   }
 
@@ -3051,11 +3051,16 @@ describe('achievements', () => {
     expect(unlocked()).toEqual({ pangrammer: expect.any(Number) as number });
     submitWord('test'); // 12 of 15: the win
 
+    // The recap tells the whole board's story, in the order it happened.
     const banner = screen.getByTestId('win-banner');
     expect(within(banner).getByTestId('achievement-recap')).toHaveTextContent(
       'Unlocked',
     );
-    expect(recapIds(banner)).toEqual(['first-win', 'no-help-needed']);
+    expect(recapIds(banner)).toEqual([
+      'pangrammer',
+      'first-win',
+      'no-help-needed',
+    ]);
 
     closeWin();
     const dialog = openCase();
@@ -3093,7 +3098,7 @@ describe('achievements', () => {
     ]);
   });
 
-  it('recaps only what the board just earned', () => {
+  it('recaps the whole board, and starts the story over on a restart', () => {
     render(<App dictionary={DICTIONARY} />);
     submitWord('worsted');
     submitWord('test'); // the win
@@ -3101,6 +3106,9 @@ describe('achievements', () => {
     submitWord('rotted'); // 15/15: the perfect, celebrated on its own
 
     expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'pangrammer',
+      'first-win',
+      'no-help-needed',
       'first-perfect',
       'completionist',
       'super-genius',
@@ -3172,6 +3180,7 @@ describe('achievements', () => {
     submitWord('test');
 
     expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'pangrammer',
       'first-win',
       'no-help-needed',
       'ten-wins',
@@ -3197,6 +3206,9 @@ describe('achievements', () => {
     ]);
     submitWord('test');
     expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'pangrammer',
+      'ten-wins',
+      'fifty-wins',
       'first-win',
       'no-help-needed',
       'century',
@@ -3210,6 +3222,7 @@ describe('achievements', () => {
     submitWord('test'); // the English win: a second list
 
     expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'pangrammer',
       'first-win',
       'no-help-needed',
       'bilingual',
@@ -3228,6 +3241,8 @@ describe('achievements', () => {
     submitWord('test');
 
     expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'pangrammer',
+      'bilingual',
       'first-win',
       'no-help-needed',
       'polyglot',
@@ -3317,6 +3332,7 @@ describe('achievements', () => {
     submitWord('worsted');
     submitWord('test');
     expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'pangrammer',
       'first-win',
       'no-help-needed',
       'builder',
@@ -3348,6 +3364,45 @@ describe('achievements', () => {
     expect(row(dialog, 'host')).toHaveAttribute('data-earned', 'true');
   });
 
+  it('appends Host to the open win dialog when shared from there', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted');
+    submitWord('test'); // the win
+    const banner = screen.getByTestId('win-banner');
+    fireEvent.click(within(banner).getByRole('button', { name: /Share/ }));
+    expect(
+      await within(banner).findByRole('button', { name: 'Copied!' }),
+    ).toBeInTheDocument();
+
+    // The dialog is open, so it recaps the share in place: no card.
+    expect(recapIds(banner)).toEqual([
+      'pangrammer',
+      'first-win',
+      'no-help-needed',
+      'host',
+    ]);
+    expect(screen.queryByTestId('unlock-card')).not.toBeInTheDocument();
+  });
+
+  it('keeps the board’s story across a reload for the recap', () => {
+    const view = render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted'); // Pangrammer, mid-board
+    view.unmount();
+
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test'); // the win, on the restored board
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'pangrammer',
+      'first-win',
+      'no-help-needed',
+    ]);
+  });
+
   it('awards Long haul for a word of ten letters', () => {
     window.history.replaceState(null, '', '?letters=AEMNSTX&required=S');
     render(<App dictionary={['ASSESSMENT', 'TEST', 'MASS']} />);
@@ -3375,5 +3430,127 @@ describe('achievements', () => {
     expect(unlocked()).not.toHaveProperty('marathon');
     submitWord(words[24].toLowerCase());
     expect(unlocked()).toHaveProperty('marathon');
+  });
+});
+
+describe('unlock moments', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.history.replaceState(null, '', '?letters=WORDTES&required=T');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    window.history.replaceState(null, '', window.location.pathname);
+  });
+
+  const menuTrigger = () =>
+    screen.getByRole('button', { name: 'More options' });
+
+  function cardIds(): (string | null)[] {
+    return within(screen.getByTestId('unlock-card'))
+      .getAllByRole('listitem')
+      .map((chip) => chip.getAttribute('data-achievement'));
+  }
+
+  it('announces a mid-board unlock with a card, a beat after the word lands', () => {
+    vi.useFakeTimers();
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted'); // Pangrammer, with no dialog to recap it
+
+    // The verdict has the row to itself first.
+    expect(screen.queryByTestId('unlock-card')).not.toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(screen.queryByTestId('unlock-card')).not.toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(50);
+    });
+    expect(screen.getByTestId('unlock-card')).toHaveTextContent('Unlocked');
+    expect(cardIds()).toEqual(['pangrammer']);
+    expect(screen.getByTestId('unlock-card')).toHaveAttribute(
+      'data-phase',
+      'shown',
+    );
+
+    // It holds, then flies into the ⋯ menu (no Web Animations here, so the
+    // flight lands at once), and the trigger acknowledges the landing.
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+    expect(screen.queryByTestId('unlock-card')).not.toBeInTheDocument();
+    expect(menuTrigger()).toHaveAttribute('data-pulse', '1');
+    expect(menuTrigger()).toHaveClass('control-press');
+
+    // The menu row says what flew in, until the case is opened.
+    fireEvent.click(menuTrigger());
+    expect(screen.getByTestId('achievements-fresh')).toHaveTextContent('★ 1');
+    expect(
+      screen.getByRole('menuitem', { name: 'Achievements 1 new' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Achievements/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(menuTrigger());
+    expect(screen.queryByTestId('achievements-fresh')).not.toBeInTheDocument();
+  });
+
+  it('shows several unlocks as one card', () => {
+    for (let index = 0; index < 9; index++) {
+      window.localStorage.setItem(
+        `wordsalad:meta:ABCDEF${String.fromCharCode(71 + index)}.A.4`,
+        JSON.stringify({
+          earned: 12,
+          found: index === 0 ? 998 : 3,
+          hints: 0,
+          lost: 0,
+          max: 15,
+          playedAt: 1000,
+          total: 3,
+        }),
+      );
+    }
+    vi.useFakeTimers();
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test'); // the 1,000th word on the record: Wordsmith, mid-board
+    act(() => {
+      vi.advanceTimersByTime(650);
+    });
+    expect(cardIds()).toEqual(['wordsmith']);
+  });
+
+  it('withholds the card when the word opens a dialog, and takes it down when one opens', () => {
+    vi.useFakeTimers();
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted'); // Pangrammer: a moment is pending
+    submitWord('test'); // the win, before the beat
+    act(() => {
+      vi.advanceTimersByTime(650);
+    });
+    // The dialog owns the moment: no card, and its recap has the pangram.
+    expect(screen.queryByTestId('unlock-card')).not.toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('win-banner')).getByTestId('achievement-recap'),
+    ).toHaveTextContent('Pangrammer');
+  });
+
+  it('announces Host from the meta row with the card', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test');
+    fireEvent.click(screen.getByRole('button', { name: /Share/ }));
+    expect(
+      await screen.findByRole('button', { name: 'Copied!' }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('unlock-card', {}, { timeout: 3000 }),
+    ).toHaveTextContent('Host');
   });
 });

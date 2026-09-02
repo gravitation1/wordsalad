@@ -1054,3 +1054,27 @@ button {
     animation: none;
   }
 }
+
+/* The mid-board unlock card rises in over the verdict row; its exit is a
+   flight into the ⋯ menu, scripted by the component (a Web Animation, so
+   the destination can be measured). */
+@keyframes unlock-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.unlock-card-enter {
+  animation: unlock-card-enter 220ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unlock-card-enter {
+    animation: none;
+  }
+}

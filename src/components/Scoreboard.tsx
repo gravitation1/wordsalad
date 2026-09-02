@@ -1,6 +1,7 @@
 import type { RefObject } from 'react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import type { AchievementId } from '../game/achievements';
 import {
   completionToPoints,
   getLevelLadder,
@@ -16,6 +17,7 @@ import type {
   RankUp,
   RestartExit,
   ShareRequest,
+  UnlockMoment,
   WordSlot,
   WordSpotlight,
 } from '../useWordSaladGame';
@@ -26,6 +28,7 @@ import { LockoutDialog } from './LockoutDialog';
 import { RatingsDialog } from './RatingsDialog';
 import type { WordOrigin } from './tiles';
 import { KEYCAP_CLASS, KEYCAP_TINTED_CLASS } from './tiles';
+import { UnlockCard } from './UnlockCard';
 import { WinDialog } from './WinDialog';
 import { WordDrum } from './WordDrum';
 
@@ -84,8 +87,15 @@ interface ScoreboardProps {
   // prefix into the word area.
   onPrefill: (prefix: string, origin: number) => void;
   onRestart: () => void;
-  // A share went out (sheet or clipboard), for the achievements.
-  onShared: () => void;
+  // A share went out (sheet or clipboard), for the achievements; true when
+  // it was the end-game dialog's own button, whose recap will show it.
+  onShared: (fromDialog: boolean) => void;
+  // The board's achievements so far (the dialogs' recap), the one waiting
+  // to be announced mid-board, and where its card flies to.
+  boardUnlocks: readonly AchievementId[];
+  unlockMoment: UnlockMoment | null;
+  onUnlockDone: () => void;
+  unlockTargetRef: RefObject<HTMLElement | null>;
   // Passed through to the drum: where a found word flies in from.
   wordOriginRef: { current: WordOrigin | null };
 }
@@ -232,6 +242,10 @@ export function Scoreboard({
   onPrefill,
   onRestart,
   onShared,
+  boardUnlocks,
+  unlockMoment,
+  onUnlockDone,
+  unlockTargetRef,
   wordOriginRef,
 }: ScoreboardProps) {
   const t = useMessages();
@@ -314,7 +328,7 @@ export function Scoreboard({
   // The share: the board as tiles, the result, and a link that replays this
   // puzzle and carries the score as a challenge. Native share sheet where available,
   // clipboard otherwise; the score is a claim, verified socially.
-  const handleShare = async () => {
+  const handleShare = async (fromDialog = false) => {
     const url = new URL(window.location.href);
     const letters = url.searchParams.get('letters') ?? '';
     url.searchParams.set('score', String(earnedPoints));
@@ -335,7 +349,7 @@ export function Scoreboard({
     try {
       if (typeof navigator.share === 'function') {
         await navigator.share({ text });
-        onShared();
+        onShared(fromDialog);
         return;
       }
     } catch (_error) {
@@ -344,7 +358,7 @@ export function Scoreboard({
     try {
       await navigator.clipboard.writeText(text);
       setShareCopied(true);
-      onShared();
+      onShared(fromDialog);
       if (copiedTimer.current !== null) {
         window.clearTimeout(copiedTimer.current);
       }
@@ -606,11 +620,11 @@ export function Scoreboard({
           }}
           onNewGame={onNewGame}
           onShare={() => {
-            void handleShare();
+            void handleShare(true);
           }}
           requiredCharacters={requiredCharacters}
           shareCopied={shareCopied}
-          unlocked={celebration.unlocked}
+          unlocked={boardUnlocks}
         />
       ) : null}
       {/* The loss counterpart to the win modal: fired once on the crossing,
@@ -628,7 +642,7 @@ export function Scoreboard({
           }}
           onRestart={onRestart}
           reachablePoints={maxPoints - lostPoints}
-          unlocked={lockout.unlocked}
+          unlocked={boardUnlocks}
           winPoints={winPoints}
         />
       ) : null}
@@ -905,7 +919,20 @@ export function Scoreboard({
           arrives — and costing the app frame no extra height. The labels
           are visual scaffolding; yielding them while a message is up loses
           nothing (visibility also hides them from screen readers). */}
-      <div className="grid w-full">
+      <div className="relative grid w-full">
+        {/* A mid-board unlock's card, over the verdict it follows. A dialog
+            owns the moment when one is open, so the card waits it out —
+            and any unlock it would have shown is in that dialog's recap. */}
+        {unlockMoment !== null &&
+        !(celebration !== null && celebration !== dismissedWin) &&
+        !(lockout !== null && lockout !== dismissedLockout) ? (
+          <UnlockCard
+            key={unlockMoment.id}
+            moment={unlockMoment}
+            onDone={onUnlockDone}
+            targetRef={unlockTargetRef}
+          />
+        ) : null}
         <div
           className={`col-start-1 row-start-1 flex items-baseline justify-between gap-4 text-sm text-gray-500 dark:text-gray-400 ${
             feedback === null && !coaching ? '' : 'invisible'

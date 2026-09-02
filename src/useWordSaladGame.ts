@@ -33,6 +33,7 @@ import { WordSalad } from './game/wordSalad';
 import type { GameSummary } from './progressStore';
 import {
   clearSavedProgress,
+  loadBoardUnlocks,
   loadBuilt,
   loadDraft,
   loadHintedWords,
@@ -40,6 +41,7 @@ import {
   loadSummaries,
   loadUnlocks,
   recordUnlocks,
+  saveBoardUnlocks,
   saveBuilt,
   saveDraft,
   saveHintedWords,
@@ -131,8 +133,6 @@ export interface Celebration {
   id: number;
   perfect: boolean;
   tossId: number;
-  // The achievements this crossing earned, for the win dialog's recap.
-  unlocked: readonly AchievementId[];
 }
 
 // A submission that climbed the ratings ladder. Fires only during play —
@@ -160,8 +160,15 @@ export interface WordSpotlight {
 // on restore of an already-locked game).
 export interface Lockout {
   id: number;
-  // The achievements this crossing earned, for the lockout dialog's recap.
-  unlocked: readonly AchievementId[];
+}
+
+// An unlock with no dialog to recap it — a mid-board word, a share from
+// the meta row — for the view to announce on its own. The end-game dialogs
+// recap the board's whole story (PlayingGame.boardUnlocks) instead, so a
+// moment cut short loses nothing.
+export interface UnlockMoment {
+  id: number;
+  ids: readonly AchievementId[];
 }
 
 // A keyboard action that landed on an unavailable control (Backspace or
@@ -297,8 +304,15 @@ export interface PlayingGame {
   // Fill the word area with an unfound slot's derived prefix (WordSlot's
   // prefix), replacing anything shorter that was typed.
   prefillWord: (prefix: string, origin?: number) => void;
-  // The share button's report, for the achievements.
-  noteShare: () => void;
+  // Every achievement this board has earned since its first word, in the
+  // order earned: the end-game dialogs' recap. Restart starts it over.
+  boardUnlocks: readonly AchievementId[];
+  unlockMoment: UnlockMoment | null;
+  // The view has finished announcing the moment.
+  dismissUnlockMoment: () => void;
+  // The share button's report, for the achievements. A share from inside
+  // an end-game dialog is recapped there; any other is announced.
+  noteShare: (announce: boolean) => void;
 }
 
 export type FailureReason = 'generation-failed' | 'invalid-game-data';
@@ -675,6 +689,11 @@ export function useWordSaladGame(
   const [shareRequest, setShareRequest] = useState<ShareRequest | null>(null);
   const [restartExit, setRestartExit] = useState<RestartExit | null>(null);
   const [celebration, setCelebration] = useState<Celebration | null>(null);
+  const [boardUnlocks, setBoardUnlocks] = useState<readonly AchievementId[]>(
+    () =>
+      wordSalad === null ? [] : loadBoardUnlocks(storageKey(spec, wordSalad)),
+  );
+  const [unlockMoment, setUnlockMoment] = useState<UnlockMoment | null>(null);
   const [rankUp, setRankUp] = useState<RankUp | null>(null);
   const [lockout, setLockout] = useState<Lockout | null>(null);
   // Read once at boot; the URL-write effect strips it so re-sharing never
@@ -870,12 +889,22 @@ export function useWordSaladGame(
       summary: describeSummary(wordSalad, hintedWords, now),
       now,
     });
+    if (unlocked.length > 0) {
+      const story = [...boardUnlocks, ...unlocked];
+      setBoardUnlocks(story);
+      saveBoardUnlocks(gameKey, story);
+      if (!crossedWin && !perfect) {
+        setUnlockMoment((previous) => ({
+          id: (previous?.id ?? 0) + 1,
+          ids: unlocked,
+        }));
+      }
+    }
     if (crossedWin || perfect) {
       setCelebration((previous) => ({
         id: (previous?.id ?? 0) + 1,
         perfect,
         tossId,
-        unlocked,
       }));
     } else {
       // Climbing a rung gets its own (smaller) moment — but the win
@@ -897,6 +926,7 @@ export function useWordSaladGame(
     }));
     saveWords(gameKey, Array.from(wordSalad.foundWords.keys()));
   }, [
+    boardUnlocks,
     built,
     challengeScore,
     collate,
@@ -909,24 +939,43 @@ export function useWordSaladGame(
 
   // A share is an achievement event of its own — the only one raised
   // outside play — judged on the board as it stands.
-  const noteShare = useCallback(() => {
-    if (wordSalad === null) {
-      return;
-    }
-    const now = Date.now();
-    claimUnlocks({
-      gameKey: storageKey(spec, wordSalad),
-      kind: 'shared',
-      board: describeBoard(wordSalad, hintedWords, {
-        built,
-        challengeScore,
-        crossedWin: false,
-      }),
-      word: null,
-      summary: describeSummary(wordSalad, hintedWords, now),
-      now,
-    });
-  }, [built, challengeScore, hintedWords, spec, wordSalad]);
+  const noteShare = useCallback(
+    (announce: boolean) => {
+      if (wordSalad === null) {
+        return;
+      }
+      const now = Date.now();
+      const gameKey = storageKey(spec, wordSalad);
+      const unlocked = claimUnlocks({
+        gameKey,
+        kind: 'shared',
+        board: describeBoard(wordSalad, hintedWords, {
+          built,
+          challengeScore,
+          crossedWin: false,
+        }),
+        word: null,
+        summary: describeSummary(wordSalad, hintedWords, now),
+        now,
+      });
+      if (unlocked.length > 0) {
+        const story = [...boardUnlocks, ...unlocked];
+        setBoardUnlocks(story);
+        saveBoardUnlocks(gameKey, story);
+        if (announce) {
+          setUnlockMoment((previous) => ({
+            id: (previous?.id ?? 0) + 1,
+            ids: unlocked,
+          }));
+        }
+      }
+    },
+    [boardUnlocks, built, challengeScore, hintedWords, spec, wordSalad],
+  );
+
+  const dismissUnlockMoment = useCallback(() => {
+    setUnlockMoment(null);
+  }, []);
 
   const appendLetter = useCallback(
     (character: string) => {
@@ -1110,15 +1159,17 @@ export function useWordSaladGame(
           summary: describeSummary(wordSalad, committed, now),
           now,
         });
-        setLockout((previous) => ({
-          id: (previous?.id ?? 0) + 1,
-          unlocked,
-        }));
+        if (unlocked.length > 0) {
+          const story = [...boardUnlocks, ...unlocked];
+          setBoardUnlocks(story);
+          saveBoardUnlocks(storageKey(spec, wordSalad), story);
+        }
+        setLockout((previous) => ({ id: (previous?.id ?? 0) + 1 }));
       }
       setHintedWords(committed);
       saveHintedWords(storageKey(spec, wordSalad), Array.from(committed));
     }
-  }, [built, challengeScore, hintedWords, spec, wordSalad]);
+  }, [boardUnlocks, built, challengeScore, hintedWords, spec, wordSalad]);
 
   // Fill the word area with a gap row's derivable prefix. The tap spares
   // the typing, nothing more — unlike a hint, nothing is paid or
@@ -1203,6 +1254,8 @@ export function useWordSaladGame(
     setCelebration(null);
     setRankUp(null);
     setLockout(null);
+    setBoardUnlocks([]);
+    setUnlockMoment(null);
     // A shared challenge belongs to the puzzle it arrived with.
     setChallengeScore(null);
     // Reset the press counters so the control buttons don't replay a ripple
@@ -1270,6 +1323,8 @@ export function useWordSaladGame(
     setCelebration(null);
     setRankUp(null);
     setLockout(null);
+    setBoardUnlocks([]);
+    setUnlockMoment(null);
     setTossId(0);
     setDeleteId(0);
     setHintedWords(new Set());
@@ -1626,6 +1681,9 @@ export function useWordSaladGame(
     restartGame,
     revealHint,
     prefillWord,
+    boardUnlocks,
+    unlockMoment,
+    dismissUnlockMoment,
     noteShare,
   };
 }

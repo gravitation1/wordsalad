@@ -1,4 +1,4 @@
-import type { KeyboardEvent, RefObject } from 'react';
+import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 import { DICTIONARIES } from '../game/dictionaries';
@@ -10,6 +10,7 @@ import {
   useMessages,
 } from '../i18n';
 import type { ThemePreference } from '../progressStore';
+import { countFreshUnlocks } from '../progressStore';
 
 // The header's ⋯ menu: the home for everything that is not the play loop —
 // meta actions (the custom-game builder, history) and, below a divider, the
@@ -39,6 +40,10 @@ interface OverflowMenuProps {
   // Owned by the parent so it can restore focus here after a dialog opened
   // from the menu closes (the menu items themselves unmount on close).
   triggerRef: RefObject<HTMLButtonElement | null>;
+  // Counts the unlock cards that have flown into this menu; each landing
+  // presses the trigger and rings it, the acknowledgment a control gives
+  // when it fires.
+  pulse: number;
 }
 
 // Each tap advances the override one step, ending back at "follow the OS".
@@ -72,19 +77,50 @@ export function OverflowMenu({
   theme,
   wordList,
   triggerRef,
+  pulse,
 }: OverflowMenuProps) {
   const t = useMessages();
   const [open, setOpen] = useState(false);
+  // Achievements earned since the case was last opened, read when the
+  // menu opens (event-time storage, like the dialogs' snapshots).
+  const [fresh, setFresh] = useState(0);
+  // The pulse whose ring has finished, so the press class comes off again.
+  const [ended, setEnded] = useState(0);
+  const pulsing = pulse > 0 && pulse !== ended;
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Glyph icons in the same vocabulary as the meta row's ↻/↗/⟲: ✎ for
   // authoring a puzzle, ↺ for looking back, ★ for the trophy case (the
   // filled star is what an earned achievement wears inside it).
-  const items = [
+  const items: {
+    action: () => void;
+    icon: string;
+    label: string;
+    trailing?: ReactNode;
+  }[] = [
     { action: onCustomGame, icon: '✎', label: t.customGameButton },
     { action: onHistory, icon: '↺', label: t.historyButton },
-    { action: onAchievements, icon: '★', label: t.achievementsButton },
+    {
+      action: onAchievements,
+      icon: '★',
+      label: t.achievementsButton,
+      // What has flown in here since the case was last opened, in the
+      // Theme row's trailing-value idiom; the case clears it.
+      trailing:
+        fresh > 0 ? (
+          <>
+            <span
+              aria-hidden="true"
+              className="ml-auto pl-3 text-accent"
+              data-testid="achievements-fresh"
+            >
+              ★ {fresh}
+            </span>
+            <span className="sr-only"> {t.achievementsNew(fresh)}</span>
+          </>
+        ) : undefined,
+    },
   ];
 
   const themeName = {
@@ -161,9 +197,13 @@ export function OverflowMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={t.moreMenuLabel}
-        className="-m-1 flex touch-manipulation items-center justify-center p-2.5 text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400"
+        className={`relative -m-1 flex touch-manipulation items-center justify-center rounded-full p-2.5 text-gray-400 transition hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400 ${
+          pulsing ? 'control-press' : ''
+        }`}
+        data-pulse={pulse}
         onClick={() => {
           setOpen((previous) => !previous);
+          setFresh(countFreshUnlocks());
         }}
         ref={triggerRef}
         type="button"
@@ -173,6 +213,18 @@ export function OverflowMenu({
         <span aria-hidden="true" className="text-xl leading-none">
           ⋯
         </span>
+        {/* The landing's ring, keyed per pulse so each flight replays it;
+            its end (the longer of the two animations) retires both. */}
+        {pulsing ? (
+          <span
+            aria-hidden="true"
+            className="control-ring pointer-events-none absolute inset-0 rounded-full"
+            key={pulse}
+            onAnimationEnd={() => {
+              setEnded(pulse);
+            }}
+          />
+        ) : null}
       </button>
       {open ? (
         // Anchored to the right edge: the trigger sits at the header's end,
@@ -204,6 +256,7 @@ export function OverflowMenu({
                 {item.icon}
               </span>
               {item.label}
+              {item.trailing}
             </button>
           ))}
           {/* The word list is a property of the puzzle, not of the device,

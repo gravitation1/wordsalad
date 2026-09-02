@@ -103,6 +103,9 @@ export interface Messages {
   achievementLockedLabel: string;
   // The end-game dialogs' eyebrow over the chips of what that board earned.
   unlockedLabel: string;
+  // The ⋯ menu row's screen-reader count of unlocks since the case was
+  // last opened (the visible form is "★ N").
+  achievementsNew: (count: number) => string;
   achievements: Record<AchievementId, { description: string; name: string }>;
   shareButton: string;
   // Sits inside the share button in place of its label, so it stays short
@@ -259,6 +262,7 @@ const EN: Messages = {
   achievementEarnedLabel: 'Earned',
   achievementLockedLabel: 'Locked',
   unlockedLabel: 'Unlocked',
+  achievementsNew: (count) => `${count} new`,
   achievements: {
     'first-win': { name: 'First win', description: 'Win a game' },
     'no-help-needed': {
@@ -506,6 +510,8 @@ const FR: Messages = {
   achievementEarnedLabel: 'Obtenu',
   achievementLockedLabel: 'Verrouillé',
   unlockedLabel: 'Débloqué',
+  achievementsNew: (count) =>
+    `${count} ${plural('fr', count, { one: 'nouveau', other: 'nouveaux' })}`,
   achievements: {
     'first-win': {
       name: 'Première victoire',
@@ -776,6 +782,8 @@ const ES: Messages = {
   achievementEarnedLabel: 'Conseguido',
   achievementLockedLabel: 'Bloqueado',
   unlockedLabel: 'Desbloqueado',
+  achievementsNew: (count) =>
+    `${count} ${plural('es', count, { one: 'nuevo', other: 'nuevos' })}`,
   achievements: {
     'first-win': { name: 'Primera victoria', description: 'Gana una partida' },
     'no-help-needed': { name: 'Sin ayuda', description: 'Gana sin pistas' },
@@ -1048,6 +1056,7 @@ const DE: Messages = {
   achievementEarnedLabel: 'Erreicht',
   achievementLockedLabel: 'Gesperrt',
   unlockedLabel: 'Freigeschaltet',
+  achievementsNew: (count) => `${count} neu`,
   achievements: {
     'first-win': { name: 'Erster Sieg', description: 'Gewinne ein Spiel' },
     'no-help-needed': { name: 'Ohne Hilfe', description: 'Gewinne ohne Tipp' },
@@ -1314,6 +1323,8 @@ const IT: Messages = {
   achievementEarnedLabel: 'Ottenuto',
   achievementLockedLabel: 'Bloccato',
   unlockedLabel: 'Sbloccato',
+  achievementsNew: (count) =>
+    `${count} ${plural('it', count, { one: 'nuovo', other: 'nuovi' })}`,
   achievements: {
     'first-win': { name: 'Prima vittoria', description: 'Vinci una partita' },
     'no-help-needed': {
@@ -1589,6 +1600,8 @@ const PT: Messages = {
   achievementEarnedLabel: 'Conquistada',
   achievementLockedLabel: 'Bloqueada',
   unlockedLabel: 'Desbloqueado',
+  achievementsNew: (count) =>
+    `${count} ${plural('pt', count, { one: 'nova', other: 'novas' })}`,
   achievements: {
     'first-win': { name: 'Primeira vitória', description: 'Vença um jogo' },
     'no-help-needed': { name: 'Sem ajuda', description: 'Vença sem dicas' },
@@ -1862,6 +1875,7 @@ const NL: Messages = {
   achievementEarnedLabel: 'Behaald',
   achievementLockedLabel: 'Vergrendeld',
   unlockedLabel: 'Ontgrendeld',
+  achievementsNew: (count) => `${count} nieuw`,
   achievements: {
     'first-win': { name: 'Eerste overwinning', description: 'Win een spel' },
     'no-help-needed': { name: 'Zonder hulp', description: 'Win zonder hint' },
@@ -2120,6 +2134,7 @@ const JA: Messages = {
   achievementEarnedLabel: '達成済み',
   achievementLockedLabel: '未達成',
   unlockedLabel: '実績解除',
+  achievementsNew: (count) => `新着${count}件`,
   achievements: {
     'first-win': { name: '初勝利', description: 'ゲームに勝つ' },
     'no-help-needed': { name: 'ノーヒント', description: 'ヒントなしで勝つ' },
@@ -2344,6 +2359,7 @@ const KO: Messages = {
   achievementEarnedLabel: '달성함',
   achievementLockedLabel: '잠김',
   unlockedLabel: '업적 달성',
+  achievementsNew: (count) => `새 업적 ${count}개`,
   achievements: {
     'first-win': { name: '첫 승리', description: '게임에서 승리하기' },
     'no-help-needed': { name: '힌트 없이', description: '힌트 없이 승리하기' },
@@ -2569,6 +2585,7 @@ const ZH: Messages = {
   achievementEarnedLabel: '已达成',
   achievementLockedLabel: '未解锁',
   unlockedLabel: '成就解锁',
+  achievementsNew: (count) => `${count} 个新成就`,
   achievements: {
     'first-win': { name: '首次获胜', description: '赢下一局' },
     'no-help-needed': { name: '无需提示', description: '不用提示赢下一局' },
@@ -2782,6 +2799,8 @@ const RU: Messages = {
   achievementEarnedLabel: 'Получено',
   achievementLockedLabel: 'Не получено',
   unlockedLabel: 'Открыто',
+  achievementsNew: (count) =>
+    `${count} ${plural('ru', count, { one: 'новое', few: 'новых', many: 'новых', other: 'новых' })}`,
   achievements: {
     'first-win': { name: 'Первая победа', description: 'Выиграйте игру' },
     'no-help-needed': {
