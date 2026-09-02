@@ -13,6 +13,10 @@ const LEVELS: readonly (readonly [number, string])[] = [
 
 const TOP_LEVEL = 'Super-Duper-Genius';
 
+// The share of the board's points that wins it. Lives with the ladder so
+// the history aggregate and the game hook read one definition.
+export const WIN_THRESHOLD = 0.75;
+
 export function getLevel(completionPercent: number): string {
   for (const [threshold, level] of LEVELS) {
     if (completionPercent < threshold) {

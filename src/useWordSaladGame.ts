@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import type {
+  AchievementEvent,
+  AchievementId,
+  BoardFacts,
+  WordFacts,
+} from './game/achievements';
+import { findNewUnlocks } from './game/achievements';
 import type { DictionarySpec } from './game/dictionaries';
 import { alphabetPattern, DEFAULT_DICTIONARY } from './game/dictionaries';
 import { storageKey } from './game/gameKey';
@@ -19,14 +26,21 @@ import {
   shuffled,
   storeWordSalad,
 } from './game/generation';
-import { completionToPoints, getLevel } from './game/levels';
+import { summarizeHistory } from './game/history';
+import { completionToPoints, getLevel, WIN_THRESHOLD } from './game/levels';
 import type { WordPreview } from './game/wordSalad';
 import { WordSalad } from './game/wordSalad';
+import type { GameSummary } from './progressStore';
 import {
   clearSavedProgress,
+  loadBuilt,
   loadDraft,
   loadHintedWords,
   loadSavedWords,
+  loadSummaries,
+  loadUnlocks,
+  recordUnlocks,
+  saveBuilt,
   saveDraft,
   saveHintedWords,
   saveLastGameKey,
@@ -40,7 +54,7 @@ export type { WordPreview } from './game/wordSalad';
 // Hinted words score nothing, so their points are permanently unreachable;
 // hint too much and the ceiling on earned points drops below this line.
 // Exported so the history view judges past games by the same line.
-export const WIN_THRESHOLD = 0.75;
+export { WIN_THRESHOLD } from './game/levels';
 
 // Hint-revealed letters cascade into the word area, position i delayed by
 // this much (typed letters appear at once). Lives here rather than in the
@@ -117,6 +131,8 @@ export interface Celebration {
   id: number;
   perfect: boolean;
   tossId: number;
+  // The achievements this crossing earned, for the win dialog's recap.
+  unlocked: readonly AchievementId[];
 }
 
 // A submission that climbed the ratings ladder. Fires only during play —
@@ -144,6 +160,8 @@ export interface WordSpotlight {
 // on restore of an already-locked game).
 export interface Lockout {
   id: number;
+  // The achievements this crossing earned, for the lockout dialog's recap.
+  unlocked: readonly AchievementId[];
 }
 
 // A keyboard action that landed on an unavailable control (Backspace or
@@ -279,6 +297,8 @@ export interface PlayingGame {
   // Fill the word area with an unfound slot's derived prefix (WordSlot's
   // prefix), replacing anything shorter that was typed.
   prefillWord: (prefix: string, origin?: number) => void;
+  // The share button's report, for the achievements.
+  noteShare: () => void;
 }
 
 export type FailureReason = 'generation-failed' | 'invalid-game-data';
@@ -394,6 +414,87 @@ function tallyPoints(
   }
 
   return { earnedPoints, lostPoints };
+}
+
+// The board's standing for the achievement rules: everything they may
+// judge, taken after the event has been applied to the engine.
+function describeBoard(
+  wordSalad: WordSalad,
+  hintedWords: ReadonlySet<string>,
+  facts: { built: boolean; challengeScore: number | null; crossedWin: boolean },
+): BoardFacts {
+  const { earnedPoints } = tallyPoints(wordSalad, hintedWords);
+  return {
+    crossedWin: facts.crossedWin,
+    perfect: earnedPoints === wordSalad.maxPoints,
+    complete: wordSalad.remainingWords.size === 0,
+    earnedPoints,
+    maxPoints: wordSalad.maxPoints,
+    foundWords: wordSalad.foundWords.size,
+    hints: hintedWords.size,
+    minimumLength: wordSalad.minimumLength,
+    requiredLetters: wordSalad.requiredCharacters.length,
+    built: facts.built,
+    challengeScore: facts.challengeScore,
+  };
+}
+
+// This board's history record as the save effect will write it once the
+// event's state lands — the same fields, from the engine directly.
+function describeSummary(
+  wordSalad: WordSalad,
+  hintedWords: ReadonlySet<string>,
+  now: number,
+): GameSummary {
+  const points = tallyPoints(wordSalad, hintedWords);
+  return {
+    earned: points.earnedPoints,
+    found: wordSalad.foundWords.size,
+    hints: hintedWords.size,
+    lost: points.lostPoints,
+    max: wordSalad.maxPoints,
+    playedAt: now,
+    total: wordSalad.foundWords.size + wordSalad.remainingWords.size,
+  };
+}
+
+interface Claim {
+  gameKey: string;
+  kind: AchievementEvent['kind'];
+  board: BoardFacts;
+  word: WordFacts | null;
+  summary: GameSummary;
+  now: number;
+}
+
+// Award whatever an event earns, and keep it. The unlocked ids ride the
+// crossing events into the end-game dialog, which recaps them; the rest
+// wait in the case. Storage is read at event time, like History's
+// snapshot, rather than mirrored in state: nothing renders from it but
+// that recap. The lifetime totals are taken with this board's summary
+// overlaid on the stored record — the save effect runs after the event,
+// so the stored copy is one submission behind, and the tenth win would
+// otherwise count as the ninth.
+function claimUnlocks({
+  gameKey,
+  kind,
+  board,
+  word,
+  summary,
+  now,
+}: Claim): readonly AchievementId[] {
+  const entries = loadSummaries().filter((entry) => entry.gameKey !== gameKey);
+  // Zero-progress boards stay out of history (the save effect keeps them
+  // out), so they stay out of the totals too.
+  if (summary.found > 0 || summary.hints > 0) {
+    entries.push({ gameKey, summary });
+  }
+  const stats = summarizeHistory(entries, now);
+  const unlocked = findNewUnlocks({ kind, board, word, stats }, loadUnlocks());
+  if (unlocked.length > 0) {
+    recordUnlocks(unlocked, now);
+  }
+  return unlocked;
 }
 
 // Replay saved words through the engine so every entry is revalidated;
@@ -583,6 +684,16 @@ export function useWordSaladGame(
     const score = raw === null ? Number.NaN : Number(raw);
     return Number.isInteger(score) && score > 0 ? score : null;
   });
+  // A board from the custom-game builder arrives flagged (?built). The
+  // flag is kept per board, so a reload still knows, and stripped from the
+  // URL by the effect below, so a forwarded link never carries it: the
+  // person who receives a board did not build it.
+  const [built] = useState(
+    () =>
+      wordSalad !== null &&
+      (new URLSearchParams(window.location.search).has('built') ||
+        loadBuilt(storageKey(spec, wordSalad))),
+  );
   const [tossId, setTossId] = useState(0);
   const [deleteId, setDeleteId] = useState(0);
 
@@ -614,6 +725,11 @@ export function useWordSaladGame(
     // Share-link challenge params are consumed at boot, not kept.
     url.searchParams.delete('score');
     url.searchParams.delete('hints');
+    // The builder's flag is kept per board instead (see `built` above).
+    if (url.searchParams.has('built')) {
+      saveBuilt(storageKey(spec, wordSalad));
+      url.searchParams.delete('built');
+    }
     url.hash = '';
     window.history.replaceState(null, '', url.toString());
     // The installed app's launch returns to whichever game was on screen
@@ -733,11 +849,33 @@ export function useWordSaladGame(
     const earnedAfter = tallyPoints(wordSalad, hintedWords).earnedPoints;
     const crossedWin = earnedBefore < winPoints && earnedAfter >= winPoints;
     const perfect = earnedAfter === wordSalad.maxPoints;
+    // Every scored word is an achievement event. A crossing carries its
+    // unlocks into the celebration's recap; any other word's wait in the
+    // case (there is no dialog to show them in, by design).
+    const now = Date.now();
+    const gameKey = storageKey(spec, wordSalad);
+    const unlocked = claimUnlocks({
+      gameKey,
+      kind: 'scored',
+      board: describeBoard(wordSalad, hintedWords, {
+        built,
+        challengeScore,
+        crossedWin,
+      }),
+      word: {
+        length: word.length,
+        pangram: wordSalad.pangramWords.has(word),
+        hinted: isHinted,
+      },
+      summary: describeSummary(wordSalad, hintedWords, now),
+      now,
+    });
     if (crossedWin || perfect) {
       setCelebration((previous) => ({
         id: (previous?.id ?? 0) + 1,
         perfect,
         tossId,
+        unlocked,
       }));
     } else {
       // Climbing a rung gets its own (smaller) moment — but the win
@@ -751,7 +889,6 @@ export function useWordSaladGame(
       }
     }
 
-    const gameKey = storageKey(spec, wordSalad);
     setFoundWords(toFoundWords(wordSalad, hintedWords, collate));
     setSpotlight((previous) => ({
       id: (previous?.id ?? 0) + 1,
@@ -759,7 +896,37 @@ export function useWordSaladGame(
       word: matches[0] ?? word,
     }));
     saveWords(gameKey, Array.from(wordSalad.foundWords.keys()));
-  }, [collate, hintedWords, inputLetters, spec, tossId, wordSalad]);
+  }, [
+    built,
+    challengeScore,
+    collate,
+    hintedWords,
+    inputLetters,
+    spec,
+    tossId,
+    wordSalad,
+  ]);
+
+  // A share is an achievement event of its own — the only one raised
+  // outside play — judged on the board as it stands.
+  const noteShare = useCallback(() => {
+    if (wordSalad === null) {
+      return;
+    }
+    const now = Date.now();
+    claimUnlocks({
+      gameKey: storageKey(spec, wordSalad),
+      kind: 'shared',
+      board: describeBoard(wordSalad, hintedWords, {
+        built,
+        challengeScore,
+        crossedWin: false,
+      }),
+      word: null,
+      summary: describeSummary(wordSalad, hintedWords, now),
+      now,
+    });
+  }, [built, challengeScore, hintedWords, spec, wordSalad]);
 
   const appendLetter = useCallback(
     (character: string) => {
@@ -919,24 +1086,39 @@ export function useWordSaladGame(
       const reachableBefore = wordSalad.maxPoints - lostPoints;
       const reachableAfter = reachableBefore - hint.cost;
       const hasWon = earnedPoints >= winPoints;
-      if (
-        !hasWon &&
-        reachableBefore >= winPoints &&
-        reachableAfter < winPoints
-      ) {
-        setLockout((previous) => ({ id: (previous?.id ?? 0) + 1 }));
-      }
-
       // Commit the whole key group: submission finds côte and côté
       // together, so the hint pays for them together.
       const committed = new Set(hintedWords);
       for (const sibling of wordSalad.wordsMatching(hint.word)) {
         committed.add(sibling);
       }
+      if (
+        !hasWon &&
+        reachableBefore >= winPoints &&
+        reachableAfter < winPoints
+      ) {
+        const now = Date.now();
+        const unlocked = claimUnlocks({
+          gameKey: storageKey(spec, wordSalad),
+          kind: 'lockout',
+          board: describeBoard(wordSalad, committed, {
+            built,
+            challengeScore,
+            crossedWin: false,
+          }),
+          word: null,
+          summary: describeSummary(wordSalad, committed, now),
+          now,
+        });
+        setLockout((previous) => ({
+          id: (previous?.id ?? 0) + 1,
+          unlocked,
+        }));
+      }
       setHintedWords(committed);
       saveHintedWords(storageKey(spec, wordSalad), Array.from(committed));
     }
-  }, [hintedWords, spec, wordSalad]);
+  }, [built, challengeScore, hintedWords, spec, wordSalad]);
 
   // Fill the word area with a gap row's derivable prefix. The tap spares
   // the typing, nothing more — unlike a hint, nothing is paid or
@@ -1444,5 +1626,6 @@ export function useWordSaladGame(
     restartGame,
     revealHint,
     prefillWord,
+    noteShare,
   };
 }

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { parseGameKey, puzzleSearchParams } from '../game/gameKey';
-import { completionToPoints, getLevel } from '../game/levels';
+import { summarizeHistory } from '../game/history';
+import { completionToPoints, getLevel, WIN_THRESHOLD } from '../game/levels';
 import { useMessages } from '../i18n';
 import type { HistoryEntry } from '../progressStore';
-import { WIN_THRESHOLD } from '../useWordSaladGame';
 import { miniTileClass } from './tiles';
 
 // The history browser: aggregate statistics up top, then every recorded
@@ -98,31 +98,6 @@ function sortRows(rows: readonly Row[], sort: SortMode): readonly Row[] {
   });
 }
 
-// Consecutive days played, counting back from today (or yesterday, so a
-// streak is not "broken" before today's game happens).
-function currentStreak(entries: readonly HistoryEntry[], now: number): number {
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  const days = new Set(
-    entries.map((entry) =>
-      Math.floor(
-        (entry.summary.playedAt -
-          new Date(entry.summary.playedAt).getTimezoneOffset() * 60000) /
-          DAY_MS,
-      ),
-    ),
-  );
-  const today = Math.floor(
-    (now - new Date(now).getTimezoneOffset() * 60000) / DAY_MS,
-  );
-  let day = days.has(today) ? today : today - 1;
-  let streak = 0;
-  while (days.has(day)) {
-    streak++;
-    day--;
-  }
-  return streak;
-}
-
 export function HistoryDialog({
   entries,
   langParam,
@@ -171,21 +146,7 @@ export function HistoryDialog({
     return sort.flipped ? [...sorted].reverse() : sorted;
   }, [entries, langParam, now, sort, t.locale]);
 
-  const stats = useMemo(
-    () => ({
-      hints: entries.reduce((sum, entry) => sum + entry.summary.hints, 0),
-      played: entries.length,
-      points: entries.reduce((sum, entry) => sum + entry.summary.earned, 0),
-      streak: currentStreak(entries, now),
-      won: entries.filter(
-        (entry) =>
-          entry.summary.earned >=
-          completionToPoints(WIN_THRESHOLD, entry.summary.max),
-      ).length,
-      words: entries.reduce((sum, entry) => sum + entry.summary.found, 0),
-    }),
-    [entries, now],
-  );
+  const stats = useMemo(() => summarizeHistory(entries, now), [entries, now]);
 
   const sortButton = (mode: SortMode, label: string) => {
     const isActive = sort.mode === mode;

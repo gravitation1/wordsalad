@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
 
+import type { AchievementId } from '../game/achievements';
 import { useMessages } from '../i18n';
 import { matchesDigitKey } from '../useWordSaladGame';
+import { AchievementRecap } from './AchievementRecap';
 import { KEYCAP_TINTED_CLASS } from './tiles';
 
 // The loss counterpart to the win modal: too many hints have put the win out
@@ -17,6 +19,8 @@ interface LockoutDialogProps {
   onClose: () => void;
   onCustomGame: () => void;
   onRestart: () => void;
+  // What this lockout earned across games — a loss can be a first too.
+  unlocked: readonly AchievementId[];
 }
 
 export function LockoutDialog({
@@ -26,6 +30,7 @@ export function LockoutDialog({
   onClose,
   onCustomGame,
   onRestart,
+  unlocked,
 }: LockoutDialogProps) {
   const t = useMessages();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -135,6 +140,8 @@ export function LockoutDialog({
         >
           {t.customGameButton}
         </button>
+        {/* Last, below even the escape hatch: the actions never move for it. */}
+        <AchievementRecap unlocked={unlocked} />
       </div>
     </dialog>
   );

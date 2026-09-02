@@ -213,6 +213,9 @@ export function CustomGameModal({
     if (gameMin !== '4') {
       url.searchParams.set('min', gameMin);
     }
+    // Marks the board as built, for the achievements; the game keeps the
+    // fact per board and strips the param, so a share never carries it.
+    url.searchParams.set('built', '1');
     window.location.assign(url.toString());
   };
 

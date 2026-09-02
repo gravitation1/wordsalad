@@ -20,6 +20,7 @@ import type { ThemePreference } from '../progressStore';
 // or rewording itself in place.
 interface OverflowMenuProps {
   localeOverride: Locale | null;
+  onAchievements: () => void;
   onCustomGame: () => void;
   onHistory: () => void;
   onHowToPlay: () => void;
@@ -59,6 +60,7 @@ const ICON_CLASS = 'w-4 text-center text-gray-400 dark:text-gray-500';
 
 export function OverflowMenu({
   localeOverride,
+  onAchievements,
   onCustomGame,
   onHistory,
   onHowToPlay,
@@ -77,10 +79,12 @@ export function OverflowMenu({
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Glyph icons in the same vocabulary as the meta row's ↻/↗/⟲: ✎ for
-  // authoring a puzzle, ↺ for looking back.
+  // authoring a puzzle, ↺ for looking back, ★ for the trophy case (the
+  // filled star is what an earned achievement wears inside it).
   const items = [
     { action: onCustomGame, icon: '✎', label: t.customGameButton },
     { action: onHistory, icon: '↺', label: t.historyButton },
+    { action: onAchievements, icon: '★', label: t.achievementsButton },
   ];
 
   const themeName = {
@@ -127,8 +131,8 @@ export function OverflowMenu({
     if (event.target instanceof HTMLSelectElement) {
       return;
     }
-    // The buttons cycle with the arrows (the two action items, then the
-    // sound and theme rows, then help); the selects stay out of the ring.
+    // The buttons cycle with the arrows (the action items, then the sound
+    // and theme rows, then help); the selects stay out of the ring.
     const count = items.length + 3;
     const active = itemRefs.current.findIndex(
       (element) => element === document.activeElement,

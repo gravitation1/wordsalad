@@ -3,6 +3,9 @@
 // some private modes), so every access degrades silently to "no
 // persistence" — the game must never depend on it.
 
+import type { AchievementId, UnlockRecord } from './game/achievements';
+import { isAchievementId } from './game/achievements';
+
 const WORDS_PREFIX = 'wordsalad:';
 const HINTED_WORDS_PREFIX = 'wordsalad:hinted:';
 const META_PREFIX = 'wordsalad:meta:';
@@ -19,6 +22,12 @@ const LAST_GAME_KEY = 'wordsalad:last';
 const SOUND_KEY = 'wordsalad:sound';
 const THEME_KEY = 'wordsalad:theme';
 const LOCALE_KEY = 'wordsalad:locale';
+// The player's achievements, as unlock timestamps by id. They span games,
+// so no game key; they are append-only, so no reset touches them.
+const ACHIEVEMENTS_KEY = 'wordsalad:achievements';
+// Boards that came from the custom-game builder. A fact about the board,
+// not progress on it, so no reset touches it either.
+const BUILT_PREFIX = 'wordsalad:built:';
 
 // A compact per-game record for the history view: everything the list and
 // its aggregate statistics need, without re-solving the puzzle.
@@ -247,6 +256,74 @@ export function saveLocaleOverride(locale: string | null): void {
     }
   } catch (_error) {
     // The preference lasts as long as the session, then.
+  }
+}
+
+// Unknown ids (a retired achievement, a hand-edited value) are dropped on
+// the way in, so the catalog is the only source of what the case can show.
+export function loadUnlocks(): UnlockRecord {
+  try {
+    const raw = window.localStorage.getItem(ACHIEVEMENTS_KEY);
+
+    if (raw === null) {
+      return {};
+    }
+
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      return {};
+    }
+    const unlocks: Partial<Record<AchievementId, number>> = {};
+    for (const [id, value] of Object.entries(parsed)) {
+      if (
+        isAchievementId(id) &&
+        typeof value === 'number' &&
+        Number.isFinite(value)
+      ) {
+        unlocks[id] = value;
+      }
+    }
+    return unlocks;
+  } catch (_error) {
+    return {};
+  }
+}
+
+// Append-only: an achievement already held keeps the date it was earned.
+export function recordUnlocks(
+  ids: readonly AchievementId[],
+  unlockedAt: number,
+): void {
+  try {
+    const unlocks: Partial<Record<AchievementId, number>> = {
+      ...loadUnlocks(),
+    };
+    for (const id of ids) {
+      unlocks[id] ??= unlockedAt;
+    }
+    window.localStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(unlocks));
+  } catch (_error) {
+    // Play on without persistence.
+  }
+}
+
+export function loadBuilt(gameKey: string): boolean {
+  try {
+    return window.localStorage.getItem(BUILT_PREFIX + gameKey) === '1';
+  } catch (_error) {
+    return false;
+  }
+}
+
+export function saveBuilt(gameKey: string): void {
+  try {
+    window.localStorage.setItem(BUILT_PREFIX + gameKey, '1');
+  } catch (_error) {
+    // Then the board counts as built for this session only.
   }
 }
 

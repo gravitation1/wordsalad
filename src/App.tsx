@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { AchievementsDialog } from './components/AchievementsDialog';
 import { CustomGameModal } from './components/CustomGameModal';
 import { GameControls } from './components/GameControls';
 import { HistoryDialog } from './components/HistoryDialog';
@@ -9,8 +10,11 @@ import { SaladLetters } from './components/SaladLetters';
 import { Scoreboard } from './components/Scoreboard';
 import type { WordOrigin } from './components/tiles';
 import { WordInput } from './components/WordInput';
+import type { UnlockRecord } from './game/achievements';
 import type { DictionarySpec } from './game/dictionaries';
 import { DEFAULT_DICTIONARY } from './game/dictionaries';
+import type { LifetimeStats } from './game/history';
+import { summarizeHistory } from './game/history';
 import type { Locale } from './i18n';
 import {
   MessagesProvider,
@@ -24,6 +28,7 @@ import {
   loadSoundEnabled,
   loadSummaries,
   loadThemePreference,
+  loadUnlocks,
   saveLocaleOverride,
   saveSoundEnabled,
   saveThemePreference,
@@ -39,6 +44,14 @@ interface HistorySnapshot {
   entries: readonly HistoryEntry[];
   langParam: string | null;
   now: number;
+}
+
+// Likewise for the trophy case: the unlock record, the lifetime totals for
+// its tracks, and the clock, read when the menu row is tapped.
+interface AchievementsSnapshot {
+  now: number;
+  stats: LifetimeStats;
+  unlocks: UnlockRecord;
 }
 
 interface Settings {
@@ -119,6 +132,9 @@ function AppBody({
   const t = useMessages();
   const game = useWordSaladGame(dictionary, spec);
   const [history, setHistory] = useState<HistorySnapshot | null>(null);
+  const [achievements, setAchievements] = useState<AchievementsSnapshot | null>(
+    null,
+  );
   const [customOpen, setCustomOpen] = useState(false);
   const [howToPlayOpen, setHowToPlayOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(loadSoundEnabled);
@@ -171,6 +187,15 @@ function AppBody({
     });
   };
 
+  const openAchievements = () => {
+    const now = Date.now();
+    setAchievements({
+      now,
+      stats: summarizeHistory(loadSummaries(), now),
+      unlocks: loadUnlocks(),
+    });
+  };
+
   const openCustom = () => {
     setCustomOpen(true);
   };
@@ -191,11 +216,17 @@ function AppBody({
     window.location.assign(url.toString());
   };
 
-  // Both dialogs open from the ⋯ menu, whose items unmount on close — so
+  // These dialogs open from the ⋯ menu, whose items unmount on close — so
   // restore focus to the menu trigger, then blur it (Enter should submit a
   // word, not re-open the menu).
   const closeHistory = () => {
     setHistory(null);
+    menuTriggerRef.current?.focus();
+    menuTriggerRef.current?.blur();
+  };
+
+  const closeAchievements = () => {
+    setAchievements(null);
     menuTriggerRef.current?.focus();
     menuTriggerRef.current?.blur();
   };
@@ -250,6 +281,7 @@ function AppBody({
         </h1>
         <OverflowMenu
           localeOverride={settings.localeOverride}
+          onAchievements={openAchievements}
           onCustomGame={openCustom}
           onHistory={openHistory}
           onHowToPlay={openHowToPlay}
@@ -269,6 +301,14 @@ function AppBody({
           langParam={history.langParam}
           now={history.now}
           onClose={closeHistory}
+        />
+      )}
+      {achievements === null ? null : (
+        <AchievementsDialog
+          now={achievements.now}
+          onClose={closeAchievements}
+          stats={achievements.stats}
+          unlocks={achievements.unlocks}
         />
       )}
       {customOpen ? (
@@ -328,6 +368,7 @@ function AppBody({
           onNewGame={game.startNewGame}
           onPrefill={game.prefillWord}
           onRestart={game.restartGame}
+          onShared={game.noteShare}
           rankUp={game.rankUp}
           winPoints={game.winPoints}
           winThreshold={game.winThreshold}

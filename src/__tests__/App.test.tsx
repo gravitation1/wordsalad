@@ -2076,7 +2076,7 @@ describe('App', () => {
     render(<App dictionary={REAL_DICTIONARY} />);
     submitWord('test');
     expect(screen.getByTestId('words-header')).toHaveTextContent(
-      'Words (183 remaining)', // was found=1
+      'Words (181 remaining)', // was found=1
     );
 
     // AZERTY's unshifted 2 key types 'é' — a letter, so it stays letter
@@ -2084,7 +2084,7 @@ describe('App', () => {
     // found word survives.
     fireEvent.keyDown(document, { key: 'é', code: 'Digit2' });
     expect(screen.getByTestId('words-header')).toHaveTextContent(
-      'Words (183 remaining)', // was found=1
+      'Words (181 remaining)', // was found=1
     );
 
     // AZERTY's unshifted 1 key types '&': the position deals a new game.
@@ -2501,6 +2501,7 @@ describe('App', () => {
     // The whole app rewords in place — including the menu itself — and
     // the document advertises the new language.
     expect(screen.getByRole('menuitem', { name: 'Historique' })).toBeVisible();
+    expect(screen.getByRole('menuitem', { name: 'Succès' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Valider' })).toBeVisible();
     expect(document.documentElement.lang).toBe('fr');
     expect(window.localStorage.getItem('wordsalad:locale')).toBe('fr');
@@ -2928,5 +2929,451 @@ describe('first-run coach', () => {
     const links = within(dialog).getAllByRole('link');
     expect(links).toHaveLength(1);
     expect(links[0]).toHaveAttribute('href', '?letters=DEORSTW&required=T');
+  });
+});
+
+describe('achievements', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.history.replaceState(null, '', '?letters=WORDTES&required=T');
+  });
+
+  afterEach(() => {
+    window.history.replaceState(null, '', window.location.pathname);
+  });
+
+  function openCase(): HTMLElement {
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Achievements' }));
+    return screen.getByTestId('achievements-dialog');
+  }
+
+  function recapIds(dialog: HTMLElement): (string | null)[] {
+    return within(within(dialog).getByTestId('achievement-recap'))
+      .getAllByRole('listitem')
+      .map((chip) => chip.getAttribute('data-achievement'));
+  }
+
+  function row(dialog: HTMLElement, id: string): HTMLElement {
+    const match = within(dialog)
+      .getAllByTestId('achievement-row')
+      .find((element) => element.getAttribute('data-achievement') === id);
+    if (match === undefined) {
+      throw new Error(`no row for ${id}`);
+    }
+    return match;
+  }
+
+  function unlocked(): Record<string, number> {
+    return JSON.parse(
+      window.localStorage.getItem('wordsalad:achievements') ?? '{}',
+    ) as Record<string, number>;
+  }
+
+  // A stored summary for some other board — a won one (12 of 15) unless
+  // overridden. Keys carry a dictionary prefix for non-English boards.
+  function seedGame(
+    gameKey: string,
+    summary: Partial<{
+      earned: number;
+      found: number;
+      hints: number;
+      max: number;
+    }> = {},
+  ): void {
+    window.localStorage.setItem(
+      `wordsalad:meta:${gameKey}`,
+      JSON.stringify({
+        earned: 12,
+        found: 3,
+        hints: 0,
+        lost: 0,
+        max: 15,
+        playedAt: 1000,
+        total: 3,
+        ...summary,
+      }),
+    );
+  }
+
+  // Distinct English keys: seven letters, the required A among them.
+  const seedKey = (index: number, dict = '') =>
+    `${dict}ABCDEF${String.fromCharCode(71 + index)}.A.4`;
+
+  it('lists the whole catalog, locked, before anything is earned', () => {
+    render(<App dictionary={DICTIONARY} />);
+    const dialog = openCase();
+
+    expect(
+      within(dialog).getByRole('heading', { name: 'Achievements' }),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText('0 of 21 earned')).toBeInTheDocument();
+
+    // Every achievement shows, named and described, so the empty case is
+    // the catalog: a ☆ row per entry in catalog order.
+    const rows = within(dialog).getAllByTestId('achievement-row');
+    expect(rows).toHaveLength(21);
+    expect(rows[0]).toHaveAttribute('data-achievement', 'first-win');
+    expect(rows[0]).toHaveAttribute('data-earned', 'false');
+    expect(rows[0]).toHaveTextContent('☆');
+    expect(rows[0]).toHaveTextContent('First win');
+    expect(rows[0]).toHaveTextContent('Win a game');
+    expect(rows[0]).toHaveTextContent('Locked');
+    expect(rows[20]).toHaveAttribute('data-achievement', 'polyglot');
+    // The lifetime tracks show their standing; the feats say nothing.
+    expect(row(dialog, 'ten-wins')).toHaveTextContent('0 / 10');
+    expect(row(dialog, 'polyglot')).toHaveTextContent('0 / 7');
+    expect(
+      within(row(dialog, 'first-win')).queryByTestId('achievement-progress'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByTestId('achievements-dialog')).not.toBeInTheDocument();
+    // Closing hands focus back to the menu trigger and blurs it, so Enter
+    // goes to the game rather than re-opening the menu.
+    pressKey('Enter');
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('shows how far along the lifetime tracks are', () => {
+    seedGame(seedKey(0));
+    seedGame(seedKey(1));
+    seedGame(seedKey(2), { earned: 3 }); // played, not won
+    render(<App dictionary={DICTIONARY} />);
+    const dialog = openCase();
+    expect(row(dialog, 'ten-wins')).toHaveTextContent('2 / 10');
+    expect(row(dialog, 'bilingual')).toHaveTextContent('1 / 2');
+  });
+
+  it('recaps the winning word’s unlocks in the win dialog', () => {
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted'); // the pangram: Pangrammer, with no dialog to show it
+    expect(unlocked()).toEqual({ pangrammer: expect.any(Number) as number });
+    submitWord('test'); // 12 of 15: the win
+
+    const banner = screen.getByTestId('win-banner');
+    expect(within(banner).getByTestId('achievement-recap')).toHaveTextContent(
+      'Unlocked',
+    );
+    expect(recapIds(banner)).toEqual(['first-win', 'no-help-needed']);
+
+    closeWin();
+    const dialog = openCase();
+    expect(within(dialog).getByText('3 of 21 earned')).toBeInTheDocument();
+    const rows = within(dialog).getAllByTestId('achievement-row');
+    // Earned rows lead; the pangram came first or in the same instant.
+    expect(
+      rows
+        .slice(0, 3)
+        .map((element) => element.getAttribute('data-achievement')),
+    ).toEqual(
+      expect.arrayContaining(['pangrammer', 'first-win', 'no-help-needed']),
+    );
+    for (const earned of rows.slice(0, 3)) {
+      expect(earned).toHaveAttribute('data-earned', 'true');
+      expect(earned).toHaveTextContent('★');
+      expect(earned).toHaveTextContent('Earned');
+    }
+    expect(rows[3]).toHaveAttribute('data-earned', 'false');
+  });
+
+  it('recaps everything a perfect first word earns, in catalog order', () => {
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test');
+    submitWord('rotted');
+    submitWord('worsted'); // 15/15: win, perfect, complete, pangram at once
+
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'first-win',
+      'no-help-needed',
+      'first-perfect',
+      'completionist',
+      'super-genius',
+      'pangrammer',
+    ]);
+  });
+
+  it('recaps only what the board just earned', () => {
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted');
+    submitWord('test'); // the win
+    closeWin();
+    submitWord('rotted'); // 15/15: the perfect, celebrated on its own
+
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'first-perfect',
+      'completionist',
+      'super-genius',
+    ]);
+    closeWin();
+
+    // A repeat of the win on the same board earns nothing, so no recap.
+    fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
+    submitWord('worsted');
+    submitWord('test');
+    expect(
+      within(screen.getByTestId('win-banner')).queryByTestId(
+        'achievement-recap',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('carries earned achievements across reloads and never re-awards them', () => {
+    // Noon UTC, so the day survives any timezone the test runs in.
+    const earnedAt = Date.UTC(2026, 0, 5, 12);
+    window.localStorage.setItem(
+      'wordsalad:achievements',
+      JSON.stringify({
+        'first-win': earnedAt,
+        'no-help-needed': earnedAt,
+        pangrammer: earnedAt,
+      }),
+    );
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted');
+    submitWord('test'); // a win, but not the first
+
+    expect(
+      within(screen.getByTestId('win-banner')).queryByTestId(
+        'achievement-recap',
+      ),
+    ).not.toBeInTheDocument();
+    expect(unlocked()).toEqual({
+      'first-win': earnedAt,
+      'no-help-needed': earnedAt,
+      pangrammer: earnedAt,
+    });
+
+    closeWin();
+    const dialog = openCase();
+    expect(within(dialog).getByText('3 of 21 earned')).toBeInTheDocument();
+    expect(row(dialog, 'first-win')).toHaveTextContent('Jan 5');
+  });
+
+  it('awards Overreach from the lockout dialog', () => {
+    render(<App dictionary={DICTIONARY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // TEST
+    pressKey('Enter');
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // ROTTED
+
+    expect(recapIds(screen.getByTestId('lockout-dialog'))).toEqual([
+      'overreach',
+    ]);
+  });
+
+  it('counts the current board into the lifetime tracks', () => {
+    // Nine wins on record: this board's win is the tenth, and it must count
+    // even though its summary is not written until after the event.
+    for (let index = 0; index < 9; index++) {
+      seedGame(seedKey(index));
+    }
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted');
+    submitWord('test');
+
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'first-win',
+      'no-help-needed',
+      'ten-wins',
+    ]);
+    closeWin();
+    const dialog = openCase();
+    expect(row(dialog, 'ten-wins')).toHaveAttribute('data-earned', 'true');
+    expect(row(dialog, 'fifty-wins')).toHaveTextContent('10 / 50');
+  });
+
+  it('awards the whole win track at once when the record already crosses it', () => {
+    for (let index = 0; index < 99; index++) {
+      seedGame(seedKey(index % 20).replace('.A.4', `.A.${4 + index}`));
+    }
+    render(<App dictionary={DICTIONARY} />);
+    // Ten and fifty are already true of the record, so the first scored
+    // word awards them quietly; the hundredth win is this board's.
+    submitWord('worsted');
+    expect(Object.keys(unlocked())).toEqual([
+      'pangrammer',
+      'ten-wins',
+      'fifty-wins',
+    ]);
+    submitWord('test');
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'first-win',
+      'no-help-needed',
+      'century',
+    ]);
+  });
+
+  it('awards Bilingual on the win that makes a second word list', () => {
+    seedGame(seedKey(0, 'fr:'));
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted');
+    submitWord('test'); // the English win: a second list
+
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'first-win',
+      'no-help-needed',
+      'bilingual',
+    ]);
+  });
+
+  it('awards Polyglot once every word list has a win', () => {
+    for (const dict of ['fr:', 'es:', 'it:', 'nl:', 'pt:', 'de:']) {
+      seedGame(seedKey(0, dict));
+    }
+    render(<App dictionary={DICTIONARY} />);
+    // Six lists already won: Bilingual is true from the first word, and
+    // waits in the case; the English win is what completes the set.
+    submitWord('worsted');
+    expect(unlocked()).toHaveProperty('bilingual');
+    submitWord('test');
+
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'first-win',
+      'no-help-needed',
+      'polyglot',
+    ]);
+  });
+
+  it('awards Wordsmith on the word that reaches a thousand', () => {
+    seedGame(seedKey(0), { earned: 3, found: 999 });
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test'); // no dialog for it: the case shows it
+    expect(unlocked()).toEqual({ wordsmith: expect.any(Number) as number });
+    const dialog = openCase();
+    expect(row(dialog, 'wordsmith')).toHaveAttribute('data-earned', 'true');
+  });
+
+  it('awards Perfectionist on the tenth perfect game', () => {
+    for (let index = 0; index < 9; index++) {
+      seedGame(seedKey(index), { earned: 15 });
+    }
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test');
+    submitWord('rotted');
+    submitWord('worsted');
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual(
+      expect.arrayContaining(['first-perfect', 'ten-wins', 'perfectionist']),
+    );
+  });
+
+  it('awards Challenger on the word that beats a shared score', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '?letters=WORDTES&required=T&score=8',
+    );
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test'); // 1: behind
+    expect(unlocked()).toEqual({});
+    submitWord('worsted'); // 12: ahead, and the win
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'first-win',
+      'no-help-needed',
+      'pangrammer',
+      'challenger',
+    ]);
+  });
+
+  it('awards Hard mode for a win at a longer minimum length', () => {
+    window.history.replaceState(null, '', '?letters=WORDTES&required=T&min=5');
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted'); // 11 of 14: the win
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'first-win',
+      'no-help-needed',
+      'pangrammer',
+      'hard-mode',
+    ]);
+  });
+
+  it('awards Double duty for a win with two required letters', () => {
+    window.history.replaceState(null, '', '?letters=WORDTES&required=TS');
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted'); // 11 of 12: the win, and Super-Genius
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'first-win',
+      'no-help-needed',
+      'super-genius',
+      'pangrammer',
+      'double-duty',
+    ]);
+  });
+
+  it('awards Builder for a board that arrived from the builder, even after a reload', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '?letters=WORDTES&required=T&built=1',
+    );
+    const view = render(<App dictionary={DICTIONARY} />);
+    // The flag is kept per board and stripped from the shareable URL.
+    expect(window.localStorage.getItem('wordsalad:built:DEORSTW.T.4')).toBe(
+      '1',
+    );
+    expect(window.location.search).not.toContain('built');
+    view.unmount();
+
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted');
+    submitWord('test');
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'first-win',
+      'no-help-needed',
+      'builder',
+    ]);
+  });
+
+  it('does not treat a forwarded board as built', () => {
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('worsted');
+    submitWord('test');
+    expect(recapIds(screen.getByTestId('win-banner'))).not.toContain('builder');
+  });
+
+  it('awards Host on a share', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test');
+    fireEvent.click(screen.getByRole('button', { name: /Share/ }));
+    expect(
+      await screen.findByRole('button', { name: 'Copied!' }),
+    ).toBeInTheDocument();
+
+    expect(unlocked()).toEqual({ host: expect.any(Number) as number });
+    const dialog = openCase();
+    expect(row(dialog, 'host')).toHaveAttribute('data-earned', 'true');
+  });
+
+  it('awards Long haul for a word of ten letters', () => {
+    window.history.replaceState(null, '', '?letters=AEMNSTX&required=S');
+    render(<App dictionary={['ASSESSMENT', 'TEST', 'MASS']} />);
+    submitWord('assessment'); // 7 of 9: the win as well
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'first-win',
+      'no-help-needed',
+      'long-haul',
+    ]);
+  });
+
+  it('awards Marathon on the 25th word of one board', () => {
+    window.history.replaceState(null, '', '?letters=AEINRST&required=A');
+    const words = REAL_DICTIONARY.filter(
+      (word) =>
+        word.length >= 4 &&
+        word.includes('A') &&
+        Array.from(word).every((letter) => 'AEINRST'.includes(letter)),
+    ).slice(0, 25);
+    expect(words).toHaveLength(25);
+    render(<App dictionary={REAL_DICTIONARY} />);
+    for (const word of words.slice(0, 24)) {
+      submitWord(word.toLowerCase());
+    }
+    expect(unlocked()).not.toHaveProperty('marathon');
+    submitWord(words[24].toLowerCase());
+    expect(unlocked()).toHaveProperty('marathon');
   });
 });

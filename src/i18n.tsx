@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext } from 'react';
 
+import type { AchievementId } from './game/achievements';
 import type { GameFeedback, WordPreview } from './useWordSaladGame';
 
 export type Locale =
@@ -91,6 +92,18 @@ export interface Messages {
   statWon: string;
   statStreak: string;
   statHints: string;
+  // The ⋯ menu's trophy case. Achievements are keyed by their catalog id
+  // (game/achievements.ts): one name and one description each.
+  achievementsButton: string;
+  achievementsTitle: string;
+  // The case's tally line ("3 of 12 earned").
+  achievementsEarned: (earned: number, total: number) => string;
+  // Screen-reader annotations for the case's ★/☆ rows.
+  achievementEarnedLabel: string;
+  achievementLockedLabel: string;
+  // The end-game dialogs' eyebrow over the chips of what that board earned.
+  unlockedLabel: string;
+  achievements: Record<AchievementId, { description: string; name: string }>;
   shareButton: string;
   // Sits inside the share button in place of its label, so it stays short
   // enough not to reflow the button row.
@@ -240,6 +253,59 @@ const EN: Messages = {
   statWon: 'Won',
   statStreak: 'Streak',
   statHints: 'Hints',
+  achievementsButton: 'Achievements',
+  achievementsTitle: 'Achievements',
+  achievementsEarned: (earned, total) => `${earned} of ${total} earned`,
+  achievementEarnedLabel: 'Earned',
+  achievementLockedLabel: 'Locked',
+  unlockedLabel: 'Unlocked',
+  achievements: {
+    'first-win': { name: 'First win', description: 'Win a game' },
+    'no-help-needed': {
+      name: 'No help needed',
+      description: 'Win without a hint',
+    },
+    'first-perfect': {
+      name: 'Perfect game',
+      description: 'Earn every point on a board',
+    },
+    completionist: {
+      name: 'Completionist',
+      description: 'Find every word on a board, hints and all',
+    },
+    'super-genius': {
+      name: 'Super-Genius',
+      description: 'Reach Super-Genius on a board',
+    },
+    pangrammer: { name: 'Pangrammer', description: 'Find a pangram' },
+    'long-haul': {
+      name: 'Long haul',
+      description: 'Find a word of ten letters or more',
+    },
+    marathon: { name: 'Marathon', description: 'Find 25 words on one board' },
+    challenger: { name: 'Challenger', description: 'Beat a shared score' },
+    'hard-mode': {
+      name: 'Hard mode',
+      description: 'Win with a minimum word length of 5 or more',
+    },
+    'double-duty': {
+      name: 'Double duty',
+      description: 'Win a board with two required letters',
+    },
+    builder: { name: 'Builder', description: 'Win a board you built' },
+    overreach: { name: 'Overreach', description: 'Hint the win out of reach' },
+    host: { name: 'Host', description: 'Share a board' },
+    'ten-wins': { name: 'Ten wins', description: 'Win ten games' },
+    'fifty-wins': { name: 'Fifty wins', description: 'Win fifty games' },
+    century: { name: 'Century', description: 'Win a hundred games' },
+    wordsmith: { name: 'Wordsmith', description: 'Find a thousand words' },
+    perfectionist: {
+      name: 'Perfectionist',
+      description: 'Earn ten perfect games',
+    },
+    bilingual: { name: 'Bilingual', description: 'Win in a second word list' },
+    polyglot: { name: 'Polyglot', description: 'Win in every word list' },
+  },
   shareButton: 'Share',
   shareCopied: 'Copied!',
   wordsRemaining: (count) =>
@@ -434,6 +500,77 @@ const FR: Messages = {
   statWon: 'Gagnées',
   statStreak: 'Série',
   statHints: 'Indices',
+  achievementsButton: 'Succès',
+  achievementsTitle: 'Succès',
+  achievementsEarned: (earned, total) => `${earned} sur ${total} obtenus`,
+  achievementEarnedLabel: 'Obtenu',
+  achievementLockedLabel: 'Verrouillé',
+  unlockedLabel: 'Débloqué',
+  achievements: {
+    'first-win': {
+      name: 'Première victoire',
+      description: 'Gagnez une partie',
+    },
+    'no-help-needed': { name: 'Sans aide', description: 'Gagnez sans indice' },
+    'first-perfect': {
+      name: 'Partie parfaite',
+      description: 'Marquez tous les points d’une grille',
+    },
+    completionist: {
+      name: 'Complétiste',
+      description: 'Trouvez tous les mots d’une grille, indices compris',
+    },
+    'super-genius': {
+      name: 'Super-Génie',
+      description: 'Atteignez Super-Génie sur une grille',
+    },
+    pangrammer: { name: 'Pangrammiste', description: 'Trouvez un pangramme' },
+    'long-haul': {
+      name: 'Longue haleine',
+      description: 'Trouvez un mot de dix lettres ou plus',
+    },
+    marathon: {
+      name: 'Marathon',
+      description: 'Trouvez 25 mots sur une même grille',
+    },
+    challenger: { name: 'Challenger', description: 'Battez un score partagé' },
+    'hard-mode': {
+      name: 'Mode difficile',
+      description: 'Gagnez avec des mots de 5 lettres minimum',
+    },
+    'double-duty': {
+      name: 'Double contrainte',
+      description: 'Gagnez une grille à deux lettres obligatoires',
+    },
+    builder: {
+      name: 'Bâtisseur',
+      description: 'Gagnez une grille que vous avez créée',
+    },
+    overreach: {
+      name: 'Trop gourmand',
+      description: 'Rendez la victoire inaccessible à coups d’indices',
+    },
+    host: { name: 'Hôte', description: 'Partagez une grille' },
+    'ten-wins': { name: 'Dix victoires', description: 'Gagnez dix parties' },
+    'fifty-wins': {
+      name: 'Cinquante victoires',
+      description: 'Gagnez cinquante parties',
+    },
+    century: { name: 'Centenaire', description: 'Gagnez cent parties' },
+    wordsmith: { name: 'Lettré', description: 'Trouvez mille mots' },
+    perfectionist: {
+      name: 'Perfectionniste',
+      description: 'Réussissez dix parties parfaites',
+    },
+    bilingual: {
+      name: 'Bilingue',
+      description: 'Gagnez dans une deuxième liste de mots',
+    },
+    polyglot: {
+      name: 'Polyglotte',
+      description: 'Gagnez dans toutes les listes de mots',
+    },
+  },
   shareButton: 'Partager',
   shareCopied: 'Copié !',
   wordsRemaining: (count) =>
@@ -633,6 +770,78 @@ const ES: Messages = {
   statWon: 'Ganadas',
   statStreak: 'Racha',
   statHints: 'Pistas',
+  achievementsButton: 'Logros',
+  achievementsTitle: 'Logros',
+  achievementsEarned: (earned, total) => `${earned} de ${total} conseguidos`,
+  achievementEarnedLabel: 'Conseguido',
+  achievementLockedLabel: 'Bloqueado',
+  unlockedLabel: 'Desbloqueado',
+  achievements: {
+    'first-win': { name: 'Primera victoria', description: 'Gana una partida' },
+    'no-help-needed': { name: 'Sin ayuda', description: 'Gana sin pistas' },
+    'first-perfect': {
+      name: 'Partida perfecta',
+      description: 'Consigue todos los puntos de un tablero',
+    },
+    completionist: {
+      name: 'Completista',
+      description:
+        'Encuentra todas las palabras de un tablero, pistas incluidas',
+    },
+    'super-genius': {
+      name: 'Supergenio',
+      description: 'Alcanza Supergenio en un tablero',
+    },
+    pangrammer: { name: 'Pangramista', description: 'Encuentra un pangrama' },
+    'long-haul': {
+      name: 'Largo recorrido',
+      description: 'Encuentra una palabra de diez letras o más',
+    },
+    marathon: {
+      name: 'Maratón',
+      description: 'Encuentra 25 palabras en un mismo tablero',
+    },
+    challenger: {
+      name: 'Retador',
+      description: 'Supera una puntuación compartida',
+    },
+    'hard-mode': {
+      name: 'Modo difícil',
+      description: 'Gana con palabras de 5 letras como mínimo',
+    },
+    'double-duty': {
+      name: 'Doble deber',
+      description: 'Gana un tablero con dos letras obligatorias',
+    },
+    builder: {
+      name: 'Constructor',
+      description: 'Gana un tablero creado por ti',
+    },
+    overreach: {
+      name: 'Exceso',
+      description: 'Deja la victoria fuera de alcance a base de pistas',
+    },
+    host: { name: 'Anfitrión', description: 'Comparte un tablero' },
+    'ten-wins': { name: 'Diez victorias', description: 'Gana diez partidas' },
+    'fifty-wins': {
+      name: 'Cincuenta victorias',
+      description: 'Gana cincuenta partidas',
+    },
+    century: { name: 'Centenario', description: 'Gana cien partidas' },
+    wordsmith: { name: 'Letrado', description: 'Encuentra mil palabras' },
+    perfectionist: {
+      name: 'Perfeccionista',
+      description: 'Logra diez partidas perfectas',
+    },
+    bilingual: {
+      name: 'Bilingüe',
+      description: 'Gana en una segunda lista de palabras',
+    },
+    polyglot: {
+      name: 'Políglota',
+      description: 'Gana en todas las listas de palabras',
+    },
+  },
   shareButton: 'Compartir',
   shareCopied: '¡Copiado!',
   wordsRemaining: (count) =>
@@ -833,6 +1042,71 @@ const DE: Messages = {
   statWon: 'Gewonnen',
   statStreak: 'Serie',
   statHints: 'Tipps',
+  achievementsButton: 'Erfolge',
+  achievementsTitle: 'Erfolge',
+  achievementsEarned: (earned, total) => `${earned} von ${total} erreicht`,
+  achievementEarnedLabel: 'Erreicht',
+  achievementLockedLabel: 'Gesperrt',
+  unlockedLabel: 'Freigeschaltet',
+  achievements: {
+    'first-win': { name: 'Erster Sieg', description: 'Gewinne ein Spiel' },
+    'no-help-needed': { name: 'Ohne Hilfe', description: 'Gewinne ohne Tipp' },
+    'first-perfect': {
+      name: 'Perfektes Spiel',
+      description: 'Hole alle Punkte eines Bretts',
+    },
+    completionist: {
+      name: 'Komplettist',
+      description: 'Finde alle Wörter eines Bretts, Tipps eingeschlossen',
+    },
+    'super-genius': {
+      name: 'Supergenie',
+      description: 'Erreiche Supergenie auf einem Brett',
+    },
+    pangrammer: { name: 'Pangrammatiker', description: 'Finde ein Pangramm' },
+    'long-haul': {
+      name: 'Langstrecke',
+      description: 'Finde ein Wort mit zehn oder mehr Buchstaben',
+    },
+    marathon: {
+      name: 'Marathon',
+      description: 'Finde 25 Wörter auf einem Brett',
+    },
+    challenger: {
+      name: 'Herausforderer',
+      description: 'Schlage eine geteilte Punktzahl',
+    },
+    'hard-mode': {
+      name: 'Schwerer Modus',
+      description: 'Gewinne mit Wörtern ab 5 Buchstaben',
+    },
+    'double-duty': {
+      name: 'Doppelpflicht',
+      description: 'Gewinne ein Brett mit zwei Pflichtbuchstaben',
+    },
+    builder: {
+      name: 'Baumeister',
+      description: 'Gewinne ein selbst gebautes Brett',
+    },
+    overreach: { name: 'Übermut', description: 'Verspiele den Sieg mit Tipps' },
+    host: { name: 'Gastgeber', description: 'Teile ein Brett' },
+    'ten-wins': { name: 'Zehn Siege', description: 'Gewinne zehn Spiele' },
+    'fifty-wins': {
+      name: 'Fünfzig Siege',
+      description: 'Gewinne fünfzig Spiele',
+    },
+    century: { name: 'Hundert', description: 'Gewinne hundert Spiele' },
+    wordsmith: { name: 'Wortschmied', description: 'Finde tausend Wörter' },
+    perfectionist: {
+      name: 'Perfektionist',
+      description: 'Schaffe zehn perfekte Spiele',
+    },
+    bilingual: {
+      name: 'Zweisprachig',
+      description: 'Gewinne in einer zweiten Wortliste',
+    },
+    polyglot: { name: 'Polyglott', description: 'Gewinne in jeder Wortliste' },
+  },
   shareButton: 'Teilen',
   shareCopied: 'Kopiert!',
   wordsRemaining: (count) =>
@@ -1034,6 +1308,81 @@ const IT: Messages = {
   statWon: 'Vinte',
   statStreak: 'Serie',
   statHints: 'Indizi',
+  achievementsButton: 'Obiettivi',
+  achievementsTitle: 'Obiettivi',
+  achievementsEarned: (earned, total) => `${earned} di ${total} ottenuti`,
+  achievementEarnedLabel: 'Ottenuto',
+  achievementLockedLabel: 'Bloccato',
+  unlockedLabel: 'Sbloccato',
+  achievements: {
+    'first-win': { name: 'Prima vittoria', description: 'Vinci una partita' },
+    'no-help-needed': {
+      name: 'Senza aiuto',
+      description: 'Vinci senza suggerimenti',
+    },
+    'first-perfect': {
+      name: 'Partita perfetta',
+      description: 'Ottieni tutti i punti di una griglia',
+    },
+    completionist: {
+      name: 'Completista',
+      description:
+        'Trova tutte le parole di una griglia, suggerimenti compresi',
+    },
+    'super-genius': {
+      name: 'Supergenio',
+      description: 'Raggiungi Supergenio su una griglia',
+    },
+    pangrammer: { name: 'Pangrammista', description: 'Trova un pangramma' },
+    'long-haul': {
+      name: 'Lunga corsa',
+      description: 'Trova una parola di dieci lettere o più',
+    },
+    marathon: {
+      name: 'Maratona',
+      description: 'Trova 25 parole sulla stessa griglia',
+    },
+    challenger: {
+      name: 'Sfidante',
+      description: 'Batti un punteggio condiviso',
+    },
+    'hard-mode': {
+      name: 'Modalità difficile',
+      description: 'Vinci con parole di almeno 5 lettere',
+    },
+    'double-duty': {
+      name: 'Doppio obbligo',
+      description: 'Vinci una griglia con due lettere obbligatorie',
+    },
+    builder: {
+      name: 'Costruttore',
+      description: 'Vinci una griglia creata da te',
+    },
+    overreach: {
+      name: 'Troppa foga',
+      description: 'Rendi la vittoria irraggiungibile a forza di suggerimenti',
+    },
+    host: { name: 'Anfitrione', description: 'Condividi una griglia' },
+    'ten-wins': { name: 'Dieci vittorie', description: 'Vinci dieci partite' },
+    'fifty-wins': {
+      name: 'Cinquanta vittorie',
+      description: 'Vinci cinquanta partite',
+    },
+    century: { name: 'Centenario', description: 'Vinci cento partite' },
+    wordsmith: { name: 'Letterato', description: 'Trova mille parole' },
+    perfectionist: {
+      name: 'Perfezionista',
+      description: 'Completa dieci partite perfette',
+    },
+    bilingual: {
+      name: 'Bilingue',
+      description: 'Vinci in una seconda lista di parole',
+    },
+    polyglot: {
+      name: 'Poliglotta',
+      description: 'Vinci in tutte le liste di parole',
+    },
+  },
   shareButton: 'Condividi',
   shareCopied: 'Copiato!',
   wordsRemaining: (count) =>
@@ -1234,6 +1583,78 @@ const PT: Messages = {
   statWon: 'Vencidas',
   statStreak: 'Sequência',
   statHints: 'Dicas',
+  achievementsButton: 'Conquistas',
+  achievementsTitle: 'Conquistas',
+  achievementsEarned: (earned, total) => `${earned} de ${total} conquistadas`,
+  achievementEarnedLabel: 'Conquistada',
+  achievementLockedLabel: 'Bloqueada',
+  unlockedLabel: 'Desbloqueado',
+  achievements: {
+    'first-win': { name: 'Primeira vitória', description: 'Vença um jogo' },
+    'no-help-needed': { name: 'Sem ajuda', description: 'Vença sem dicas' },
+    'first-perfect': {
+      name: 'Jogo perfeito',
+      description: 'Faça todos os pontos de um tabuleiro',
+    },
+    completionist: {
+      name: 'Completista',
+      description:
+        'Encontre todas as palavras de um tabuleiro, dicas incluídas',
+    },
+    'super-genius': {
+      name: 'Supergênio',
+      description: 'Alcance Supergênio em um tabuleiro',
+    },
+    pangrammer: { name: 'Pangramista', description: 'Encontre um pangrama' },
+    'long-haul': {
+      name: 'Longa jornada',
+      description: 'Encontre uma palavra de dez letras ou mais',
+    },
+    marathon: {
+      name: 'Maratona',
+      description: 'Encontre 25 palavras em um mesmo tabuleiro',
+    },
+    challenger: {
+      name: 'Desafiante',
+      description: 'Supere uma pontuação compartilhada',
+    },
+    'hard-mode': {
+      name: 'Modo difícil',
+      description: 'Vença com palavras de no mínimo 5 letras',
+    },
+    'double-duty': {
+      name: 'Dupla tarefa',
+      description: 'Vença um tabuleiro com duas letras obrigatórias',
+    },
+    builder: {
+      name: 'Construtor',
+      description: 'Vença um tabuleiro criado por você',
+    },
+    overreach: {
+      name: 'Exagero',
+      description: 'Deixe a vitória fora de alcance à custa de dicas',
+    },
+    host: { name: 'Anfitrião', description: 'Compartilhe um tabuleiro' },
+    'ten-wins': { name: 'Dez vitórias', description: 'Vença dez jogos' },
+    'fifty-wins': {
+      name: 'Cinquenta vitórias',
+      description: 'Vença cinquenta jogos',
+    },
+    century: { name: 'Centenário', description: 'Vença cem jogos' },
+    wordsmith: { name: 'Letrado', description: 'Encontre mil palavras' },
+    perfectionist: {
+      name: 'Perfeccionista',
+      description: 'Faça dez jogos perfeitos',
+    },
+    bilingual: {
+      name: 'Bilíngue',
+      description: 'Vença em uma segunda lista de palavras',
+    },
+    polyglot: {
+      name: 'Poliglota',
+      description: 'Vença em todas as listas de palavras',
+    },
+  },
   shareButton: 'Compartilhar',
   shareCopied: 'Copiado!',
   wordsRemaining: (count) =>
@@ -1435,6 +1856,68 @@ const NL: Messages = {
   statWon: 'Gewonnen',
   statStreak: 'Reeks',
   statHints: 'Hints',
+  achievementsButton: 'Prestaties',
+  achievementsTitle: 'Prestaties',
+  achievementsEarned: (earned, total) => `${earned} van ${total} behaald`,
+  achievementEarnedLabel: 'Behaald',
+  achievementLockedLabel: 'Vergrendeld',
+  unlockedLabel: 'Ontgrendeld',
+  achievements: {
+    'first-win': { name: 'Eerste overwinning', description: 'Win een spel' },
+    'no-help-needed': { name: 'Zonder hulp', description: 'Win zonder hint' },
+    'first-perfect': {
+      name: 'Perfect spel',
+      description: 'Haal alle punten van een bord',
+    },
+    completionist: {
+      name: 'Completist',
+      description: 'Vind alle woorden van een bord, hints meegerekend',
+    },
+    'super-genius': {
+      name: 'Supergenie',
+      description: 'Bereik Supergenie op een bord',
+    },
+    pangrammer: { name: 'Pangrammist', description: 'Vind een pangram' },
+    'long-haul': {
+      name: 'Lange adem',
+      description: 'Vind een woord van tien letters of meer',
+    },
+    marathon: { name: 'Marathon', description: 'Vind 25 woorden op één bord' },
+    challenger: { name: 'Uitdager', description: 'Versla een gedeelde score' },
+    'hard-mode': {
+      name: 'Zware modus',
+      description: 'Win met woorden van minstens 5 letters',
+    },
+    'double-duty': {
+      name: 'Dubbele plicht',
+      description: 'Win een bord met twee verplichte letters',
+    },
+    builder: {
+      name: 'Bouwer',
+      description: 'Win een bord dat je zelf hebt gebouwd',
+    },
+    overreach: {
+      name: 'Te gretig',
+      description: 'Hint de overwinning buiten bereik',
+    },
+    host: { name: 'Gastheer', description: 'Deel een bord' },
+    'ten-wins': { name: 'Tien overwinningen', description: 'Win tien spellen' },
+    'fifty-wins': {
+      name: 'Vijftig overwinningen',
+      description: 'Win vijftig spellen',
+    },
+    century: { name: 'Honderd', description: 'Win honderd spellen' },
+    wordsmith: { name: 'Woordsmid', description: 'Vind duizend woorden' },
+    perfectionist: {
+      name: 'Perfectionist',
+      description: 'Speel tien perfecte spellen',
+    },
+    bilingual: {
+      name: 'Tweetalig',
+      description: 'Win in een tweede woordenlijst',
+    },
+    polyglot: { name: 'Polyglot', description: 'Win in elke woordenlijst' },
+  },
   shareButton: 'Delen',
   shareCopied: 'Gekopieerd!',
   wordsRemaining: (count) =>
@@ -1631,6 +2114,53 @@ const JA: Messages = {
   statWon: '勝利',
   statStreak: '連続日数',
   statHints: 'ヒント',
+  achievementsButton: '実績',
+  achievementsTitle: '実績',
+  achievementsEarned: (earned, total) => `${total}件中${earned}件を達成`,
+  achievementEarnedLabel: '達成済み',
+  achievementLockedLabel: '未達成',
+  unlockedLabel: '実績解除',
+  achievements: {
+    'first-win': { name: '初勝利', description: 'ゲームに勝つ' },
+    'no-help-needed': { name: 'ノーヒント', description: 'ヒントなしで勝つ' },
+    'first-perfect': {
+      name: 'パーフェクト',
+      description: 'ボードの全ポイントを獲得する',
+    },
+    completionist: {
+      name: 'コンプリート',
+      description: 'ヒントも含めてボードの全単語を見つける',
+    },
+    'super-genius': { name: '超天才', description: 'ボードで超天才に到達する' },
+    pangrammer: { name: 'パングラム', description: 'パングラムを見つける' },
+    'long-haul': {
+      name: 'ロングワード',
+      description: '10文字以上の単語を見つける',
+    },
+    marathon: { name: 'マラソン', description: '1つのボードで25語を見つける' },
+    challenger: { name: '挑戦者', description: '共有されたスコアを上回る' },
+    'hard-mode': {
+      name: 'ハードモード',
+      description: '最短5文字以上のボードで勝つ',
+    },
+    'double-duty': {
+      name: '二重の条件',
+      description: '必須文字が2つのボードで勝つ',
+    },
+    builder: { name: 'ビルダー', description: '自分で作ったボードで勝つ' },
+    overreach: { name: '欲張り', description: 'ヒントで勝利を手放す' },
+    host: { name: 'ホスト', description: 'ボードを共有する' },
+    'ten-wins': { name: '10勝', description: '10回勝つ' },
+    'fifty-wins': { name: '50勝', description: '50回勝つ' },
+    century: { name: '100勝', description: '100回勝つ' },
+    wordsmith: { name: '言葉の職人', description: '合計1000語を見つける' },
+    perfectionist: {
+      name: '完璧主義者',
+      description: 'パーフェクトを10回達成する',
+    },
+    bilingual: { name: 'バイリンガル', description: '2つ目の単語リストで勝つ' },
+    polyglot: { name: 'ポリグロット', description: 'すべての単語リストで勝つ' },
+  },
   shareButton: '共有',
   shareCopied: 'コピーしました！',
   wordsRemaining: (count) =>
@@ -1808,6 +2338,56 @@ const KO: Messages = {
   statWon: '승리',
   statStreak: '연속',
   statHints: '힌트',
+  achievementsButton: '업적',
+  achievementsTitle: '업적',
+  achievementsEarned: (earned, total) => `${total}개 중 ${earned}개 달성`,
+  achievementEarnedLabel: '달성함',
+  achievementLockedLabel: '잠김',
+  unlockedLabel: '업적 달성',
+  achievements: {
+    'first-win': { name: '첫 승리', description: '게임에서 승리하기' },
+    'no-help-needed': { name: '힌트 없이', description: '힌트 없이 승리하기' },
+    'first-perfect': {
+      name: '퍼펙트 게임',
+      description: '보드의 모든 점수 획득하기',
+    },
+    completionist: {
+      name: '완성주의자',
+      description: '힌트를 포함해 보드의 모든 단어 찾기',
+    },
+    'super-genius': {
+      name: '슈퍼 천재',
+      description: '보드에서 슈퍼 천재 달성하기',
+    },
+    pangrammer: { name: '팬그램', description: '팬그램 찾기' },
+    'long-haul': { name: '긴 단어', description: '10글자 이상의 단어 찾기' },
+    marathon: { name: '마라톤', description: '한 보드에서 25개 단어 찾기' },
+    challenger: { name: '도전자', description: '공유된 점수 넘어서기' },
+    'hard-mode': {
+      name: '하드 모드',
+      description: '최소 5글자 보드에서 승리하기',
+    },
+    'double-duty': {
+      name: '이중 조건',
+      description: '필수 글자가 두 개인 보드에서 승리하기',
+    },
+    builder: { name: '빌더', description: '직접 만든 보드에서 승리하기' },
+    overreach: { name: '과욕', description: '힌트로 승리를 놓치기' },
+    host: { name: '호스트', description: '보드 공유하기' },
+    'ten-wins': { name: '10승', description: '10번 승리하기' },
+    'fifty-wins': { name: '50승', description: '50번 승리하기' },
+    century: { name: '100승', description: '100번 승리하기' },
+    wordsmith: { name: '단어 장인', description: '총 1000개 단어 찾기' },
+    perfectionist: {
+      name: '완벽주의자',
+      description: '퍼펙트 게임 10번 달성하기',
+    },
+    bilingual: {
+      name: '이중 언어',
+      description: '두 번째 단어 목록에서 승리하기',
+    },
+    polyglot: { name: '다국어', description: '모든 단어 목록에서 승리하기' },
+  },
   shareButton: '공유',
   shareCopied: '복사했어요!',
   wordsRemaining: (count) =>
@@ -1983,6 +2563,44 @@ const ZH: Messages = {
   statWon: '获胜',
   statStreak: '连续天数',
   statHints: '提示',
+  achievementsButton: '成就',
+  achievementsTitle: '成就',
+  achievementsEarned: (earned, total) => `已达成 ${earned} / ${total}`,
+  achievementEarnedLabel: '已达成',
+  achievementLockedLabel: '未解锁',
+  unlockedLabel: '成就解锁',
+  achievements: {
+    'first-win': { name: '首次获胜', description: '赢下一局' },
+    'no-help-needed': { name: '无需提示', description: '不用提示赢下一局' },
+    'first-perfect': { name: '完美一局', description: '拿下一局的全部分数' },
+    completionist: {
+      name: '全收集',
+      description: '找出一局的全部单词，提示的也算',
+    },
+    'super-genius': { name: '超级天才', description: '在一局中达到超级天才' },
+    pangrammer: { name: '全字母词', description: '找到一个全字母词' },
+    'long-haul': { name: '长词', description: '找到一个十个字母以上的单词' },
+    marathon: { name: '马拉松', description: '在一局中找到 25 个单词' },
+    challenger: { name: '挑战者', description: '超过一个分享的分数' },
+    'hard-mode': {
+      name: '困难模式',
+      description: '在最短 5 个字母的一局中获胜',
+    },
+    'double-duty': {
+      name: '双重条件',
+      description: '在有两个必选字母的一局中获胜',
+    },
+    builder: { name: '建造者', description: '赢下自己创建的一局' },
+    overreach: { name: '得不偿失', description: '用提示把胜利耗尽' },
+    host: { name: '东道主', description: '分享一局' },
+    'ten-wins': { name: '十胜', description: '赢下十局' },
+    'fifty-wins': { name: '五十胜', description: '赢下五十局' },
+    century: { name: '百胜', description: '赢下一百局' },
+    wordsmith: { name: '词匠', description: '累计找到一千个单词' },
+    perfectionist: { name: '完美主义者', description: '完成十局完美一局' },
+    bilingual: { name: '双语', description: '在第二个词表中获胜' },
+    polyglot: { name: '多语', description: '在每个词表中获胜' },
+  },
   shareButton: '分享',
   shareCopied: '已复制！',
   wordsRemaining: (count) =>
@@ -2158,6 +2776,74 @@ const RU: Messages = {
   statWon: 'Побед',
   statStreak: 'Серия',
   statHints: 'Подсказки',
+  achievementsButton: 'Достижения',
+  achievementsTitle: 'Достижения',
+  achievementsEarned: (earned, total) => `Получено ${earned} из ${total}`,
+  achievementEarnedLabel: 'Получено',
+  achievementLockedLabel: 'Не получено',
+  unlockedLabel: 'Открыто',
+  achievements: {
+    'first-win': { name: 'Первая победа', description: 'Выиграйте игру' },
+    'no-help-needed': {
+      name: 'Без подсказок',
+      description: 'Выиграйте без подсказок',
+    },
+    'first-perfect': {
+      name: 'Идеальная игра',
+      description: 'Наберите все очки на поле',
+    },
+    completionist: {
+      name: 'Коллекционер',
+      description: 'Найдите все слова на поле, включая подсказанные',
+    },
+    'super-genius': {
+      name: 'Супергений',
+      description: 'Достигните звания «Супергений» на поле',
+    },
+    pangrammer: { name: 'Панграммист', description: 'Найдите панграмму' },
+    'long-haul': {
+      name: 'Длинное слово',
+      description: 'Найдите слово из десяти букв и длиннее',
+    },
+    marathon: { name: 'Марафон', description: 'Найдите 25 слов на одном поле' },
+    challenger: { name: 'Претендент', description: 'Побейте чужой результат' },
+    'hard-mode': {
+      name: 'Сложный режим',
+      description: 'Выиграйте на поле со словами от 5 букв',
+    },
+    'double-duty': {
+      name: 'Двойная задача',
+      description: 'Выиграйте на поле с двумя обязательными буквами',
+    },
+    builder: {
+      name: 'Строитель',
+      description: 'Выиграйте на поле, которое собрали сами',
+    },
+    overreach: {
+      name: 'Перебор',
+      description: 'Растратьте победу на подсказки',
+    },
+    host: { name: 'Хозяин', description: 'Поделитесь полем' },
+    'ten-wins': { name: 'Десять побед', description: 'Выиграйте десять игр' },
+    'fifty-wins': {
+      name: 'Пятьдесят побед',
+      description: 'Выиграйте пятьдесят игр',
+    },
+    century: { name: 'Сотня', description: 'Выиграйте сто игр' },
+    wordsmith: { name: 'Словесник', description: 'Найдите тысячу слов' },
+    perfectionist: {
+      name: 'Перфекционист',
+      description: 'Сыграйте десять идеальных игр',
+    },
+    bilingual: {
+      name: 'Билингв',
+      description: 'Выиграйте во втором списке слов',
+    },
+    polyglot: {
+      name: 'Полиглот',
+      description: 'Выиграйте в каждом списке слов',
+    },
+  },
   shareButton: 'Поделиться',
   shareCopied: 'Скопировано!',
   wordsRemaining: (count) =>

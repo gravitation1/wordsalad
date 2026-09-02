@@ -84,6 +84,8 @@ interface ScoreboardProps {
   // prefix into the word area.
   onPrefill: (prefix: string, origin: number) => void;
   onRestart: () => void;
+  // A share went out (sheet or clipboard), for the achievements.
+  onShared: () => void;
   // Passed through to the drum: where a found word flies in from.
   wordOriginRef: { current: WordOrigin | null };
 }
@@ -229,6 +231,7 @@ export function Scoreboard({
   onNewGame,
   onPrefill,
   onRestart,
+  onShared,
   wordOriginRef,
 }: ScoreboardProps) {
   const t = useMessages();
@@ -332,6 +335,7 @@ export function Scoreboard({
     try {
       if (typeof navigator.share === 'function') {
         await navigator.share({ text });
+        onShared();
         return;
       }
     } catch (_error) {
@@ -340,6 +344,7 @@ export function Scoreboard({
     try {
       await navigator.clipboard.writeText(text);
       setShareCopied(true);
+      onShared();
       if (copiedTimer.current !== null) {
         window.clearTimeout(copiedTimer.current);
       }
@@ -605,6 +610,7 @@ export function Scoreboard({
           }}
           requiredCharacters={requiredCharacters}
           shareCopied={shareCopied}
+          unlocked={celebration.unlocked}
         />
       ) : null}
       {/* The loss counterpart to the win modal: fired once on the crossing,
@@ -622,6 +628,7 @@ export function Scoreboard({
           }}
           onRestart={onRestart}
           reachablePoints={maxPoints - lostPoints}
+          unlocked={lockout.unlocked}
           winPoints={winPoints}
         />
       ) : null}

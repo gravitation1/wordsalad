@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
 
+import type { AchievementId } from '../game/achievements';
 import { useMessages } from '../i18n';
 import type { Celebration } from '../useWordSaladGame';
 import { matchesDigitKey } from '../useWordSaladGame';
+import { AchievementRecap } from './AchievementRecap';
 import { Confetti, WinBurst } from './Confetti';
 import { KEYCAP_TINTED_CLASS, TILE_FACE } from './tiles';
 
@@ -22,6 +24,8 @@ interface WinDialogProps {
   onShare: () => void;
   requiredCharacters: string;
   shareCopied: boolean;
+  // What this win earned across games; empty for most wins.
+  unlocked: readonly AchievementId[];
 }
 
 export function WinDialog({
@@ -35,6 +39,7 @@ export function WinDialog({
   onShare,
   requiredCharacters,
   shareCopied,
+  unlocked,
 }: WinDialogProps) {
   const t = useMessages();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -273,6 +278,8 @@ export function WinDialog({
             {t.customGameButton}
           </button>
         </div>
+        {/* Last, below even the quiet row: the actions never move for it. */}
+        <AchievementRecap unlocked={unlocked} />
       </div>
     </dialog>
   );
