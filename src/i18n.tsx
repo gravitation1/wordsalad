@@ -43,6 +43,9 @@ export interface Messages {
   tossButton: string;
   submitButton: string;
   wordsHeader: string;
+  // The list header's suffix counting down what is left (" (6 remaining)");
+  // " (all found)" at zero.
+  wordsRemaining: (count: number) => string;
   pointsHeader: string;
   newGameButton: string;
   keepPlayingButton: string;
@@ -92,11 +95,21 @@ export interface Messages {
   // Sits inside the share button in place of its label, so it stays short
   // enough not to reflow the button row.
   shareCopied: string;
-  challengeNote: (points: number) => string;
-  challengeBeaten: (points: number) => string;
-  // The short form on the score line; the sentences above serve screen
-  // readers and the bar mark's title.
-  challengeClause: (points: number) => string;
+  // The shared score's clause on the score line: your standing against the
+  // sharer's, in the rank countdown's grammar ("5 points behind ◇", "Tied
+  // with ◇", "45 points ahead of ◆"). The mark arrives from the view —
+  // hollow while live, filled once settled — so the words can point at the
+  // diamond on the bar. The *Note sentences serve screen readers and the
+  // bar mark's title.
+  challengeBehind: (points: number, mark: string) => string;
+  challengeTied: (mark: string) => string;
+  challengeAhead: (points: number, mark: string) => string;
+  challengeUnreachable: (mark: string) => string;
+  challengeBehindNote: (points: number, score: number) => string;
+  challengeTiedNote: (score: number) => string;
+  challengeTiedDoneNote: (score: number) => string;
+  challengeAheadNote: (points: number, score: number) => string;
+  challengeUnreachableNote: (score: number) => string;
   hintButton: string;
   hintsUsed: (count: number, lostPoints: number) => string;
   hintCostBadge: (cost: number) => string;
@@ -157,7 +170,6 @@ export interface Messages {
   levelName: (level: string) => string;
   thresholdFrom: (points: number) => string;
   feedbackText: (feedback: GameFeedback) => string;
-  foundSummary: (words: number) => string;
   scoreLabel: (earnedPoints: number, maxPoints: number) => string;
   // The countdown to the next rank still in reach ("6 points to Genius").
   // The rank name arrives already localized via levelName.
@@ -230,9 +242,22 @@ const EN: Messages = {
   statHints: 'Hints',
   shareButton: 'Share',
   shareCopied: 'Copied!',
-  challengeClause: (points) => `Beat ${points}`,
-  challengeNote: (points) => `Shared score to beat: ${points}`,
-  challengeBeaten: (points) => `You beat the shared score of ${points}!`,
+  wordsRemaining: (count) =>
+    count === 0 ? ' (all found)' : ` (${count} remaining)`,
+  challengeBehind: (points, mark) =>
+    `${points} point${plural('en', points, { one: '', other: 's' })} behind ${mark}`,
+  challengeTied: (mark) => `Tied with ${mark}`,
+  challengeAhead: (points, mark) =>
+    `${points} point${plural('en', points, { one: '', other: 's' })} ahead of ${mark}`,
+  challengeUnreachable: (mark) => `${mark} out of reach`,
+  challengeBehindNote: (points, score) =>
+    `${points} point${plural('en', points, { one: '', other: 's' })} behind the shared score of ${score}`,
+  challengeTiedNote: (score) => `Tied with the shared score of ${score}`,
+  challengeTiedDoneNote: (score) => `You tied the shared score of ${score}!`,
+  challengeAheadNote: (points, score) =>
+    `You beat the shared score of ${score} by ${points} point${plural('en', points, { one: '', other: 's' })}!`,
+  challengeUnreachableNote: (score) =>
+    `The shared score of ${score} is out of reach`,
   hintButton: 'Hint',
   hintsUsed: (count, lostPoints) =>
     `${count} hint${plural('en', count, { one: '', other: 's' })} ` +
@@ -334,8 +359,6 @@ const EN: Messages = {
         }
     }
   },
-  foundSummary: (words) =>
-    `Found ${words} word${plural('en', words, { one: '', other: 's' })}`,
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} point${plural('en', maxPoints, { one: '', other: 's' })}`,
   pointsToRank: (points, rank) =>
@@ -413,10 +436,25 @@ const FR: Messages = {
   statHints: 'Indices',
   shareButton: 'Partager',
   shareCopied: 'Copié !',
-  challengeClause: (points) => `À battre : ${points}`,
-  challengeNote: (points) => `Score partagé à battre : ${points}`,
-  challengeBeaten: (points) =>
-    `Vous avez battu le score partagé de ${points} !`,
+  wordsRemaining: (count) =>
+    count === 0
+      ? ' (tout trouvé)'
+      : ` (${count} restant${plural('fr', count, { one: '', other: 's' })})`,
+  challengeBehind: (points, mark) =>
+    `${points} point${plural('fr', points, { one: '', other: 's' })} derrière ${mark}`,
+  challengeTied: (mark) => `À égalité avec ${mark}`,
+  challengeAhead: (points, mark) =>
+    `${points} point${plural('fr', points, { one: '', other: 's' })} devant ${mark}`,
+  challengeUnreachable: (mark) => `${mark} hors de portée`,
+  challengeBehindNote: (points, score) =>
+    `${points} point${plural('fr', points, { one: '', other: 's' })} derrière le score partagé de ${score}`,
+  challengeTiedNote: (score) => `À égalité avec le score partagé de ${score}`,
+  challengeTiedDoneNote: (score) =>
+    `Vous avez égalé le score partagé de ${score} !`,
+  challengeAheadNote: (points, score) =>
+    `Vous avez battu le score partagé de ${score} de ${points} point${plural('fr', points, { one: '', other: 's' })} !`,
+  challengeUnreachableNote: (score) =>
+    `Le score partagé de ${score} est hors de portée`,
   hintButton: 'Indice',
   hintsUsed: (count, lostPoints) =>
     `${count} indice${plural('fr', count, { one: '', other: 's' })} ` +
@@ -520,8 +558,6 @@ const FR: Messages = {
         }
     }
   },
-  foundSummary: (words) =>
-    `${words} mot${plural('fr', words, { one: '', other: 's' })} trouvé${plural('fr', words, { one: '', other: 's' })}`,
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} point${plural('fr', maxPoints, { one: '', other: 's' })}`,
   pointsToRank: (points, rank) =>
@@ -599,10 +635,26 @@ const ES: Messages = {
   statHints: 'Pistas',
   shareButton: 'Compartir',
   shareCopied: '¡Copiado!',
-  challengeClause: (points) => `A batir: ${points}`,
-  challengeNote: (points) => `Puntuación compartida a batir: ${points}`,
-  challengeBeaten: (points) =>
-    `¡Superaste la puntuación compartida de ${points}!`,
+  wordsRemaining: (count) =>
+    count === 0
+      ? ' (todas encontradas)'
+      : ` (${plural('es', count, { one: 'queda', other: 'quedan' })} ${count})`,
+  challengeBehind: (points, mark) =>
+    `${points} punto${plural('es', points, { one: '', other: 's' })} por detrás de ${mark}`,
+  challengeTied: (mark) => `Empate con ${mark}`,
+  challengeAhead: (points, mark) =>
+    `${points} punto${plural('es', points, { one: '', other: 's' })} por delante de ${mark}`,
+  challengeUnreachable: (mark) => `${mark} fuera de alcance`,
+  challengeBehindNote: (points, score) =>
+    `${points} punto${plural('es', points, { one: '', other: 's' })} por detrás de la puntuación compartida de ${score}`,
+  challengeTiedNote: (score) =>
+    `Empate con la puntuación compartida de ${score}`,
+  challengeTiedDoneNote: (score) =>
+    `¡Igualaste la puntuación compartida de ${score}!`,
+  challengeAheadNote: (points, score) =>
+    `¡Superaste la puntuación compartida de ${score} por ${points} punto${plural('es', points, { one: '', other: 's' })}!`,
+  challengeUnreachableNote: (score) =>
+    `La puntuación compartida de ${score} está fuera de alcance`,
   hintButton: 'Pista',
   hintsUsed: (count, lostPoints) =>
     `${count} pista${plural('es', count, { one: '', other: 's' })} ` +
@@ -706,8 +758,6 @@ const ES: Messages = {
         }
     }
   },
-  foundSummary: (words) =>
-    `${words} palabra${plural('es', words, { one: '', other: 's' })} encontrada${plural('es', words, { one: '', other: 's' })}`,
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} punto${plural('es', maxPoints, { one: '', other: 's' })}`,
   pointsToRank: (points, rank) =>
@@ -785,10 +835,24 @@ const DE: Messages = {
   statHints: 'Tipps',
   shareButton: 'Teilen',
   shareCopied: 'Kopiert!',
-  challengeClause: (points) => `Zu schlagen: ${points}`,
-  challengeNote: (points) => `Geteilte Punktzahl zum Schlagen: ${points}`,
-  challengeBeaten: (points) =>
-    `Du hast die geteilte Punktzahl von ${points} geschlagen!`,
+  wordsRemaining: (count) =>
+    count === 0 ? ' (alle gefunden)' : ` (noch ${count})`,
+  challengeBehind: (points, mark) =>
+    `${points} ${plural('de', points, { one: 'Punkt', other: 'Punkte' })} hinter ${mark}`,
+  challengeTied: (mark) => `Gleichauf mit ${mark}`,
+  challengeAhead: (points, mark) =>
+    `${points} ${plural('de', points, { one: 'Punkt', other: 'Punkte' })} vor ${mark}`,
+  challengeUnreachable: (mark) => `${mark} außer Reichweite`,
+  challengeBehindNote: (points, score) =>
+    `${points} ${plural('de', points, { one: 'Punkt', other: 'Punkte' })} hinter der geteilten Punktzahl von ${score}`,
+  challengeTiedNote: (score) =>
+    `Gleichauf mit der geteilten Punktzahl von ${score}`,
+  challengeTiedDoneNote: (score) =>
+    `Du hast die geteilte Punktzahl von ${score} erreicht!`,
+  challengeAheadNote: (points, score) =>
+    `Du hast die geteilte Punktzahl von ${score} um ${points} ${plural('de', points, { one: 'Punkt', other: 'Punkte' })} geschlagen!`,
+  challengeUnreachableNote: (score) =>
+    `Die geteilte Punktzahl von ${score} ist außer Reichweite`,
   hintButton: 'Tipp',
   hintsUsed: (count, lostPoints) =>
     `${count} ${plural('de', count, { one: 'Tipp', other: 'Tipps' })} ` +
@@ -895,8 +959,6 @@ const DE: Messages = {
         }
     }
   },
-  foundSummary: (words) =>
-    `${words} ${plural('de', words, { one: 'Wort', other: 'Wörter' })} gefunden`,
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} ${plural('de', maxPoints, { one: 'Punkt', other: 'Punkte' })}`,
   pointsToRank: (points, rank) =>
@@ -974,10 +1036,25 @@ const IT: Messages = {
   statHints: 'Indizi',
   shareButton: 'Condividi',
   shareCopied: 'Copiato!',
-  challengeClause: (points) => `Da battere: ${points}`,
-  challengeNote: (points) => `Punteggio condiviso da battere: ${points}`,
-  challengeBeaten: (points) =>
-    `Hai battuto il punteggio condiviso di ${points}!`,
+  wordsRemaining: (count) =>
+    count === 0
+      ? ' (tutte trovate)'
+      : ` (${count} ${plural('it', count, { one: 'rimanente', other: 'rimanenti' })})`,
+  challengeBehind: (points, mark) =>
+    `${points} ${plural('it', points, { one: 'punto', other: 'punti' })} dietro ${mark}`,
+  challengeTied: (mark) => `Pari con ${mark}`,
+  challengeAhead: (points, mark) =>
+    `${points} ${plural('it', points, { one: 'punto', other: 'punti' })} davanti a ${mark}`,
+  challengeUnreachable: (mark) => `${mark} fuori portata`,
+  challengeBehindNote: (points, score) =>
+    `${points} ${plural('it', points, { one: 'punto', other: 'punti' })} dietro il punteggio condiviso di ${score}`,
+  challengeTiedNote: (score) => `Pari con il punteggio condiviso di ${score}`,
+  challengeTiedDoneNote: (score) =>
+    `Hai pareggiato il punteggio condiviso di ${score}!`,
+  challengeAheadNote: (points, score) =>
+    `Hai battuto il punteggio condiviso di ${score} di ${points} ${plural('it', points, { one: 'punto', other: 'punti' })}!`,
+  challengeUnreachableNote: (score) =>
+    `Il punteggio condiviso di ${score} è fuori portata`,
   hintButton: 'Indizio',
   hintsUsed: (count, lostPoints) =>
     `${count} ${plural('it', count, { one: 'indizio', other: 'indizi' })} ` +
@@ -1082,8 +1159,6 @@ const IT: Messages = {
         }
     }
   },
-  foundSummary: (words) =>
-    `${words} ${plural('it', words, { one: 'parola trovata', other: 'parole trovate' })}`,
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} ${plural('it', maxPoints, { one: 'punto', other: 'punti' })}`,
   pointsToRank: (points, rank) =>
@@ -1161,10 +1236,26 @@ const PT: Messages = {
   statHints: 'Dicas',
   shareButton: 'Compartilhar',
   shareCopied: 'Copiado!',
-  challengeClause: (points) => `A bater: ${points}`,
-  challengeNote: (points) => `Pontuação compartilhada a bater: ${points}`,
-  challengeBeaten: (points) =>
-    `Você superou a pontuação compartilhada de ${points}!`,
+  wordsRemaining: (count) =>
+    count === 0
+      ? ' (todas encontradas)'
+      : ` (${plural('pt', count, { one: 'falta', other: 'faltam' })} ${count})`,
+  challengeBehind: (points, mark) =>
+    `${points} ponto${plural('pt', points, { one: '', other: 's' })} atrás de ${mark}`,
+  challengeTied: (mark) => `Empatado com ${mark}`,
+  challengeAhead: (points, mark) =>
+    `${points} ponto${plural('pt', points, { one: '', other: 's' })} à frente de ${mark}`,
+  challengeUnreachable: (mark) => `${mark} fora de alcance`,
+  challengeBehindNote: (points, score) =>
+    `${points} ponto${plural('pt', points, { one: '', other: 's' })} atrás da pontuação compartilhada de ${score}`,
+  challengeTiedNote: (score) =>
+    `Empatado com a pontuação compartilhada de ${score}`,
+  challengeTiedDoneNote: (score) =>
+    `Você igualou a pontuação compartilhada de ${score}!`,
+  challengeAheadNote: (points, score) =>
+    `Você superou a pontuação compartilhada de ${score} por ${points} ponto${plural('pt', points, { one: '', other: 's' })}!`,
+  challengeUnreachableNote: (score) =>
+    `A pontuação compartilhada de ${score} está fora de alcance`,
   hintButton: 'Dica',
   hintsUsed: (count, lostPoints) =>
     `${count} dica${plural('pt', count, { one: '', other: 's' })} ` +
@@ -1269,8 +1360,6 @@ const PT: Messages = {
         }
     }
   },
-  foundSummary: (words) =>
-    `${words} palavra${plural('pt', words, { one: '', other: 's' })} encontrada${plural('pt', words, { one: '', other: 's' })}`,
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} ponto${plural('pt', maxPoints, { one: '', other: 's' })}`,
   pointsToRank: (points, rank) =>
@@ -1348,10 +1437,23 @@ const NL: Messages = {
   statHints: 'Hints',
   shareButton: 'Delen',
   shareCopied: 'Gekopieerd!',
-  challengeClause: (points) => `Te verslaan: ${points}`,
-  challengeNote: (points) => `Gedeelde score om te verslaan: ${points}`,
-  challengeBeaten: (points) =>
-    `Je hebt de gedeelde score van ${points} verslagen!`,
+  wordsRemaining: (count) =>
+    count === 0 ? ' (alles gevonden)' : ` (nog ${count})`,
+  challengeBehind: (points, mark) =>
+    `${points} ${plural('nl', points, { one: 'punt', other: 'punten' })} achter ${mark}`,
+  challengeTied: (mark) => `Gelijk met ${mark}`,
+  challengeAhead: (points, mark) =>
+    `${points} ${plural('nl', points, { one: 'punt', other: 'punten' })} voor op ${mark}`,
+  challengeUnreachable: (mark) => `${mark} buiten bereik`,
+  challengeBehindNote: (points, score) =>
+    `${points} ${plural('nl', points, { one: 'punt', other: 'punten' })} achter de gedeelde score van ${score}`,
+  challengeTiedNote: (score) => `Gelijk met de gedeelde score van ${score}`,
+  challengeTiedDoneNote: (score) =>
+    `Je hebt de gedeelde score van ${score} geëvenaard!`,
+  challengeAheadNote: (points, score) =>
+    `Je hebt de gedeelde score van ${score} met ${points} ${plural('nl', points, { one: 'punt', other: 'punten' })} verslagen!`,
+  challengeUnreachableNote: (score) =>
+    `De gedeelde score van ${score} is buiten bereik`,
   hintButton: 'Hint',
   hintsUsed: (count, lostPoints) =>
     `${count} hint${plural('nl', count, { one: '', other: 's' })} ` +
@@ -1457,8 +1559,6 @@ const NL: Messages = {
         }
     }
   },
-  foundSummary: (words) =>
-    `${words} ${plural('nl', words, { one: 'woord', other: 'woorden' })} gevonden`,
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} ${plural('nl', maxPoints, { one: 'punt', other: 'punten' })}`,
   pointsToRank: (points, rank) =>
@@ -1533,9 +1633,20 @@ const JA: Messages = {
   statHints: 'ヒント',
   shareButton: '共有',
   shareCopied: 'コピーしました！',
-  challengeClause: (points) => `目標 ${points}`,
-  challengeNote: (points) => `共有されたスコア：${points}（これを超えよう）`,
-  challengeBeaten: (points) => `共有されたスコア${points}を超えました！`,
+  wordsRemaining: (count) =>
+    count === 0 ? '（すべて発見）' : `（残り${count}語）`,
+  challengeBehind: (points, mark) => `${mark}まで あと${points}ポイント`,
+  challengeTied: (mark) => `${mark}と同点`,
+  challengeAhead: (points, mark) => `${mark}を${points}ポイント上回る`,
+  challengeUnreachable: (mark) => `${mark}には届かない`,
+  challengeBehindNote: (points, score) =>
+    `共有されたスコア${score}まで あと${points}ポイント`,
+  challengeTiedNote: (score) => `共有されたスコア${score}と同点`,
+  challengeTiedDoneNote: (score) => `共有されたスコア${score}に並びました！`,
+  challengeAheadNote: (points, score) =>
+    `共有されたスコア${score}を${points}ポイント上回りました！`,
+  challengeUnreachableNote: (score) =>
+    `共有されたスコア${score}にはもう届きません`,
   hintButton: 'ヒント',
   hintsUsed: (count, lostPoints) => `ヒント${count}回（−${lostPoints}点）`,
   hintCostBadge: (cost) => `最大−${cost}`,
@@ -1626,7 +1737,6 @@ const JA: Messages = {
         }
     }
   },
-  foundSummary: (words) => `${words}個の単語`,
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints}ポイント`,
   pointsToRank: (points, rank) => `${rank}まで あと${points}ポイント`,
@@ -1700,9 +1810,20 @@ const KO: Messages = {
   statHints: '힌트',
   shareButton: '공유',
   shareCopied: '복사했어요!',
-  challengeClause: (points) => `목표 ${points}`,
-  challengeNote: (points) => `공유된 점수: ${points} (도전해 보세요)`,
-  challengeBeaten: (points) => `공유된 점수 ${points}점을 넘었어요!`,
+  wordsRemaining: (count) =>
+    count === 0 ? ' (모두 찾음)' : ` (${count}개 남음)`,
+  challengeBehind: (points, mark) => `${mark}까지 ${points}점`,
+  challengeTied: (mark) => `${mark}와 동점`,
+  challengeAhead: (points, mark) => `${mark}보다 ${points}점 앞섬`,
+  challengeUnreachable: (mark) => `${mark} 도달 불가`,
+  challengeBehindNote: (points, score) =>
+    `공유된 점수 ${score}점까지 ${points}점 남았어요`,
+  challengeTiedNote: (score) => `공유된 점수 ${score}점과 동점이에요`,
+  challengeTiedDoneNote: (score) => `공유된 점수 ${score}점과 동점을 이뤘어요!`,
+  challengeAheadNote: (points, score) =>
+    `공유된 점수 ${score}점을 ${points}점 차로 넘었어요!`,
+  challengeUnreachableNote: (score) =>
+    `공유된 점수 ${score}점에는 더 이상 도달할 수 없어요`,
   hintButton: '힌트',
   hintsUsed: (count, lostPoints) => `힌트 ${count}개 (−${lostPoints}점)`,
   hintCostBadge: (cost) => `최대 −${cost}`,
@@ -1794,7 +1915,6 @@ const KO: Messages = {
         }
     }
   },
-  foundSummary: (words) => `단어 ${words}개`,
   scoreLabel: (earnedPoints, maxPoints) => `${earnedPoints} / ${maxPoints}점`,
   pointsToRank: (points, rank) => `${rank}까지 ${points}점`,
 };
@@ -1865,9 +1985,19 @@ const ZH: Messages = {
   statHints: '提示',
   shareButton: '分享',
   shareCopied: '已复制！',
-  challengeClause: (points) => `目标 ${points}`,
-  challengeNote: (points) => `好友分享的分数：${points}（超过它！）`,
-  challengeBeaten: (points) => `你超过了分享的分数 ${points}！`,
+  wordsRemaining: (count) =>
+    count === 0 ? '（全部找到）' : `（剩余 ${count} 个）`,
+  challengeBehind: (points, mark) => `落后 ${mark} ${points} 分`,
+  challengeTied: (mark) => `与 ${mark} 持平`,
+  challengeAhead: (points, mark) => `领先 ${mark} ${points} 分`,
+  challengeUnreachable: (mark) => `${mark} 已无法达到`,
+  challengeBehindNote: (points, score) =>
+    `落后分享的分数 ${score} 共 ${points} 分`,
+  challengeTiedNote: (score) => `与分享的分数 ${score} 持平`,
+  challengeTiedDoneNote: (score) => `你追平了分享的分数 ${score}！`,
+  challengeAheadNote: (points, score) =>
+    `你以 ${points} 分领先分享的分数 ${score}！`,
+  challengeUnreachableNote: (score) => `分享的分数 ${score} 已无法达到`,
   hintButton: '提示',
   hintsUsed: (count, lostPoints) => `${count} 次提示（−${lostPoints} 分）`,
   hintCostBadge: (cost) => `上限−${cost}`,
@@ -1956,7 +2086,6 @@ const ZH: Messages = {
         }
     }
   },
-  foundSummary: (words) => `已找到 ${words} 个单词`,
   scoreLabel: (earnedPoints, maxPoints) => `${earnedPoints} / ${maxPoints} 分`,
   pointsToRank: (points, rank) => `距“${rank}”还差 ${points} 分`,
 };
@@ -2031,9 +2160,23 @@ const RU: Messages = {
   statHints: 'Подсказки',
   shareButton: 'Поделиться',
   shareCopied: 'Скопировано!',
-  challengeClause: (points) => `Побить: ${points}`,
-  challengeNote: (points) => `Поделились результатом ${points} — побейте его!`,
-  challengeBeaten: (points) => `Вы побили результат ${points}!`,
+  wordsRemaining: (count) =>
+    count === 0
+      ? ' (все найдены)'
+      : ` (осталось ${count} ${plural('ru', count, { few: 'слова', one: 'слово', other: 'слов' })})`,
+  challengeBehind: (points, mark) =>
+    `${points} ${plural('ru', points, { few: 'очка', one: 'очко', other: 'очков' })} позади ${mark}`,
+  challengeTied: (mark) => `Вровень с ${mark}`,
+  challengeAhead: (points, mark) =>
+    `${points} ${plural('ru', points, { few: 'очка', one: 'очко', other: 'очков' })} впереди ${mark}`,
+  challengeUnreachable: (mark) => `${mark} недостижим`,
+  challengeBehindNote: (points, score) =>
+    `${points} ${plural('ru', points, { few: 'очка', one: 'очко', other: 'очков' })} позади результата ${score}`,
+  challengeTiedNote: (score) => `Вровень с результатом ${score}`,
+  challengeTiedDoneNote: (score) => `Вы повторили результат ${score}!`,
+  challengeAheadNote: (points, score) =>
+    `Вы побили результат ${score} на ${points} ${plural('ru', points, { few: 'очка', one: 'очко', other: 'очков' })}!`,
+  challengeUnreachableNote: (score) => `Результат ${score} больше недостижим`,
   hintButton: 'Подсказка',
   hintsUsed: (count, lostPoints) =>
     `${count} ${plural('ru', count, { one: 'подсказка', few: 'подсказки', other: 'подсказок' })} ` +
@@ -2138,8 +2281,6 @@ const RU: Messages = {
         }
     }
   },
-  foundSummary: (words) =>
-    `Найдено ${words} ${plural('ru', words, { one: 'слово', few: 'слова', other: 'слов' })}`,
   scoreLabel: (earnedPoints, maxPoints) =>
     `${earnedPoints} / ${maxPoints} ${plural('ru', maxPoints, { one: 'очко', few: 'очка', other: 'очков' })}`,
   pointsToRank: (points, rank) =>

@@ -138,15 +138,23 @@ const TARGET_GOLD_LIVE_CLASS = 'border-amber-400 bg-white dark:bg-gray-950';
 const TARGET_KEPT_CLASS = 'border-accent bg-accent';
 const TARGET_DEAD_CLASS =
   'border-gray-400 bg-gray-400 dark:border-gray-600 dark:bg-gray-600';
-// A shared score to beat rides the bar as a diamond — a shape of its own,
-// so it can't be mistaken for a rung — in the targets' grammar: hollow
-// while it is a promise, filled with the accent once kept. A 7px square on
-// its corner spans just under the strip's 10px, keeping the footprint rule.
-const CHALLENGE_MARK_CLASS =
-  'pointer-events-none absolute top-1/2 h-[7px] w-[7px] -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1.5px] border-2 transition-colors';
+// A shared score rides the bar as a diamond — a shape of its own, so it
+// can't be mistaken for a rung, and one the score line can name in prose
+// (◇/◆) — in the targets' grammar: hollow while it is a promise, filled
+// with the accent once you are ahead, spent gray once hints have burned it
+// out of reach (the rungs' own dead state). A 7px square on its corner
+// spans just under the strip's 10px, keeping the footprint rule. A share
+// at the board's maximum takes the gold terminus ring's slot instead, in
+// the ring's gold: the same promise, now with a name.
+const CHALLENGE_MARK_BASE_CLASS =
+  'pointer-events-none absolute top-1/2 h-[7px] w-[7px] -translate-y-1/2 rotate-45 rounded-[1.5px] border-2 transition-colors';
+const CHALLENGE_MARK_CLASS = `${CHALLENGE_MARK_BASE_CLASS} -translate-x-1/2`;
+// Centered where the 10px ring's center sits: 5px in from the track's edge.
+const CHALLENGE_MARK_END_CLASS = `${CHALLENGE_MARK_BASE_CLASS} right-[1.5px]`;
 const CHALLENGE_LIVE_CLASS =
   'border-gray-500 bg-white dark:border-gray-400 dark:bg-gray-950';
-const CHALLENGE_BEATEN_CLASS = 'border-accent bg-accent';
+const CHALLENGE_DONE_CLASS = 'border-accent bg-accent';
+const CHALLENGE_DEAD_CLASS = TARGET_DEAD_CLASS;
 
 // A gated shortcut aimed at this pill (2 or 3 with nothing found): dip in
 // acknowledgment, exactly as the play controls do for a denied Backspace
@@ -234,9 +242,6 @@ export function Scoreboard({
     loadSummaries().some((entry) => entry.summary.earned > 0),
   );
   const coaching = !hadScoredRecord && earnedPoints === 0;
-  // Strictly more: matching a shared score is a tie, not a win.
-  const challengeBeaten =
-    challengeScore !== null && earnedPoints > challengeScore;
   const [isRatingsOpen, setIsRatingsOpen] = useState(false);
   const ratingsButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -389,6 +394,56 @@ export function Scoreboard({
   // countdown; null once nothing above the current rank can be caught (a
   // perfect sweep, or hints burned past the last rung).
   const nextRank = getNextRank(earnedPoints, maxPoints, reachablePoints);
+  // The shared score's standing, as a race against the sharer — the score
+  // itself is not on the page, so an absolute target would be a number
+  // with nothing to measure it against, and a countdown to "beat 150"
+  // would be 151 with the arithmetic showing. Behind, tied, or ahead by a
+  // margin; a strictly higher score wins, except that a share at the
+  // board's maximum can only be tied, so there the tie is the finish.
+  // Reachability is measured against what a flawless rest-of-game could
+  // still earn: hints burn a share out of reach the way they burn rungs.
+  const challenge = (() => {
+    if (challengeScore === null) {
+      return null;
+    }
+    const margin = earnedPoints - challengeScore;
+    const atMax = challengeScore >= maxPoints;
+    const done = atMax ? margin >= 0 : margin > 0;
+    const targetPoints = atMax ? challengeScore : challengeScore + 1;
+    const state = done
+      ? 'done'
+      : targetPoints > reachablePoints
+        ? 'unreachable'
+        : 'live';
+    return { score: challengeScore, margin, atMax, state } as const;
+  })();
+  // The clause's mark mirrors the diamond on the bar: hollow while live,
+  // filled once settled either way.
+  const challengeMark =
+    challenge === null || challenge.state === 'live' ? '◇' : '◆';
+  const challengeClause =
+    challenge === null
+      ? null
+      : challenge.state === 'unreachable'
+        ? t.challengeUnreachable(challengeMark)
+        : challenge.margin < 0
+          ? t.challengeBehind(-challenge.margin, challengeMark)
+          : challenge.margin === 0
+            ? `${t.challengeTied(challengeMark)}${challenge.state === 'done' ? ' ✓' : ''}`
+            : `${t.challengeAhead(challenge.margin, challengeMark)} ✓`;
+  // Its spoken form, for screen readers and the bar mark's title.
+  const challengeNote =
+    challenge === null
+      ? null
+      : challenge.state === 'unreachable'
+        ? t.challengeUnreachableNote(challenge.score)
+        : challenge.margin < 0
+          ? t.challengeBehindNote(-challenge.margin, challenge.score)
+          : challenge.margin === 0
+            ? challenge.state === 'done'
+              ? t.challengeTiedDoneNote(challenge.score)
+              : t.challengeTiedNote(challenge.score)
+            : t.challengeAheadNote(challenge.margin, challenge.score);
   // The ladder's interior rungs: every rating boundary except the two
   // ringed targets (the win line and the perfect sweep).
   const rungFractions = getLevelLadder()
@@ -650,45 +705,52 @@ export function Scoreboard({
               </span>
             )}
           </div>
-          {/* Secondary now that it shares the score's line: the word count,
-              and what hints have cost. shrink-0 makes it wrap the row rather
-              than compress into an ellipsised stub, so it yields the whole
-              line only when the content genuinely will not fit; max-w-full
-              plus truncate is the last resort for a lone item wider than the
-              band. */}
-          <p className="min-w-0 max-w-full shrink-0 truncate text-xs text-gray-500 dark:text-gray-500">
-            {t.foundSummary(foundCount)}
-            {hintCount > 0 ? (
-              <span className="text-gray-400 dark:text-gray-600">
-                {` · ${t.hintsUsed(hintCount, lostPoints)}`}
-              </span>
-            ) : null}
-            {/* A shared score to beat: a clause here and a diamond on the
-                bar below, in place of the old full-width banner — the bar
-                already tells the story in points, so the challenge joins it
-                as one more mark to pass. The full sentence goes to screen
-                readers; the eye gets the short form, accented once beaten. */}
-            {challengeScore === null ? null : (
-              <span data-testid="challenge">
-                <span
-                  aria-hidden="true"
-                  className={
-                    challengeBeaten
-                      ? 'font-medium text-accent'
-                      : 'text-gray-600 dark:text-gray-400'
-                  }
-                >
-                  {` · ${t.challengeClause(challengeScore)}`}
-                  {challengeBeaten ? ' ✓' : null}
+          {/* Secondary now that it shares the score's line, and points-only
+              like the countdown beside it: the shared score's standing,
+              then what hints have cost as a footnote. (The word count moved
+              to the list header, where the words it counts are.) shrink-0
+              makes it wrap the row rather than compress into an ellipsised
+              stub, so it yields the whole line only when the content
+              genuinely will not fit; max-w-full plus truncate is the last
+              resort for a lone item wider than the band. */}
+          {challenge === null && hintCount === 0 ? null : (
+            <p className="min-w-0 max-w-full shrink-0 truncate text-xs text-gray-500 dark:text-gray-500">
+              {/* The shared score as a race, naming the diamond on the bar
+                  ("5 points behind ◇", "45 points ahead of ◆"). The eye
+                  gets the short form: accented once ahead (or tied at the
+                  maximum), spent gray once hints have put it out of reach.
+                  Screen readers get the full sentence, and hear only the
+                  state changes — the margin moves silently rather than
+                  announcing after every word. */}
+              {challenge === null ? null : (
+                <span data-state={challenge.state} data-testid="challenge">
+                  <span
+                    aria-hidden="true"
+                    className={
+                      challenge.state === 'done'
+                        ? 'font-medium text-accent'
+                        : challenge.state === 'unreachable'
+                          ? 'text-gray-400 dark:text-gray-600'
+                          : 'text-gray-600 dark:text-gray-400'
+                    }
+                  >
+                    {challengeClause}
+                  </span>
+                  <span className="sr-only" role="status">
+                    {challenge.state === 'live' ? null : challengeNote}
+                  </span>
+                  {challenge.state === 'live' ? (
+                    <span className="sr-only">{challengeNote}</span>
+                  ) : null}
                 </span>
-                <span className="sr-only" role="status">
-                  {challengeBeaten
-                    ? t.challengeBeaten(challengeScore)
-                    : t.challengeNote(challengeScore)}
+              )}
+              {hintCount > 0 ? (
+                <span className="text-gray-400 dark:text-gray-600">
+                  {`${challenge === null ? '' : ' · '}${t.hintsUsed(hintCount, lostPoints)}`}
                 </span>
-              </span>
-            )}
-          </p>
+              ) : null}
+            </p>
+          )}
         </div>
         {/* Green earned points grow from the left; gray points lost to
             hints eat in from the right. A hairline under the score line,
@@ -746,26 +808,23 @@ export function Scoreboard({
                   />
                 );
               })}
-              {/* The shared score to beat, if any, as a diamond at its
-                  point; a target at or beyond the board's maximum can't be
-                  beaten and would sit on the gold ring, so it stays in the
-                  clause alone. */}
-              {challengeScore === null || challengeScore >= maxPoints ? null : (
+              {/* The shared score as a diamond at its point. A share at or
+                  beyond the board's maximum takes the terminus slot below
+                  instead. */}
+              {challenge === null || challenge.atMax ? null : (
                 <div
                   aria-hidden="true"
                   className={`${CHALLENGE_MARK_CLASS} ${
-                    challengeBeaten
-                      ? CHALLENGE_BEATEN_CLASS
-                      : CHALLENGE_LIVE_CLASS
+                    challenge.state === 'done'
+                      ? CHALLENGE_DONE_CLASS
+                      : challenge.state === 'unreachable'
+                        ? CHALLENGE_DEAD_CLASS
+                        : CHALLENGE_LIVE_CLASS
                   }`}
-                  data-beaten={challengeBeaten ? 'true' : 'false'}
+                  data-state={challenge.state}
                   data-testid="challenge-mark"
-                  style={{ left: `${(challengeScore / maxPoints) * 100}%` }}
-                  title={
-                    challengeBeaten
-                      ? t.challengeBeaten(challengeScore)
-                      : t.challengeNote(challengeScore)
-                  }
+                  style={{ left: `${(challenge.score / maxPoints) * 100}%` }}
+                  title={challengeNote ?? undefined}
                 />
               )}
               {/* The win target: a green promise until it is kept (filled
@@ -783,13 +842,31 @@ export function Scoreboard({
                 title={t.winThresholdLabel(winPoints)}
               />
               {/* The perfect target: a gold promise the first hint breaks
-                  — the ring grays right as the spent cost lands here. */}
-              <div
-                aria-hidden="true"
-                className={`${TARGET_END_CLASS} ${
-                  lostPoints > 0 ? TARGET_DEAD_CLASS : TARGET_GOLD_LIVE_CLASS
-                }`}
-              />
+                  — the ring grays right as the spent cost lands here. A
+                  share at the board's maximum is that same promise with a
+                  name, so it wears the slot as a gold diamond; it can only
+                  be tied, and a tie here is the perfect sweep that dissolves
+                  the whole ladder, so the mark never needs a kept state. */}
+              {challenge?.atMax ? (
+                <div
+                  aria-hidden="true"
+                  className={`${CHALLENGE_MARK_END_CLASS} ${
+                    challenge.state === 'unreachable'
+                      ? TARGET_DEAD_CLASS
+                      : TARGET_GOLD_LIVE_CLASS
+                  }`}
+                  data-state={challenge.state}
+                  data-testid="challenge-mark"
+                  title={challengeNote ?? undefined}
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className={`${TARGET_END_CLASS} ${
+                    lostPoints > 0 ? TARGET_DEAD_CLASS : TARGET_GOLD_LIVE_CLASS
+                  }`}
+                />
+              )}
             </>
           )}
         </div>
@@ -827,7 +904,13 @@ export function Scoreboard({
             feedback === null && !coaching ? '' : 'invisible'
           }`}
         >
-          <span className="font-medium">{t.wordsHeader}</span>
+          {/* The label counts down what is left: the words it counts are
+              the drum's gap blocks right below it, and the countdown is
+              the same grammar the score line speaks. */}
+          <span className="font-medium" data-testid="words-header">
+            {t.wordsHeader}
+            {t.wordsRemaining(wordSlots.length - foundCount)}
+          </span>
           <span className="w-16 text-right font-medium">{t.pointsHeader}</span>
         </div>
         <div className="col-start-1 row-start-1 flex justify-center">

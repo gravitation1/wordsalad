@@ -344,7 +344,9 @@ describe('sound', () => {
 
     // A perfect game's worth of history is state on arrival, not events:
     // none of it replays as fanfare.
-    expect(screen.getByText('Found 3 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (all found)', // was found=3
+    );
     expect(notes).toHaveLength(0);
   });
 
@@ -369,7 +371,9 @@ describe('sound', () => {
 
     // Restart rewinds the toss and delete counters to zero; a counter going
     // backwards is not an event.
-    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (3 remaining)', // was found=0
+    );
     expect(notes).toHaveLength(0);
   });
 

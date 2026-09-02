@@ -72,7 +72,9 @@ describe('App', () => {
       'data-required',
       'false',
     );
-    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (3 remaining)', // was found=0
+    );
   });
 
   it('reflects the game in the query string', () => {
@@ -115,7 +117,9 @@ describe('App', () => {
 
     // Playable: WORD contains the required O.
     submitWord('word');
-    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (3 remaining)', // was found=1
+    );
   });
 
   it('derives the required letter under a custom minimum length', () => {
@@ -126,7 +130,9 @@ describe('App', () => {
     submitWord('test');
     expect(screen.getByRole('status')).toHaveTextContent('TEST is too short!');
     submitWord('rotted');
-    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (1 remaining)', // was found=1
+    );
   });
 
   const letterTiles = () =>
@@ -184,7 +190,9 @@ describe('App', () => {
       'TEST is missing required character!',
     );
     submitWord('rotted'); // has both R and T
-    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (1 remaining)', // was found=1
+    );
     // The required set is canonicalized in the URL.
     expect(new URLSearchParams(window.location.search).get('required')).toBe(
       'RT',
@@ -516,24 +524,125 @@ describe('App', () => {
     window.history.replaceState(
       null,
       '',
-      '?letters=WORDTES&required=T&score=2&hints=0',
+      '?letters=WORDTES&required=T&score=1&hints=0',
     );
     render(<App dictionary={DICTIONARY} />);
 
     // The challenge params are consumed, not kept in the URL.
     expect(new URLSearchParams(window.location.search).get('score')).toBeNull();
 
+    // A race against the sharer, naming the diamond on the bar: behind,
+    // tied (not yet a win — strictly more is needed), then ahead by the
+    // margin, which is the finish.
     expect(screen.getByTestId('challenge')).toHaveTextContent(
-      'Shared score to beat: 2',
+      '1 point behind ◇',
     );
-    submitWord('test'); // 1 point: not there yet
     expect(screen.getByTestId('challenge')).toHaveTextContent(
-      'Shared score to beat: 2',
+      '1 point behind the shared score of 1',
     );
-    submitWord('rotted'); // 4 points: beaten
+    expect(screen.getByTestId('challenge-mark')).toHaveAttribute(
+      'data-state',
+      'live',
+    );
+    submitWord('test'); // 1 point: level, not past
+    expect(screen.getByTestId('challenge')).toHaveTextContent('Tied with ◇');
     expect(screen.getByTestId('challenge')).toHaveTextContent(
-      'You beat the shared score of 2!',
+      'Tied with the shared score of 1',
     );
+    expect(screen.getByTestId('challenge')).toHaveAttribute(
+      'data-state',
+      'live',
+    );
+    submitWord('rotted'); // 4 points: ahead by 3
+    expect(screen.getByTestId('challenge')).toHaveTextContent(
+      '3 points ahead of ◆ ✓',
+    );
+    expect(screen.getByTestId('challenge')).toHaveTextContent(
+      'You beat the shared score of 1 by 3 points!',
+    );
+    expect(screen.getByTestId('challenge-mark')).toHaveAttribute(
+      'data-state',
+      'done',
+    );
+  });
+
+  // The fixture board is worth 15: TEST 1, ROTTED 3, WORSTED 4 + 7 pangram.
+  it('can only tie a shared score at the board maximum', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '?letters=WORDTES&required=T&score=15&hints=0',
+    );
+    render(<App dictionary={DICTIONARY} />);
+
+    // Getting ahead is impossible, so the tie is the finish. The diamond
+    // takes the gold terminus ring's slot so the clause has something to
+    // point at.
+    expect(screen.getByTestId('challenge')).toHaveTextContent(
+      '15 points behind ◇',
+    );
+    expect(screen.getByTestId('challenge-mark')).toHaveAttribute(
+      'data-state',
+      'live',
+    );
+    expect(screen.getByTestId('challenge-mark')).toHaveClass('right-[1.5px]');
+
+    submitWord('test');
+    submitWord('rotted');
+    expect(screen.getByTestId('challenge')).toHaveTextContent(
+      '11 points behind ◇',
+    );
+    submitWord('worsted');
+    expect(screen.getByTestId('challenge')).toHaveTextContent('Tied with ◆ ✓');
+    expect(screen.getByTestId('challenge')).toHaveTextContent(
+      'You tied the shared score of 15!',
+    );
+    // A perfect sweep dissolves the whole ladder, diamond included.
+    expect(screen.queryByTestId('challenge-mark')).not.toBeInTheDocument();
+  });
+
+  it('puts a shared score out of reach once hints burn past it', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '?letters=WORDTES&required=T&score=14&hints=0',
+    );
+    vi.useFakeTimers();
+    try {
+      render(<App dictionary={DICTIONARY} />);
+
+      // Getting ahead of 14 needs all 15 points: a live promise until a
+      // hint spends one, then the same dead gray the burned rungs wear.
+      expect(screen.getByTestId('challenge')).toHaveTextContent(
+        '14 points behind ◇',
+      );
+      expect(screen.getByTestId('challenge-mark')).toHaveAttribute(
+        'data-state',
+        'live',
+      );
+
+      // The cost lands on the click; the revealed word lands after its
+      // cascade, so the header's countdown moves once the timers run.
+      fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+      expect(screen.getByTestId('challenge')).toHaveTextContent(
+        '◆ out of reach',
+      );
+      expect(screen.getByTestId('challenge')).toHaveTextContent(
+        'The shared score of 14 is out of reach',
+      );
+      expect(screen.getByTestId('challenge-mark')).toHaveAttribute(
+        'data-state',
+        'unreachable',
+      );
+      act(() => {
+        vi.runAllTimers();
+      });
+      expect(screen.getByTestId('words-header')).toHaveTextContent(
+        'Words (2 remaining)',
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('shares a themed snippet with a challenge link', async () => {
@@ -660,7 +769,9 @@ describe('App', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'TEST earned you 1 point!',
     );
-    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (2 remaining)', // was found=1
+    );
     expect(
       screen.getByRole('button', { name: 'Meh · 1 point to Okay' }),
     ).toBeInTheDocument();
@@ -1024,7 +1135,9 @@ describe('App', () => {
         name: 'New game',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Found 3 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (all found)', // was found=3
+    );
     expect(
       screen.getByRole('button', {
         name: 'Super-Duper-Genius · 15 / 15 points',
@@ -1276,7 +1389,9 @@ describe('App', () => {
     );
     render(<App dictionary={DICTIONARY} />);
 
-    expect(screen.getByText('Found 2 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (1 remaining)', // was found=2
+    );
     expect(screen.getByRole('link', { name: 'TEST' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'ROTTED' })).toBeInTheDocument();
 
@@ -1309,7 +1424,9 @@ describe('App', () => {
     );
     render(<App dictionary={DICTIONARY} />);
 
-    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (2 remaining)', // was found=1
+    );
   });
 
   it('shows the ratings ladder from the progress label', () => {
@@ -1471,7 +1588,9 @@ describe('App', () => {
     expect(screen.getByText('* revealed with a hint')).toBeInTheDocument();
 
     // Hinted words score nothing: only ROTTED's 3 points count.
-    expect(screen.getByText('Found 2 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (1 remaining)', // was found=2
+    );
 
     // The hinted mark persists per puzzle (committed when revealed).
     expect(
@@ -1573,7 +1692,7 @@ describe('App', () => {
         window.localStorage.getItem('wordsalad:hinted:DEORSTW.T.4') ?? '[]',
       ),
     ).toEqual(['TEST']);
-    expect(screen.getByText('· 1 hint (−1 pt)')).toBeInTheDocument();
+    expect(screen.getByText('1 hint (−1 pt)')).toBeInTheDocument();
   });
 
   it('shows +0 for a hinted word, not its point value', () => {
@@ -1627,7 +1746,7 @@ describe('App', () => {
     pressKey('Enter'); // submit TEST, word area empties
     fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // commit ROTTED
 
-    expect(screen.getByText('· 2 hints (−4 pts)')).toBeInTheDocument();
+    expect(screen.getByText('2 hints (−4 pts)')).toBeInTheDocument();
     // Each hint commits its word the moment it is revealed.
     expect(
       JSON.parse(
@@ -1642,17 +1761,17 @@ describe('App', () => {
       JSON.stringify(['TEST', 'ROTTED', 'WORSTED']),
     );
     render(<App dictionary={DICTIONARY} />);
-    expect(screen.getByText('· 3 hints (−15 pts)')).toBeInTheDocument();
+    expect(screen.getByText('3 hints (−15 pts)')).toBeInTheDocument();
   });
 
   it('clears the hint count when the puzzle is restarted', () => {
     render(<App dictionary={DICTIONARY} />);
     fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
     pressKey('Enter'); // score so Restart appears
-    expect(screen.getByText('· 1 hint (−1 pt)')).toBeInTheDocument();
+    expect(screen.getByText('1 hint (−1 pt)')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
-    expect(screen.queryByText('· 1 hint (−1 pt)')).not.toBeInTheDocument();
+    expect(screen.queryByText('1 hint (−1 pt)')).not.toBeInTheDocument();
     expect(
       window.localStorage.getItem('wordsalad:hinted:DEORSTW.T.4'),
     ).toBeNull();
@@ -1670,7 +1789,9 @@ describe('App', () => {
     // Dismissing the modal returns to the board; a further word still scores.
     keepPlaying();
     submitWord('rotted');
-    expect(screen.getByText('Found 3 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (all found)', // was found=3
+    );
   });
 
   it('warns when too many hints make the win unreachable', () => {
@@ -1705,7 +1826,9 @@ describe('App', () => {
 
     closeWin();
     fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
-    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (3 remaining)', // was found=0
+    );
 
     // Restart rewinds the celebration counter without remounting the board,
     // so this second win arrives wearing the same id as the dismissed one.
@@ -1782,11 +1905,15 @@ describe('App', () => {
     render(<App dictionary={DICTIONARY} />);
     submitWord('test');
     submitWord('rotted');
-    expect(screen.getByText('Found 2 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (1 remaining)', // was found=2
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
 
-    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (3 remaining)', // was found=0
+    );
     expect(window.localStorage.getItem('wordsalad:DEORSTW.T.4')).toBeNull();
 
     // Same puzzle: the letters are unchanged and TEST scores again.
@@ -1840,7 +1967,9 @@ describe('App', () => {
   it('restarts the puzzle from the 2 key', () => {
     render(<App dictionary={DICTIONARY} />);
     submitWord('test');
-    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (2 remaining)', // was found=1
+    );
 
     pressKey('2');
 
@@ -1849,7 +1978,9 @@ describe('App', () => {
       'data-game-id',
       '0',
     );
-    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (3 remaining)', // was found=0
+    );
   });
 
   it('shares from the 3 key once there is something to share', async () => {
@@ -1885,7 +2016,9 @@ describe('App', () => {
 
     pressKey('2');
     expect(restart()).toHaveAttribute('data-denied-id', '1');
-    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (3 remaining)', // was found=0
+    );
 
     pressKey('3');
     expect(share()).toHaveAttribute('data-denied-id', '2');
@@ -1931,7 +2064,9 @@ describe('App', () => {
     pressKey('2');
 
     expect(screen.queryByTestId('lockout-dialog')).not.toBeInTheDocument();
-    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (3 remaining)', // was found=0
+    );
   });
 
   // Layouts whose digit row is shifted (French AZERTY types symbols there
@@ -1940,13 +2075,17 @@ describe('App', () => {
   it('matches digit shortcuts by physical position on shifted layouts', () => {
     render(<App dictionary={REAL_DICTIONARY} />);
     submitWord('test');
-    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (183 remaining)', // was found=1
+    );
 
     // AZERTY's unshifted 2 key types 'é' — a letter, so it stays letter
     // input (rejected on this board) rather than firing Restart: the
     // found word survives.
     fireEvent.keyDown(document, { key: 'é', code: 'Digit2' });
-    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (183 remaining)', // was found=1
+    );
 
     // AZERTY's unshifted 1 key types '&': the position deals a new game.
     fireEvent.keyDown(document, { key: '&', code: 'Digit1' });
@@ -1968,7 +2107,9 @@ describe('App', () => {
 
     fireEvent.click(restart());
 
-    expect(screen.getByText('Found 0 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (3 remaining)', // was found=0
+    );
     expect(screen.getAllByTestId('word-exit-ghost')).toHaveLength(2);
     expect(restart()).toHaveAttribute('data-restart-id', '1');
     expect(restart()).toHaveClass('control-press');
@@ -2044,7 +2185,9 @@ describe('App', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'TEST earned you 1 point!',
     );
-    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (2 remaining)', // was found=1
+    );
   });
 
   it('removes the last tapped letter with the Delete button', () => {
@@ -2505,7 +2648,9 @@ describe('App with the French dictionary', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'COTE earned you 4 points!',
     );
-    expect(screen.getByText('Found 4 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (2 remaining)', // was found=4
+    );
     for (const word of ['CÔTE', 'CÔTÉ', 'COTE', 'COTÉ']) {
       expect(screen.getByRole('link', { name: word })).toBeInTheDocument();
     }
@@ -2532,7 +2677,9 @@ describe('App with the French dictionary', () => {
     typeWord('côté');
     expect(currentWord()).toBe('COTE');
     pressKey('Enter');
-    expect(screen.getByText('Found 4 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (2 remaining)', // was found=4
+    );
   });
 
   it('carries the dictionary in the shareable URL and storage keys', () => {
@@ -2559,12 +2706,14 @@ describe('App with the French dictionary', () => {
     pressKey('Enter');
 
     // All four siblings land, hinted and worth nothing.
-    expect(screen.getByText('Found 4 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (2 remaining)', // was found=4
+    );
     expect(screen.getByRole('link', { name: 'CÔTÉ*' })).toHaveAttribute(
       'data-hinted',
       'true',
     );
-    expect(screen.getByText('· 4 hints (−4 pts)')).toBeInTheDocument();
+    expect(screen.getByText('4 hints (−4 pts)')).toBeInTheDocument();
   });
 
   it('restores accented progress from storage', () => {
@@ -2574,7 +2723,9 @@ describe('App with the French dictionary', () => {
     );
     render(frApp());
     // Replaying one sibling restores its whole group, as found together.
-    expect(screen.getByText('Found 4 words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (2 remaining)', // was found=4
+    );
   });
 
   it('offers the way back to English from the word-list picker', () => {
@@ -2665,7 +2816,7 @@ describe('first-run coach', () => {
     render(<App dictionary={DICTIONARY} />);
 
     expect(screen.queryByTestId('coach')).not.toBeInTheDocument();
-    expect(screen.getByText('Words')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(/^Words/);
   });
 
   it('opens the rules from the menu and quotes the live puzzle', () => {
@@ -2696,7 +2847,9 @@ describe('first-run coach', () => {
     expect(currentWord()).toBe('ROT');
     // The restored word is live: it finishes into a score.
     submitWord('TED');
-    expect(screen.getByText('Found 1 word')).toBeInTheDocument();
+    expect(screen.getByTestId('words-header')).toHaveTextContent(
+      'Words (2 remaining)', // was found=1
+    );
   });
 
   it('keeps a draft with the puzzle it was typed on', () => {
