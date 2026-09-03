@@ -1068,6 +1068,72 @@ describe('App', () => {
     expectLive('', 'CANOWLE');
   });
 
+  it('dims the staged letters past a dead end and closes the verdict', () => {
+    window.history.replaceState(null, '', '?letters=CANOWLE&required=C');
+    render(<App dictionary={['CACAO', 'CAECAL', 'CALL', 'CANAL', 'OCEAN']} />);
+    const submit = () => screen.getByRole('button', { name: 'Submit' });
+    const verdict = () => screen.getByTestId('verdict');
+    // The staged letters in order: live (·) or dead (×).
+    const letters = () =>
+      within(screen.getByLabelText('Current word'))
+        .getAllByText(/^\p{L}$/u)
+        .map((letter) =>
+          letter.getAttribute('data-dead') === 'true' ? '×' : '·',
+        )
+        .join('');
+    const clearInput = () => {
+      while (currentWord().length > 0) {
+        pressKey('Backspace');
+      }
+    };
+
+    submitWord('cacao');
+    submitWord('call');
+    submitWord('canal');
+    submitWord('ocean');
+    // Only CAECAL remains, pinned between CACAO and CALL.
+
+    // While a gap still admits the letters nothing is dead, and the badge
+    // keeps inviting letters.
+    typeWord('ca');
+    expect(letters()).toBe('··');
+    expect(verdict()).toHaveTextContent('…');
+
+    // CAN sorts past CALL: no unfound word starts with it. The word shows
+    // where it died, and the badge stops saying "not yet".
+    typeWord('n');
+    expect(letters()).toBe('··×');
+    expect(verdict()).toHaveTextContent('—');
+    expect(submit()).toHaveAttribute('data-verdict', 'dead-end');
+    expect(submit()).toHaveAccessibleDescription(
+      'No new word starts with these letters',
+    );
+
+    // Typing on only lengthens the dead tail; the cut point holds.
+    typeWord('o');
+    expect(letters()).toBe('··××');
+    expect(submit()).toHaveAttribute('data-verdict', 'dead-end');
+
+    // Deleting back to the stem revives the word.
+    pressKey('Backspace');
+    pressKey('Backspace');
+    expect(letters()).toBe('··');
+    expect(submit()).toHaveAttribute('data-verdict', 'too-short');
+
+    // A found word nothing unfound extends is dead past its stem too, but
+    // found outranks the dead end: ✓ already says why nothing continues.
+    clearInput();
+    typeWord('call');
+    expect(letters()).toBe('···×');
+    expect(verdict()).toHaveTextContent('✓');
+    expect(submit()).toHaveAttribute('data-verdict', 'already-found');
+
+    // The badge that floats away is the one that stood.
+    clearInput();
+    submitWord('can');
+    expect(screen.getByTestId('verdict-ghost')).toHaveTextContent('—');
+  });
+
   it('scrolls to a word that was already found when it is resubmitted', () => {
     render(<App dictionary={DICTIONARY} />);
     // The row the drum has brought into view.

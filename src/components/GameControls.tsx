@@ -3,8 +3,8 @@ import { useRef } from 'react';
 import { useMessages } from '../i18n';
 import type {
   DeniedControl,
+  StagedPreview,
   SubmitReadiness,
-  WordPreview,
 } from '../useWordSaladGame';
 import {
   KEYCAP_CLASS,
@@ -21,7 +21,7 @@ interface GameControlsProps {
   onDelete: () => void;
   onSubmit: () => void;
   onToss: () => void;
-  preview: WordPreview | null;
+  preview: StagedPreview | null;
   submitReadiness: SubmitReadiness;
   tossId: number;
 }

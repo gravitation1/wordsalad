@@ -5,10 +5,10 @@ import type {
   HintReveal,
   LetterRejection,
   SpentHint,
+  StagedPreview,
   SubmittedPreview,
   WordExit,
   WordExitOutcome,
-  WordPreview,
 } from '../useWordSaladGame';
 import { REVEAL_STAGGER_MS } from '../useWordSaladGame';
 import type { WordOrigin } from './tiles';
@@ -20,7 +20,7 @@ interface WordInputProps {
   wordExit: WordExit | null;
   // The staged word's standing verdict, and the one just submitted, whose
   // badge floats away from where it stood.
-  preview: WordPreview | null;
+  preview: StagedPreview | null;
   lastSubmission: SubmittedPreview | null;
   canHint: boolean;
   hasWon: boolean;
@@ -31,6 +31,9 @@ interface WordInputProps {
   hintReveal: HintReveal | null;
   spentHint: SpentHint | null;
   inputLetters: readonly string[];
+  // Index of the first staged letter no unfound word can follow (see the
+  // game hook); the letters from there on wear the rack's dead glyph.
+  deadFrom: number | null;
   onHint: () => void;
   rejection: LetterRejection | null;
   requiredCharacters: string;
@@ -120,6 +123,7 @@ export function WordInput({
   preview,
   spentHint,
   inputLetters,
+  deadFrom,
   onHint,
   rejection,
   requiredCharacters,
@@ -219,21 +223,30 @@ export function WordInput({
           data-revealing={isRevealing}
           ref={wordRef}
         >
-          {inputLetters.map((letter, index) => (
-            <span
-              className={`${letterClass(letter, requiredCharacters, isValidCharacter)} ${
-                isRevealing ? 'letter-reveal' : ''
-              }`}
-              key={`${letter}${index}`}
-              style={
-                isRevealing
-                  ? { animationDelay: `${index * REVEAL_STAGGER_MS}ms` }
-                  : undefined
-              }
-            >
-              {letter}
-            </span>
-          ))}
+          {inputLetters.map((letter, index) => {
+            // From the dead end on, the letters wear the rack's dead glyph
+            // — the same 30% the tiles drop to, on the same fact: no
+            // unfound word continues from here. The word shows where it
+            // died and how far back to delete; opacity composes with the
+            // accent and invalid colors as it does on the tiles.
+            const isDead = deadFrom !== null && index >= deadFrom;
+            return (
+              <span
+                className={`${letterClass(letter, requiredCharacters, isValidCharacter)} ${
+                  isRevealing ? 'letter-reveal' : ''
+                } ${isDead ? 'opacity-30' : ''}`}
+                data-dead={isDead ? 'true' : 'false'}
+                key={`${letter}${index}`}
+                style={
+                  isRevealing
+                    ? { animationDelay: `${index * REVEAL_STAGGER_MS}ms` }
+                    : undefined
+                }
+              >
+                {letter}
+              </span>
+            );
+          })}
         </span>
         {showHint ? (
           <>

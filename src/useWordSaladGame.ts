@@ -100,9 +100,17 @@ export interface WordSlot {
 
 export type SubmitReadiness = 'empty' | 'partial' | 'ready';
 
+// The staged word's standing verdict: the dictionary's (WordPreview), or
+// the drum's. Once no unfound slot can extend the staged letters, the
+// dictionary's "not yet" verdicts — too short, not a word, missing the
+// required letter — are false: no letter can make the word score, and the
+// dead end says so instead. A found word stays found (✓) and an off-board
+// letter stays the more specific fault (✕); neither promised a future.
+export type StagedPreview = WordPreview | { verdict: 'dead-end' };
+
 export interface SubmittedPreview {
   id: number;
-  preview: WordPreview;
+  preview: StagedPreview;
 }
 
 export interface LetterRejection {
@@ -237,7 +245,12 @@ export interface PlayingGame {
   // (unfound) word, derived the same dictionary-blind way as the slot
   // prefixes; the rack softly dims the rest.
   liveLetters: ReadonlySet<string>;
-  inputPreview: WordPreview | null;
+  // Index of the first staged letter no unfound word can follow — every
+  // letter from there on is dead in the rack's sense — or null while some
+  // gap still admits the whole word. Withheld during a hint reveal, like
+  // the rack's dimming.
+  deadFrom: number | null;
+  inputPreview: StagedPreview | null;
   submitReadiness: SubmitReadiness;
   lastSubmission: SubmittedPreview | null;
   lastRejection: LetterRejection | null;
@@ -363,6 +376,14 @@ function hintedPreview(preview: WordPreview, isHinted: boolean): WordPreview {
     ? { verdict: 'valid', points: 0 }
     : preview;
 }
+
+// The dictionary verdicts that promise a future — more letters could fix
+// this — and so give way to the drum's dead end once no letters can.
+const NOT_YET_VERDICTS: ReadonlySet<WordPreview['verdict']> = new Set([
+  'missing-required',
+  'not-a-word',
+  'too-short',
+]);
 
 // The word the next hint reveals, and what it costs. A committed word that
 // never landed (a session closed during the reveal, or a save from before
@@ -674,6 +695,10 @@ export function useWordSaladGame(
   const [lastSubmission, setLastSubmission] = useState<SubmittedPreview | null>(
     null,
   );
+  // The standing verdict as last rendered, for the submit path: the badge
+  // that floats away must be the one that stood, and the drum's side of it
+  // (the dead end) is derived further down than submitWord.
+  const latestInputPreview = useRef<StagedPreview | null>(null);
   const [lastRejection, setLastRejection] = useState<LetterRejection | null>(
     null,
   );
@@ -815,10 +840,12 @@ export function useWordSaladGame(
     const isHinted = matches.some((match) => hintedWords.has(match));
     const preview = wordSalad.previewWord(word);
     // Record the badge as it looked at submit time (before the engine
-    // mutates), so the view can animate it away — hinted words show +0.
+    // mutates), so the view can animate it away — hinted words show +0,
+    // and a dead end leaves as the dash it stood as, not as the dictionary
+    // verdict underneath it.
     setLastSubmission((previous) => ({
       id: (previous?.id ?? 0) + 1,
-      preview: hintedPreview(preview, isHinted),
+      preview: latestInputPreview.current ?? hintedPreview(preview, isHinted),
     }));
 
     setInputLetters([]);
@@ -1550,6 +1577,65 @@ export function useWordSaladGame(
         .map((gap) => gap.start),
     );
   }, [boardAlphabet, gaps, inputLetters, wordSalad]);
+
+  // Where the staged word died: the index of its first letter no gap
+  // admits, or null while some gap admits the whole word. Adding a letter
+  // can only narrow which gaps admit the word, so once a prefix is dead
+  // every longer one is too — the scan stops at the first. Only run once
+  // nothing admits the word (the common case costs nothing), and never
+  // during a hint reveal, where the rack stops dimming for the same
+  // reason: the revealed word is being committed, not explored.
+  const deadFrom = useMemo<number | null>(() => {
+    if (
+      wordSalad === null ||
+      hintReveal !== null ||
+      inputLetters.length === 0 ||
+      admittingGaps.size > 0
+    ) {
+      return null;
+    }
+    const bounds = gaps.map((gap) => ({
+      alphabet: boardAlphabet,
+      lower: gap.lower,
+      upper: gap.upper,
+      minimumLength: wordSalad.minimumLength,
+    }));
+    for (let length = 1; length < inputLetters.length; length++) {
+      const prefix = inputLetters.slice(0, length).join('');
+      if (!bounds.some((gap) => gapAdmits(gap, prefix))) {
+        return length - 1;
+      }
+    }
+    // Every shorter prefix lived: the last letter is the one that killed it.
+    return inputLetters.length - 1;
+  }, [admittingGaps, boardAlphabet, gaps, hintReveal, inputLetters, wordSalad]);
+
+  // The staged word's standing verdict: the dictionary's, unless the drum
+  // has closed every gap the letters could break — then "not yet" is false,
+  // and the dead end says so. Found (✓) and off-board (✕) verdicts stand;
+  // neither promised a future.
+  const inputWord = inputLetters.join('');
+  const dictionaryPreview =
+    wordSalad === null || inputLetters.length === 0
+      ? null
+      : hintedPreview(
+          wordSalad.previewWord(inputWord),
+          wordSalad
+            .wordsMatching(inputWord)
+            .some((match) => hintedWords.has(match)),
+        );
+  const inputPreview: StagedPreview | null =
+    dictionaryPreview !== null &&
+    deadFrom !== null &&
+    NOT_YET_VERDICTS.has(dictionaryPreview.verdict)
+      ? { verdict: 'dead-end' }
+      : dictionaryPreview;
+  // Synced after every render rather than memoized: the dictionary side of
+  // the verdict reads the engine, which mutates in place as words land.
+  useEffect(() => {
+    latestInputPreview.current = inputPreview;
+  });
+
   const huntOriginStart =
     huntOrigin !== null &&
     inputLetters.join('').startsWith(huntOrigin.stem) &&
@@ -1589,17 +1675,6 @@ export function useWordSaladGame(
     };
   }
 
-  const inputWord = inputLetters.join('');
-  const inputPreview =
-    inputLetters.length === 0
-      ? null
-      : hintedPreview(
-          wordSalad.previewWord(inputWord),
-          wordSalad
-            .wordsMatching(inputWord)
-            .some((match) => hintedWords.has(match)),
-        );
-
   const { earnedPoints, lostPoints } = tallyPoints(wordSalad, hintedWords);
   const earnedPercent = earnedPoints / wordSalad.maxPoints;
   const lostPercent = lostPoints / wordSalad.maxPoints;
@@ -1626,6 +1701,7 @@ export function useWordSaladGame(
     inputLetters,
     isValidCharacter,
     liveLetters,
+    deadFrom,
     inputPreview,
     submitReadiness:
       inputPreview === null

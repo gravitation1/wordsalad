@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 
-import type { SubmittedPreview, WordPreview } from '../useWordSaladGame';
+import type { StagedPreview, SubmittedPreview } from '../useWordSaladGame';
 import { NOT_READY_TINT_CLASS } from './tiles';
 
 // The staged word's standing verdict, worn at its trailing edge: what the
@@ -22,14 +22,18 @@ const BADGE_BASE_CLASS =
 // A legitimate word that yields nothing — hinted (valid, 0 points) or
 // already found — is inert, not wrong: the gray the hinted rows wear in the
 // drum, rather than the orange of a word that can't be accepted as it
-// stands. The glyph carries the difference (+0 vs ✓).
+// stands. A dead end — letters no unfound word starts with — is inert too:
+// not "not yet" but "never", so it sheds the orange that would keep
+// inviting letters. The glyph carries the difference: +0, ✓, or the drum's
+// own dash for a run of nothing.
 const WORTHLESS_BADGE_CLASS = `${BADGE_BASE_CLASS} border-gray-300 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-500`;
 
 // The "not yet" verdicts wear Submit's own not-ready tint (tiles.ts): same
 // border and fill in both themes, so the pill reads as the button's
 // miniature rather than a different shade of the same warning.
-const BADGE_CLASS: Record<WordPreview['verdict'], string> = {
+const BADGE_CLASS: Record<StagedPreview['verdict'], string> = {
   'already-found': WORTHLESS_BADGE_CLASS,
+  'dead-end': WORTHLESS_BADGE_CLASS,
   'invalid-letters': `${BADGE_BASE_CLASS} border-red-300 bg-white text-red-500 dark:border-red-400/40 dark:bg-gray-950 dark:text-red-400`,
   'missing-required': `${BADGE_BASE_CLASS} ${NOT_READY_TINT_CLASS}`,
   'not-a-word': `${BADGE_BASE_CLASS} ${NOT_READY_TINT_CLASS}`,
@@ -37,17 +41,19 @@ const BADGE_CLASS: Record<WordPreview['verdict'], string> = {
   valid: `${BADGE_BASE_CLASS} border-accent bg-white text-accent dark:bg-gray-950`,
 };
 
-export function badgeClass(preview: WordPreview): string {
+export function badgeClass(preview: StagedPreview): string {
   if (preview.verdict === 'valid' && preview.points === 0) {
     return WORTHLESS_BADGE_CLASS;
   }
   return BADGE_CLASS[preview.verdict];
 }
 
-export function badgeText(preview: WordPreview): string {
+export function badgeText(preview: StagedPreview): string {
   switch (preview.verdict) {
     case 'already-found':
       return '✓';
+    case 'dead-end':
+      return '—';
     case 'invalid-letters':
       return '✕';
     case 'missing-required':
@@ -75,7 +81,7 @@ export function VerdictBadge({
   preview,
   spotRef,
 }: {
-  preview: WordPreview | null;
+  preview: StagedPreview | null;
   spotRef: { current: BadgeSpot | null };
 }) {
   const badgeRef = useRef<HTMLSpanElement>(null);

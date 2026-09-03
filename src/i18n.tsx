@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { createContext, useContext } from 'react';
 
 import type { AchievementId } from './game/achievements';
-import type { GameFeedback, WordPreview } from './useWordSaladGame';
+import type { GameFeedback, StagedPreview } from './useWordSaladGame';
 
 export type Locale =
   'de' | 'en' | 'es' | 'fr' | 'it' | 'ja' | 'ko' | 'nl' | 'pt' | 'ru' | 'zh';
@@ -159,7 +159,7 @@ export interface Messages {
   ratingReachedLabel: string;
   ratingNotReachedLabel: string;
   // Screen-reader description of the Submit button's verdict badge.
-  submitPreviewLabel: (preview: WordPreview) => string;
+  submitPreviewLabel: (preview: StagedPreview) => string;
   // First-run coach: the rules the board cannot show, spoken in the
   // feedback row until the player's first scored word. {letters} marks where
   // the required letters go, set as mini tiles.
@@ -368,6 +368,8 @@ const EN: Messages = {
     switch (preview.verdict) {
       case 'already-found':
         return 'Already found';
+      case 'dead-end':
+        return 'No new word starts with these letters';
       case 'invalid-letters':
         return 'Uses letters not in the salad';
       case 'missing-required':
@@ -638,6 +640,8 @@ const FR: Messages = {
     switch (preview.verdict) {
       case 'already-found':
         return 'Déjà trouvé';
+      case 'dead-end':
+        return 'Aucun nouveau mot ne commence par ces lettres';
       case 'invalid-letters':
         return 'Contient des lettres hors de la salade';
       case 'missing-required':
@@ -912,6 +916,8 @@ const ES: Messages = {
     switch (preview.verdict) {
       case 'already-found':
         return 'Ya encontrada';
+      case 'dead-end':
+        return 'Ninguna palabra nueva empieza por estas letras';
       case 'invalid-letters':
         return 'Usa letras que no están en la ensalada';
       case 'missing-required':
@@ -1179,6 +1185,8 @@ const DE: Messages = {
     switch (preview.verdict) {
       case 'already-found':
         return 'Bereits gefunden';
+      case 'dead-end':
+        return 'Kein neues Wort beginnt mit diesen Buchstaben';
       case 'invalid-letters':
         return 'Enthält Buchstaben außerhalb des Salats';
       case 'missing-required':
@@ -1457,6 +1465,8 @@ const IT: Messages = {
     switch (preview.verdict) {
       case 'already-found':
         return 'Già trovata';
+      case 'dead-end':
+        return 'Nessuna parola nuova inizia con queste lettere';
       case 'invalid-letters':
         return "Usa lettere fuori dall'insalata";
       case 'missing-required':
@@ -1730,6 +1740,8 @@ const PT: Messages = {
     switch (preview.verdict) {
       case 'already-found':
         return 'Já encontrada';
+      case 'dead-end':
+        return 'Nenhuma palavra nova começa com estas letras';
       case 'invalid-letters':
         return 'Usa letras fora da salada';
       case 'missing-required':
@@ -1992,6 +2004,8 @@ const NL: Messages = {
     switch (preview.verdict) {
       case 'already-found':
         return 'Al gevonden';
+      case 'dead-end':
+        return 'Geen nieuw woord begint met deze letters';
       case 'invalid-letters':
         return 'Bevat letters buiten de salade';
       case 'missing-required':
@@ -2224,6 +2238,8 @@ const JA: Messages = {
     switch (preview.verdict) {
       case 'already-found':
         return 'すでに見つけた単語です';
+      case 'dead-end':
+        return 'この文字列で始まる新しい単語はありません';
       case 'invalid-letters':
         return 'サラダにない文字が含まれています';
       case 'missing-required':
@@ -2453,6 +2469,8 @@ const KO: Messages = {
     switch (preview.verdict) {
       case 'already-found':
         return '이미 찾은 단어입니다';
+      case 'dead-end':
+        return '이 글자들로 시작하는 새 단어가 없습니다';
       case 'invalid-letters':
         return '샐러드에 없는 글자가 있습니다';
       case 'missing-required':
@@ -2664,6 +2682,8 @@ const ZH: Messages = {
     switch (preview.verdict) {
       case 'already-found':
         return '已找到过';
+      case 'dead-end':
+        return '没有新单词以这些字母开头';
       case 'invalid-letters':
         return '包含沙拉之外的字母';
       case 'missing-required':
@@ -2924,6 +2944,8 @@ const RU: Messages = {
     switch (preview.verdict) {
       case 'already-found':
         return 'Уже найдено';
+      case 'dead-end':
+        return 'Ни одно новое слово не начинается с этих букв';
       case 'invalid-letters':
         return 'Содержит буквы не из салата';
       case 'missing-required':

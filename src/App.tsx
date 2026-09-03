@@ -405,6 +405,7 @@ function AppBody({
             hasWon={game.hasWon}
             wordExit={game.wordExit}
             canHint={game.canHint}
+            deadFrom={game.deadFrom}
             isComplete={game.isComplete}
             isPerfect={game.isPerfect}
             hintCost={game.hintCost}
