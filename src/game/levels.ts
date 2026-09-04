@@ -55,6 +55,20 @@ export function completionToPoints(
   return Math.ceil(fraction * maxPoints - 1e-9);
 }
 
+// Whether a score finishes a shared-score challenge: strictly more than
+// the share — except that a share at the board's maximum can only be
+// tied, so there the tie is the finish. Lives with the ladder so the
+// scoreboard and the achievements read one definition.
+export function beatsChallenge(
+  earnedPoints: number,
+  challengeScore: number,
+  maxPoints: number,
+): boolean {
+  return challengeScore >= maxPoints
+    ? earnedPoints >= challengeScore
+    : earnedPoints > challengeScore;
+}
+
 export interface NextRank {
   level: string;
   // The smallest score that reaches it.

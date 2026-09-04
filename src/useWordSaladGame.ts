@@ -819,6 +819,12 @@ export function useWordSaladGame(
     };
   }, []);
 
+  // The forced prefix the list shows on each word's slot (WordSlot's
+  // prefix), by word, as of the last render — what the player could read
+  // off the drum when they submitted. A ref, like latestWordSlots below:
+  // the memo deriving it sits later in this file.
+  const latestListPrefixes = useRef<ReadonlyMap<string, string>>(new Map());
+
   const submitWord = useCallback(() => {
     if (wordSalad === null) {
       return;
@@ -883,6 +889,9 @@ export function useWordSaladGame(
     // celebrate the moment itself (and never a restored, already-won game).
     const winPoints = completionToPoints(WIN_THRESHOLD, wordSalad.maxPoints);
     const earnedBefore = tallyPoints(wordSalad, hintedWords).earnedPoints;
+    // What the list was showing on this word's slot as it was submitted.
+    // The group shares one slot run, so its first member speaks for all.
+    const listPrefix = latestListPrefixes.current.get(matches[0] ?? word) ?? '';
 
     const awarded = wordSalad.tryWord(word);
     setFeedback({
@@ -912,6 +921,7 @@ export function useWordSaladGame(
         length: word.length,
         pangram: wordSalad.pangramWords.has(word),
         hinted: isHinted,
+        listPrefix,
       },
       summary: describeSummary(wordSalad, hintedWords, now),
       now,
@@ -1502,11 +1512,12 @@ export function useWordSaladGame(
   // The slot map and the gaps between finds, rebuilt together: each find
   // splits a gap in two, so every prefix is recomputed from the fresh
   // neighbors — the list comes into focus as the game goes.
-  const { wordSlots, gaps } = useMemo(() => {
+  const { wordSlots, gaps, listPrefixes } = useMemo(() => {
     if (wordSalad === null) {
       return {
         wordSlots: [] as readonly WordSlot[],
         gaps: [] as readonly WordGap[],
+        listPrefixes: new Map<string, string>(),
       };
     }
     const found = new Map(foundWords.map((entry) => [entry.word, entry]));
@@ -1525,12 +1536,17 @@ export function useWordSaladGame(
         prefix: prefixes[index],
       })),
       gaps: wordGaps({ words: allWords, isFound, keyOf }),
+      // The same prefixes by word, for the submit path's achievement facts.
+      listPrefixes: new Map(
+        allWords.map((word, index) => [word, prefixes[index]]),
+      ),
     };
   }, [allWords, boardAlphabet, foundWords, wordSalad]);
 
   useEffect(() => {
     latestWordSlots.current = wordSlots;
-  }, [wordSlots]);
+    latestListPrefixes.current = listPrefixes;
+  }, [listPrefixes, wordSlots]);
 
   // The board letters that could still extend the typed word into a new
   // find; the rack dims the rest. A hint reveal suspends the dimming: the

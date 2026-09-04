@@ -286,8 +286,16 @@ const EN: Messages = {
       name: 'Long haul',
       description: 'Find a word of ten letters or more',
     },
+    'saw-what-you-did-there': {
+      name: 'I saw what you did there',
+      description: 'Find a word the list gave away',
+    },
     marathon: { name: 'Marathon', description: 'Find 25 words on one board' },
     challenger: { name: 'Challenger', description: 'Beat a shared score' },
+    'good-sport': {
+      name: 'Good sport',
+      description: 'Finish a challenge you could not beat',
+    },
     'hard-mode': {
       name: 'Hard mode',
       description: 'Win with a minimum word length of 5 or more',
@@ -537,11 +545,19 @@ const FR: Messages = {
       name: 'Longue haleine',
       description: 'Trouvez un mot de dix lettres ou plus',
     },
+    'saw-what-you-did-there': {
+      name: 'J’ai tout vu',
+      description: 'Trouvez un mot que la liste avait trahi',
+    },
     marathon: {
       name: 'Marathon',
       description: 'Trouvez 25 mots sur une même grille',
     },
     challenger: { name: 'Challenger', description: 'Battez un score partagé' },
+    'good-sport': {
+      name: 'Beau joueur',
+      description: 'Terminez un défi que vous n’avez pas pu battre',
+    },
     'hard-mode': {
       name: 'Mode difficile',
       description: 'Gagnez avec des mots de 5 lettres minimum',
@@ -809,6 +825,10 @@ const ES: Messages = {
       name: 'Largo recorrido',
       description: 'Encuentra una palabra de diez letras o más',
     },
+    'saw-what-you-did-there': {
+      name: 'Ya te vi',
+      description: 'Encuentra una palabra que la lista delató',
+    },
     marathon: {
       name: 'Maratón',
       description: 'Encuentra 25 palabras en un mismo tablero',
@@ -816,6 +836,10 @@ const ES: Messages = {
     challenger: {
       name: 'Retador',
       description: 'Supera una puntuación compartida',
+    },
+    'good-sport': {
+      name: 'Deportividad',
+      description: 'Termina un reto que no pudiste superar',
     },
     'hard-mode': {
       name: 'Modo difícil',
@@ -1083,6 +1107,10 @@ const DE: Messages = {
       name: 'Langstrecke',
       description: 'Finde ein Wort mit zehn oder mehr Buchstaben',
     },
+    'saw-what-you-did-there': {
+      name: 'Erwischt',
+      description: 'Finde ein Wort, das die Liste verraten hat',
+    },
     marathon: {
       name: 'Marathon',
       description: 'Finde 25 Wörter auf einem Brett',
@@ -1090,6 +1118,11 @@ const DE: Messages = {
     challenger: {
       name: 'Herausforderer',
       description: 'Schlage eine geteilte Punktzahl',
+    },
+    'good-sport': {
+      name: 'Sportsgeist',
+      description:
+        'Beende eine Herausforderung, die du nicht schlagen konntest',
     },
     'hard-mode': {
       name: 'Schwerer Modus',
@@ -1357,6 +1390,10 @@ const IT: Messages = {
       name: 'Lunga corsa',
       description: 'Trova una parola di dieci lettere o più',
     },
+    'saw-what-you-did-there': {
+      name: 'Ho visto tutto',
+      description: 'Trova una parola che la lista aveva tradito',
+    },
     marathon: {
       name: 'Maratona',
       description: 'Trova 25 parole sulla stessa griglia',
@@ -1364,6 +1401,10 @@ const IT: Messages = {
     challenger: {
       name: 'Sfidante',
       description: 'Batti un punteggio condiviso',
+    },
+    'good-sport': {
+      name: 'Sportività',
+      description: 'Completa una sfida che non potevi battere',
     },
     'hard-mode': {
       name: 'Modalità difficile',
@@ -1633,6 +1674,10 @@ const PT: Messages = {
       name: 'Longa jornada',
       description: 'Encontre uma palavra de dez letras ou mais',
     },
+    'saw-what-you-did-there': {
+      name: 'Vi tudo',
+      description: 'Encontre uma palavra que a lista entregou',
+    },
     marathon: {
       name: 'Maratona',
       description: 'Encontre 25 palavras em um mesmo tabuleiro',
@@ -1640,6 +1685,10 @@ const PT: Messages = {
     challenger: {
       name: 'Desafiante',
       description: 'Supere uma pontuação compartilhada',
+    },
+    'good-sport': {
+      name: 'Espírito esportivo',
+      description: 'Termine um desafio que não conseguiu superar',
     },
     'hard-mode': {
       name: 'Modo difícil',
@@ -1908,8 +1957,16 @@ const NL: Messages = {
       name: 'Lange adem',
       description: 'Vind een woord van tien letters of meer',
     },
+    'saw-what-you-did-there': {
+      name: 'Betrapt',
+      description: 'Vind een woord dat de lijst verraadde',
+    },
     marathon: { name: 'Marathon', description: 'Vind 25 woorden op één bord' },
     challenger: { name: 'Uitdager', description: 'Versla een gedeelde score' },
+    'good-sport': {
+      name: 'Sportief',
+      description: 'Maak een uitdaging af die je niet kon verslaan',
+    },
     'hard-mode': {
       name: 'Zware modus',
       description: 'Win met woorden van minstens 5 letters',
@@ -2166,8 +2223,16 @@ const JA: Messages = {
       name: 'ロングワード',
       description: '10文字以上の単語を見つける',
     },
+    'saw-what-you-did-there': {
+      name: '見てたよ',
+      description: 'リストが漏らした単語を見つける',
+    },
     marathon: { name: 'マラソン', description: '1つのボードで25語を見つける' },
     challenger: { name: '挑戦者', description: '共有されたスコアを上回る' },
+    'good-sport': {
+      name: 'スポーツマンシップ',
+      description: '勝てなかった挑戦をやり遂げる',
+    },
     'hard-mode': {
       name: 'ハードモード',
       description: '最短5文字以上のボードで勝つ',
@@ -2393,8 +2458,16 @@ const KO: Messages = {
     },
     pangrammer: { name: '팬그램', description: '팬그램 찾기' },
     'long-haul': { name: '긴 단어', description: '10글자 이상의 단어 찾기' },
+    'saw-what-you-did-there': {
+      name: '다 봤어요',
+      description: '목록이 흘린 단어 찾기',
+    },
     marathon: { name: '마라톤', description: '한 보드에서 25개 단어 찾기' },
     challenger: { name: '도전자', description: '공유된 점수 넘어서기' },
+    'good-sport': {
+      name: '스포츠맨십',
+      description: '넘어서지 못한 도전을 끝까지 마치기',
+    },
     'hard-mode': {
       name: '하드 모드',
       description: '최소 5글자 보드에서 승리하기',
@@ -2615,8 +2688,16 @@ const ZH: Messages = {
     'super-genius': { name: '超级天才', description: '在一局中达到超级天才' },
     pangrammer: { name: '全字母词', description: '找到一个全字母词' },
     'long-haul': { name: '长词', description: '找到一个十个字母以上的单词' },
+    'saw-what-you-did-there': {
+      name: '我都看见了',
+      description: '找出词库泄露的词',
+    },
     marathon: { name: '马拉松', description: '在一局中找到 25 个单词' },
     challenger: { name: '挑战者', description: '超过一个分享的分数' },
+    'good-sport': {
+      name: '输得起',
+      description: '完成一局未能超过的挑战',
+    },
     'hard-mode': {
       name: '困难模式',
       description: '在最短 5 个字母的一局中获胜',
@@ -2844,8 +2925,16 @@ const RU: Messages = {
       name: 'Длинное слово',
       description: 'Найдите слово из десяти букв и длиннее',
     },
+    'saw-what-you-did-there': {
+      name: 'Всё вижу',
+      description: 'Найдите слово, которое выдал список',
+    },
     marathon: { name: 'Марафон', description: 'Найдите 25 слов на одном поле' },
     challenger: { name: 'Претендент', description: 'Побейте чужой результат' },
+    'good-sport': {
+      name: 'Спортивный дух',
+      description: 'Завершите вызов, который не смогли побить',
+    },
     'hard-mode': {
       name: 'Сложный режим',
       description: 'Выиграйте на поле со словами от 5 букв',

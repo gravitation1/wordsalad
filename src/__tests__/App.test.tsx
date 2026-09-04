@@ -3073,19 +3073,19 @@ describe('achievements', () => {
     expect(
       within(dialog).getByRole('heading', { name: 'Achievements' }),
     ).toBeInTheDocument();
-    expect(within(dialog).getByText('0 of 21 earned')).toBeInTheDocument();
+    expect(within(dialog).getByText('0 of 23 earned')).toBeInTheDocument();
 
     // Every achievement shows, named and described, so the empty case is
     // the catalog: a ☆ row per entry in catalog order.
     const rows = within(dialog).getAllByTestId('achievement-row');
-    expect(rows).toHaveLength(21);
+    expect(rows).toHaveLength(23);
     expect(rows[0]).toHaveAttribute('data-achievement', 'first-win');
     expect(rows[0]).toHaveAttribute('data-earned', 'false');
     expect(rows[0]).toHaveTextContent('☆');
     expect(rows[0]).toHaveTextContent('First win');
     expect(rows[0]).toHaveTextContent('Win a game');
     expect(rows[0]).toHaveTextContent('Locked');
-    expect(rows[20]).toHaveAttribute('data-achievement', 'polyglot');
+    expect(rows[22]).toHaveAttribute('data-achievement', 'polyglot');
     // The lifetime tracks show their standing; the feats say nothing.
     expect(row(dialog, 'ten-wins')).toHaveTextContent('0 / 10');
     expect(row(dialog, 'polyglot')).toHaveTextContent('0 / 7');
@@ -3130,7 +3130,7 @@ describe('achievements', () => {
 
     closeWin();
     const dialog = openCase();
-    expect(within(dialog).getByText('3 of 21 earned')).toBeInTheDocument();
+    expect(within(dialog).getByText('3 of 23 earned')).toBeInTheDocument();
     const rows = within(dialog).getAllByTestId('achievement-row');
     // Earned rows lead; the pangram came first or in the same instant.
     expect(
@@ -3220,7 +3220,7 @@ describe('achievements', () => {
 
     closeWin();
     const dialog = openCase();
-    expect(within(dialog).getByText('3 of 21 earned')).toBeInTheDocument();
+    expect(within(dialog).getByText('3 of 23 earned')).toBeInTheDocument();
     expect(row(dialog, 'first-win')).toHaveTextContent('Jan 5');
   });
 
@@ -3352,6 +3352,66 @@ describe('achievements', () => {
       'no-help-needed',
       'pangrammer',
       'challenger',
+    ]);
+  });
+
+  it('awards Good sport for finishing a board the shared score still leads', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '?letters=WORDTES&required=T&score=14',
+    );
+    vi.useFakeTimers();
+    try {
+      render(<App dictionary={DICTIONARY} />);
+      // TEST by hint: its point is gone, so 14 is the most this board can
+      // now pay — level with the share, never past it.
+      fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
+      act(() => {
+        vi.runAllTimers();
+      });
+      submitWord('rotted'); // 3: behind, words left
+      expect(unlocked()).toEqual({});
+      submitWord('worsted'); // 14: the win, and the last word
+      expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+        'first-win',
+        'completionist',
+        'super-genius',
+        'pangrammer',
+        'good-sport',
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not console a perfect tie of a perfect share with Good sport', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '?letters=WORDTES&required=T&score=15',
+    );
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('test');
+    submitWord('rotted');
+    submitWord('worsted'); // 15/15: the tie is the finish here
+    expect(unlocked()).not.toHaveProperty('good-sport');
+  });
+
+  it('awards I saw what you did there for a word found under a shown prefix', () => {
+    // A second W word. Once WORST is found, everything after it in the
+    // list must start with W, so WORSTED's slot shows a W.
+    render(<App dictionary={[...DICTIONARY, 'WORST']} />);
+    submitWord('rotted'); // nothing forced on its slot
+    submitWord('worst'); // nor on this one
+    expect(unlocked()).toEqual({});
+    submitWord('worsted'); // 16 of 17: the win, from a half-spelled slot
+    expect(recapIds(screen.getByTestId('win-banner'))).toEqual([
+      'first-win',
+      'no-help-needed',
+      'super-genius',
+      'pangrammer',
+      'saw-what-you-did-there',
     ]);
   });
 

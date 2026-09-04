@@ -6,7 +6,7 @@
 // message catalog (i18n.tsx), keyed by the same id.
 
 import type { LifetimeStats } from './history';
-import { getLevel } from './levels';
+import { beatsChallenge, getLevel } from './levels';
 
 export type AchievementId =
   | 'first-win'
@@ -16,8 +16,10 @@ export type AchievementId =
   | 'super-genius'
   | 'pangrammer'
   | 'long-haul'
+  | 'saw-what-you-did-there'
   | 'marathon'
   | 'challenger'
+  | 'good-sport'
   | 'hard-mode'
   | 'double-duty'
   | 'builder'
@@ -64,6 +66,10 @@ export interface WordFacts {
   pangram: boolean;
   // Revealed by a hint before it was submitted, so it scored nothing.
   hinted: boolean;
+  // The letters the word list was showing on this word's slot when it was
+  // submitted — what the alphabetized order alone gave away (gapPrefixes).
+  // Empty when the list gave nothing.
+  listPrefix: string;
 }
 
 // Something the achievements can judge: a scored word (the win and the
@@ -150,6 +156,13 @@ export const ACHIEVEMENTS: readonly AchievementDefinition[] = [
     unlocks: (e) => (found(e)?.length ?? 0) >= 10,
   },
   {
+    // The list had already spelled the start of this word on its slot, and
+    // the player took the cue. Found, not hinted: a hint spells all of it.
+    id: 'saw-what-you-did-there',
+    tier: 'plain',
+    unlocks: (e) => (found(e)?.listPrefix.length ?? 0) > 0,
+  },
+  {
     id: 'marathon',
     tier: 'plain',
     unlocks: (e) => scored(e) && e.board.foundWords >= 25,
@@ -161,6 +174,22 @@ export const ACHIEVEMENTS: readonly AchievementDefinition[] = [
       scored(e) &&
       e.board.challengeScore !== null &&
       e.board.earnedPoints > e.board.challengeScore,
+  },
+  {
+    // Every word found and the share still standing: the board was played
+    // out for its own sake. "Beaten" is the scoreboard's rule, so a perfect
+    // tie of a perfect share is the finish there, not a shortfall here.
+    id: 'good-sport',
+    tier: 'plain',
+    unlocks: (e) =>
+      scored(e) &&
+      e.board.complete &&
+      e.board.challengeScore !== null &&
+      !beatsChallenge(
+        e.board.earnedPoints,
+        e.board.challengeScore,
+        e.board.maxPoints,
+      ),
   },
   {
     id: 'hard-mode',

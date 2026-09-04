@@ -35,7 +35,12 @@ const STATS: LifetimeStats = {
   streak: 1,
 };
 
-const WORD: WordFacts = { length: 4, pangram: false, hinted: false };
+const WORD: WordFacts = {
+  length: 4,
+  pangram: false,
+  hinted: false,
+  listPrefix: '',
+};
 
 function event(
   overrides: {
@@ -158,6 +163,85 @@ describe('findNewUnlocks', () => {
     ).toEqual(['first-win', 'hard-mode', 'double-duty', 'builder']);
   });
 
+  it('awards I saw what you did there for a word found under the list’s prefix', () => {
+    expect(findNewUnlocks(event({ word: { listPrefix: 'CA' } }), {})).toEqual([
+      'saw-what-you-did-there',
+    ]);
+    // A hint spells the whole word; the list's letters had no part in it.
+    expect(
+      findNewUnlocks(event({ word: { listPrefix: 'CA', hinted: true } }), {}),
+    ).toEqual([]);
+    expect(findNewUnlocks(event(), {})).toEqual([]);
+  });
+
+  it('awards Good sport for finishing a board the share still leads', () => {
+    // Complete and behind: played out for its own sake.
+    expect(
+      findNewUnlocks(
+        event({
+          board: {
+            complete: true,
+            challengeScore: 14,
+            earnedPoints: 13,
+            hints: 1,
+          },
+        }),
+        {},
+      ),
+    ).toEqual(['completionist', 'good-sport']);
+    // Level short of the maximum is not past the share either.
+    expect(
+      findNewUnlocks(
+        event({
+          board: {
+            complete: true,
+            challengeScore: 13,
+            earnedPoints: 13,
+            hints: 1,
+          },
+        }),
+        {},
+      ),
+    ).toEqual(['completionist', 'good-sport']);
+    // Complete and ahead is Challenger's.
+    expect(
+      findNewUnlocks(
+        event({
+          board: {
+            complete: true,
+            challengeScore: 12,
+            earnedPoints: 13,
+            hints: 1,
+          },
+        }),
+        {},
+      ),
+    ).toEqual(['completionist', 'challenger']);
+    // A perfect share can only be tied, and the tie is the finish: no
+    // consolation for a perfect game.
+    expect(
+      findNewUnlocks(
+        event({
+          board: {
+            crossedWin: true,
+            complete: true,
+            perfect: true,
+            challengeScore: 15,
+            earnedPoints: 15,
+          },
+        }),
+        {},
+      ),
+    ).not.toContain('good-sport');
+    // Behind with words still out there: nothing is finished yet.
+    expect(
+      findNewUnlocks(
+        event({ board: { challengeScore: 14, earnedPoints: 13 } }),
+        {},
+      ),
+    ).toEqual([]);
+  });
+
   it('awards Overreach for a lockout and Host for a share, nothing else', () => {
     expect(findNewUnlocks(event({ kind: 'lockout' }), {})).toEqual([
       'overreach',
@@ -209,7 +293,7 @@ describe('catalog', () => {
   it('gives every achievement a unique id and a tier', () => {
     const ids = ACHIEVEMENTS.map((achievement) => achievement.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(21);
+    expect(ids).toHaveLength(23);
     for (const achievement of ACHIEVEMENTS) {
       expect(achievementTier(achievement.id)).toBe(achievement.tier);
     }

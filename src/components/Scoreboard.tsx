@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import type { AchievementId } from '../game/achievements';
 import {
+  beatsChallenge,
   completionToPoints,
   getLevelLadder,
   getNextRank,
@@ -418,7 +419,8 @@ export function Scoreboard({
   // with nothing to measure it against, and a countdown to "beat 150"
   // would be 151 with the arithmetic showing. Behind, tied, or ahead by a
   // margin; a strictly higher score wins, except that a share at the
-  // board's maximum can only be tied, so there the tie is the finish.
+  // board's maximum can only be tied, so there the tie is the finish
+  // (beatsChallenge, the rule the achievements judge by too).
   // Reachability is measured against what a flawless rest-of-game could
   // still earn: hints burn a share out of reach the way they burn rungs.
   const challenge = (() => {
@@ -427,7 +429,7 @@ export function Scoreboard({
     }
     const margin = earnedPoints - challengeScore;
     const atMax = challengeScore >= maxPoints;
-    const done = atMax ? margin >= 0 : margin > 0;
+    const done = beatsChallenge(earnedPoints, challengeScore, maxPoints);
     const targetPoints = atMax ? challengeScore : challengeScore + 1;
     const state = done
       ? 'done'
