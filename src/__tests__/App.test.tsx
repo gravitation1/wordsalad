@@ -528,8 +528,10 @@ describe('App', () => {
     );
     render(<App dictionary={DICTIONARY} />);
 
-    // The challenge params are consumed, not kept in the URL.
+    // The challenge params are consumed, not kept in the URL — the hints
+    // count older share links still carry included.
     expect(new URLSearchParams(window.location.search).get('score')).toBeNull();
+    expect(new URLSearchParams(window.location.search).get('hints')).toBeNull();
 
     // A race against the sharer, naming the diamond on the bar: behind,
     // tied (not yet a win — strictly more is needed), then ahead by the
@@ -571,7 +573,7 @@ describe('App', () => {
     window.history.replaceState(
       null,
       '',
-      '?letters=WORDTES&required=T&score=15&hints=0',
+      '?letters=WORDTES&required=T&score=15',
     );
     render(<App dictionary={DICTIONARY} />);
 
@@ -605,7 +607,7 @@ describe('App', () => {
     window.history.replaceState(
       null,
       '',
-      '?letters=WORDTES&required=T&score=14&hints=0',
+      '?letters=WORDTES&required=T&score=14',
     );
     vi.useFakeTimers();
     try {
@@ -665,7 +667,30 @@ describe('App', () => {
     // The board as one row of tiles, the required T filled.
     expect(text).toContain('Word Salad\n🄳🄴🄾🅁🅂🆃🅆\n');
     expect(text).toContain('1/15 · Meh');
-    expect(text).toContain('letters=DEORSTW&required=T&score=1&hints=0');
+    expect(text).toMatch(/letters=DEORSTW&required=T&score=1$/u);
+  });
+
+  it('leaves hints out of the share', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    render(<App dictionary={DICTIONARY} />);
+    submitWord('rotted'); // 3 points
+    fireEvent.click(screen.getByRole('button', { name: 'Hint' })); // TEST
+    pressKey('Enter');
+    // The board still keeps the tally; the snippet just doesn't repeat it.
+    expect(screen.getByText('1 hint (−1 pt)')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Share/ }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Copied!' }),
+    ).toBeInTheDocument();
+    const text = writeText.mock.calls[0][0] as string;
+    expect(text).toContain('3/15 · ');
+    expect(text).not.toMatch(/hint/iu);
   });
 
   it('shares a trophy for a perfect score', async () => {

@@ -328,18 +328,16 @@ export function Scoreboard({
 
   // The share: the board as tiles, the result, and a link that replays this
   // puzzle and carries the score as a challenge. Native share sheet where available,
-  // clipboard otherwise; the score is a claim, verified socially.
+  // clipboard otherwise; the score is a claim, verified socially. Hints go
+  // unmentioned: the score is already net of what they cost.
   const handleShare = async (fromDialog = false) => {
     const url = new URL(window.location.href);
     const letters = url.searchParams.get('letters') ?? '';
     url.searchParams.set('score', String(earnedPoints));
-    url.searchParams.set('hints', String(hintCount));
 
     const wonMark = earnedPoints === maxPoints ? ' 🏆' : hasWon ? ' ✓' : '';
     const summary =
-      `${earnedPoints}/${maxPoints} · ${t.levelName(level)}` +
-      wonMark +
-      (hintCount > 0 ? ` · ${t.hintsUsed(hintCount, lostPoints)}` : '');
+      `${earnedPoints}/${maxPoints} · ${t.levelName(level)}` + wonMark;
     const text = [
       t.appTitle,
       shareRack(letters, requiredCharacters),

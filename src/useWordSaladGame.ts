@@ -766,7 +766,8 @@ export function useWordSaladGame(
     } else {
       url.searchParams.set('dict', spec.id);
     }
-    // Share-link challenge params are consumed at boot, not kept.
+    // Share-link challenge params are consumed at boot, not kept — `hints`
+    // too, which older share links still carry (it was never read).
     url.searchParams.delete('score');
     url.searchParams.delete('hints');
     // The builder's flag is kept per board instead (see `built` above).

@@ -9,7 +9,7 @@ import { defineConfig } from 'vitest/config';
 
 // Cmd+clickable puzzle links printed under Vite's own URLs on `dev`, each a
 // shortcut to a particular game state. Query strings are the app's own URL
-// params: letters, required, min, score/hints (a shared challenge), lang.
+// params: letters, required, min, score (a shared challenge), lang.
 const FIXTURES: { note: string; query: string }[] = [
   { note: 'A fresh random puzzle each load.', query: '' },
   {
